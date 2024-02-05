@@ -6,12 +6,6 @@ using System.Numerics;
 
 namespace ModelingEvolution.Drawing;
 
-public interface ISize<T>
-{
-    T Width { get; }
-    T Height { get; }
-}
-
 public struct Size<T> : IEquatable<Size<T>>, IParsable<Size<T>>, ISize<T>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {

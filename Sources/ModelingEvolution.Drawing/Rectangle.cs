@@ -7,12 +7,6 @@ using System.Runtime.CompilerServices;
 
 namespace ModelingEvolution.Drawing;
 
-public interface IBoundedRect<T>
-    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
-{
-    Rectangle<T> Rect { get; set; }
-}
-
 public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {

@@ -5,7 +5,8 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace ModelingEvolution.Drawing;
-
+using PointF = Point<float>;
+using VectorF = Vector<float>;
 public interface IBoundedRectF
 {
     RectangleF Rect { get; set; }

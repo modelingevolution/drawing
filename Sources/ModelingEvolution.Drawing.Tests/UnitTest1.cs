@@ -1,5 +1,9 @@
 using FluentAssertions;
 using ModelingEvolution.Drawing.Equations;
+using PointF = ModelingEvolution.Drawing.Point<float>;
+using VectorF = ModelingEvolution.Drawing.Vector<float>;
+using PolygonalCurveF = ModelingEvolution.Drawing.Equations.PolygonalCurve<float>;
+using LinearEquationF = ModelingEvolution.Drawing.Equations.LinearEquation<float>;
 
 namespace ModelingEvolution.Drawing.Tests
 {

@@ -1,5 +1,5 @@
 ﻿namespace ModelingEvolution.Drawing;
-
+using VectorF = Vector<float>;
 public readonly record struct RectangleAreaF
 {
     private readonly RectangleF _result;
@@ -17,7 +17,7 @@ public readonly record struct RectangleAreaF
         _result = result;
     }
 
-    public VectorF Offset => _result.Location.AsVectorF();
+    public VectorF Offset => _result.Location;
     public float Value => _result.Height * _result.Width;
     public static implicit operator SizeF(RectangleAreaF rectangleAreaF) => rectangleAreaF._result.Size;
     public static implicit operator float(RectangleAreaF rectangleAreaF) => rectangleAreaF.Value;

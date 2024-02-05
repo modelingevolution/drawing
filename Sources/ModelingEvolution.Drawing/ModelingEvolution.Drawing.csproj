@@ -10,6 +10,15 @@
     <RepositoryUrl>https://github.com/modelingevolution/drawing.git</RepositoryUrl>
     <AssemblyVersion>1.0.6.9</AssemblyVersion>
     <FileVersion>1.0.6.9</FileVersion>
+    <PackageTags>2D Math, BazierCurve, Matrix, Point, Vector, Degree, PolarPoint, Radian</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Update="README.md">
+      <Pack>True</Pack>
+      <PackagePath>\</PackagePath>
+    </None>
+  </ItemGroup>
 
 </Project>

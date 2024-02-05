@@ -4,6 +4,12 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+    <Authors>ModelingEvolution Team</Authors>
+    <Copyright>ModelingEvolution</Copyright>
+    <RepositoryUrl>https://github.com/modelingevolution/drawing.git</RepositoryUrl>
+    <AssemblyVersion>1.0.6.9</AssemblyVersion>
+    <FileVersion>1.0.6.9</FileVersion>
   </PropertyGroup>
 
 </Project>

@@ -1,15 +1,16 @@
 ﻿using System.Collections;
 using System.Numerics;
+using ModelingEvolution.Drawing.Equations;
 
-namespace ModelingEvolution.Drawing.Equations;
+namespace ModelingEvolution.Drawing;
 
 public readonly record struct BezierCurve<T> : IEnumerable<Point<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>
 {
-    public Point<T> Start { get;  }
-    public Point<T> C0 { get;  }
-    public Point<T> C1 { get;  }
-    public Point<T> End { get;  }
+    public Point<T> Start { get; }
+    public Point<T> C0 { get; }
+    public Point<T> C1 { get; }
+    public Point<T> End { get; }
 
     public BezierCurve(Point<T> start, Point<T> c0, Point<T> c1, Point<T> end)
     {
@@ -18,13 +19,13 @@ public readonly record struct BezierCurve<T> : IEnumerable<Point<T>>
         C1 = c1;
         End = end;
     }
-    
+
     public BezierCurve(params Point<T>[] points) : this(points[0], points[1], points[2], points[3]) { }
     public BezierCurve<T> TransformBy(Matrix<T> m)
     {
         return new BezierCurve<T>(m.Transform(Start), m.Transform(C0), m.Transform(C1), m.Transform(End));
     }
-    public static BezierCurve<T> operator+(BezierCurve<T> c, Drawing.Vector<T> v)
+    public static BezierCurve<T> operator +(BezierCurve<T> c, Vector<T> v)
     {
         return new BezierCurve<T>(c.Start + v, c.C0 + v, c.C1 + v, c.End + v);
     }
@@ -41,7 +42,7 @@ public readonly record struct BezierCurve<T> : IEnumerable<Point<T>>
         var a = D2 - two * D1 + D0;
         var b = two * (D1 - D0);
         var c = D0;
-        
+
         var tValuesX = new QuadraticEquation<T>(a.X, b.X, c.X).ZeroPoints();
         var tValuesY = new QuadraticEquation<T>(a.Y, b.Y, c.Y).ZeroPoints();
 
@@ -55,7 +56,7 @@ public readonly record struct BezierCurve<T> : IEnumerable<Point<T>>
 
     }
 
-    private readonly static T half = T.CreateTruncating(0.5); 
+    private readonly static T half = T.CreateTruncating(0.5);
     public Point<T> Intersection(LinearEquation<T> f)
     {
         var a = Start.X * f.A - Start.Y - tree * C0.X * f.A + tree * C0.Y + tree * C1.X * f.A - tree * C1.Y - End.X * f.A + End.Y;

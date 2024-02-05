@@ -152,7 +152,7 @@ public readonly struct Color : IEquatable<Color>
     private static readonly CultureInfo EN_US = new CultureInfo("en-US");
     public Color MakeTransparent(float d)
     {
-        float value = Math.Min(Math.Max(0, d), 1);
+        float value = MathF.Min(MathF.Max(0, d), 1);
         float alpha = (float)(this.A) * value;
         return Color.FromArgb((byte)alpha, this.R, this.G, this.B);
     }

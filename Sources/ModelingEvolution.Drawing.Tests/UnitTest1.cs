@@ -4,6 +4,9 @@ using PointF = ModelingEvolution.Drawing.Point<float>;
 using VectorF = ModelingEvolution.Drawing.Vector<float>;
 using PolygonalCurveF = ModelingEvolution.Drawing.Equations.PolygonalCurve<float>;
 using LinearEquationF = ModelingEvolution.Drawing.Equations.LinearEquation<float>;
+using SizeF = ModelingEvolution.Drawing.Size<float>;
+using RectangleF = ModelingEvolution.Drawing.Rectangle<float>;
+using RectangleAreaF = ModelingEvolution.Drawing.RectangleArea<float>;
 
 namespace ModelingEvolution.Drawing.Tests
 {

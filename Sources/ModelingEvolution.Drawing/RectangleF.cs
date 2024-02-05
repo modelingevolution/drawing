@@ -1,34 +1,36 @@
 ﻿using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
+using System.Globalization;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace ModelingEvolution.Drawing;
-using PointF = Point<float>;
-using VectorF = Vector<float>;
-public interface IBoundedRectF
+
+public interface IBoundedRect<T>
+    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {
-    RectangleF Rect { get; set; }
+    Rectangle<T> Rect { get; set; }
 }
 
-public struct RectangleF : IEquatable<RectangleF>, IParsable<RectangleF>
+public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
+    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {
     /// <summary>
     /// Initializes a new instance of the  class.
     /// </summary>
-    public static readonly RectangleF Empty;
+    public static readonly Rectangle<T> Empty;
 
-    private float x; // Do not rename (binary serialization)
-    private float y; // Do not rename (binary serialization)
-    private float width; // Do not rename (binary serialization)
-    private float height; // Do not rename (binary serialization)
+    private T x; // Do not rename (binary serialization)
+    private T y; // Do not rename (binary serialization)
+    private T width; // Do not rename (binary serialization)
+    private T height; // Do not rename (binary serialization)
 
     /// <summary>
     /// Initializes a new instance of the  class with the specified location
     /// and size.
     /// </summary>
-    public RectangleF(float x, float y, float width, float height)
+    public Rectangle(T x, T y, T width, T height)
     {
         this.x = x;
         this.y = y;
@@ -40,7 +42,7 @@ public struct RectangleF : IEquatable<RectangleF>, IParsable<RectangleF>
     /// Initializes a new instance of the  class with the specified location
     /// and size.
     /// </summary>
-    public RectangleF(PointF location, SizeF size)
+    public Rectangle(Point<T> location, Size<T> size)
     {
         x = location.X;
         y = location.Y;
@@ -49,51 +51,51 @@ public struct RectangleF : IEquatable<RectangleF>, IParsable<RectangleF>
     }
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public RectangleF MoveTo(VectorF point) => MoveTo((PointF)point);
+    public Rectangle<T> MoveTo(Vector<T> point) => MoveTo((Point<T>)point);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public RectangleF MoveTo(PointF point) => new(point, Size);
+    public Rectangle<T> MoveTo(Point<T> point) => new(point, Size);
 
     /// <summary>
     /// Initializes a new instance of the  struct from the specified
     /// <see cref="System.Numerics.Vector4"/>.
     /// </summary>
-    public RectangleF(Vector4 vector)
+    public Rectangle(Vector4 vector)
     {
-        x = vector.X;
-        y = vector.Y;
-        width = vector.Z;
-        height = vector.W;
+        x =  T.CreateTruncating(vector.X);
+        y = T.CreateTruncating(vector.Y);
+        width = T.CreateTruncating(vector.Z);
+        height = T.CreateTruncating(vector.W);
     }
 
     /// <summary>
-    /// Creates a new <see cref="System.Numerics.Vector4"/> from this <see cref="System.Drawing.RectangleF"/>.
+    /// Creates a new <see cref="System.Numerics.Vector4"/> from this <see cref="System.Drawing.Rectangle<T>"/>.
     /// </summary>
-    public Vector4 ToVector4() => new Vector4(x, y, width, height);
+    public Vector4 ToVector4() => new Vector4(float.CreateTruncating(x), float.CreateTruncating(y), float.CreateTruncating(width), float.CreateTruncating(height));
 
     /// <summary>
-    /// Converts the specified <see cref="System.Drawing.RectangleF"/> to a <see cref="System.Numerics.Vector4"/>.
+    /// Converts the specified <see cref="System.Drawing.Rectangle<T>"/> to a <see cref="System.Numerics.Vector4"/>.
     /// </summary>
-    public static explicit operator Vector4(RectangleF rectangle) => rectangle.ToVector4();
+    public static explicit operator Vector4(Rectangle<T> rectangle) => rectangle.ToVector4();
 
     /// <summary>
-    /// Converts the specified <see cref="System.Numerics.Vector2"/> to a <see cref="System.Drawing.RectangleF"/>.
+    /// Converts the specified <see cref="System.Numerics.Vector2"/> to a <see cref="System.Drawing.Rectangle<T>"/>.
     /// </summary>
-    public static explicit operator RectangleF(Vector4 vector) => new RectangleF(vector);
+    public static explicit operator Rectangle<T>(Vector4 vector) => new Rectangle<T>(vector);
 
     /// <summary>
     /// Creates a new  with the specified location and size.
     /// </summary>
-    public static RectangleF FromLTRB(float left, float top, float right, float bottom) =>
-        new RectangleF(left, top, right - left, bottom - top);
+    public static Rectangle<T> FromLTRB(T left, T top, T right, T bottom) =>
+        new Rectangle<T>(left, top, right - left, bottom - top);
 
-    public static RectangleF operator +(RectangleF rect, VectorF vector)
+    public static Rectangle<T> operator +(Rectangle<T> rect, Vector<T> vector)
     {
-        return new RectangleF(rect.Location + vector, rect.Size);
+        return new Rectangle<T>(rect.Location + vector, rect.Size);
     }
-    public static RectangleF operator -(RectangleF rect, VectorF vector)
+    public static Rectangle<T> operator -(Rectangle<T> rect, Vector<T> vector)
     {
-        return new RectangleF(rect.Location - vector, rect.Size);
+        return new Rectangle<T>(rect.Location - vector, rect.Size);
     }
     
     /// <summary>
@@ -101,9 +103,9 @@ public struct RectangleF : IEquatable<RectangleF>, IParsable<RectangleF>
     /// 
     /// </summary>
     [Browsable(false)]
-    public PointF Location
+    public Point<T> Location
     {
-        readonly get => new PointF(X, Y);
+        readonly get => new Point<T>(X, Y);
         set
         {
             X = value.X;
@@ -115,9 +117,9 @@ public struct RectangleF : IEquatable<RectangleF>, IParsable<RectangleF>
     /// Gets or sets the size of this 
     /// </summary>
     [Browsable(false)]
-    public SizeF Size
+    public Size<T> Size
     {
-        readonly get => new SizeF(Width, Height);
+        readonly get => new Size<T>(Width, Height);
         set
         {
             Width = value.Width;
@@ -129,7 +131,7 @@ public struct RectangleF : IEquatable<RectangleF>, IParsable<RectangleF>
     /// Gets or sets the x-coordinate of the upper-left corner of the rectangular region defined by this
     /// 
     /// </summary>
-    public float X
+    public T X
     {
         readonly get => x;
         set => x = value;
@@ -139,7 +141,7 @@ public struct RectangleF : IEquatable<RectangleF>, IParsable<RectangleF>
     /// Gets or sets the y-coordinate of the upper-left corner of the rectangular region defined by this
     /// 
     /// </summary>
-    public float Y
+    public T Y
     {
         readonly get => y;
         set => y = value;
@@ -148,7 +150,7 @@ public struct RectangleF : IEquatable<RectangleF>, IParsable<RectangleF>
     /// <summary>
     /// Gets or sets the width of the rectangular region defined by this 
     /// </summary>
-    public float Width
+    public T Width
     {
         readonly get => width;
         set => width = value;
@@ -157,7 +159,7 @@ public struct RectangleF : IEquatable<RectangleF>, IParsable<RectangleF>
     /// <summary>
     /// Gets or sets the height of the rectangular region defined by this 
     /// </summary>
-    public float Height
+    public T Height
     {
         readonly get => height;
         set => height = value;
@@ -168,71 +170,71 @@ public struct RectangleF : IEquatable<RectangleF>, IParsable<RectangleF>
     
     /// </summary>
     [Browsable(false)]
-    public readonly float Left => X;
+    public readonly T Left => X;
 
     /// <summary>
     /// Gets the y-coordinate of the upper-left corner of the rectangular region defined by this
     /// 
     /// </summary>
     [Browsable(false)]
-    public readonly float Top => Y;
+    public readonly T Top => Y;
 
     /// <summary>
     /// Gets the x-coordinate of the lower-right corner of the rectangular region defined by this
     /// 
     /// </summary>
     [Browsable(false)]
-    public readonly float Right => X + Width;
+    public readonly T Right => X + Width;
 
     /// <summary>
     /// Gets the y-coordinate of the lower-right corner of the rectangular region defined by this
     /// 
     /// </summary>
     [Browsable(false)]
-    public readonly float Bottom => Y + Height;
+    public readonly T Bottom => Y + Height;
 
     /// <summary>
-    /// Tests whether this  has a <see cref='System.Drawing.RectangleF.Width'/> or a <see cref='System.Drawing.RectangleF.Height'/> of 0.
+    /// Tests whether this  has a <see cref='System.Drawing.Rectangle<T>.Width'/> or a <see cref='System.Drawing.Rectangle<T>.Height'/> of 0.
     /// </summary>
     [Browsable(false)]
-    public readonly bool IsEmpty => (Width <= 0) || (Height <= 0);
+    public readonly bool IsEmpty => (Width <= T.Zero) || (Height <= T.Zero);
 
     /// <summary>
     /// Tests whether <paramref name="obj"/> is a  with the same location and
     /// size of this 
     /// </summary>
-    public override readonly bool Equals([NotNullWhen(true)] object? obj) => obj is RectangleF && Equals((RectangleF)obj);
+    public override readonly bool Equals([NotNullWhen(true)] object? obj) => obj is Rectangle<T> && Equals((Rectangle<T>)obj);
 
-    public readonly bool Equals(RectangleF other) => this == other;
+    public readonly bool Equals(Rectangle<T> other) => this == other;
 
     /// <summary>
     /// Tests whether two  objects have equal location and size.
     /// </summary>
-    public static bool operator ==(RectangleF left, RectangleF right) =>
+    public static bool operator ==(Rectangle<T> left, Rectangle<T> right) =>
         left.X == right.X && left.Y == right.Y && left.Width == right.Width && left.Height == right.Height;
 
     /// <summary>
     /// Tests whether two  objects differ in location or size.
     /// </summary>
-    public static bool operator !=(RectangleF left, RectangleF right) => !(left == right);
+    public static bool operator !=(Rectangle<T> left, Rectangle<T> right) => !(left == right);
 
     /// <summary>
     /// Determines if the specified point is contained within the rectangular region defined by this
     /// <see cref='System.Drawing.Rectangle'/> .
     /// </summary>
-    public readonly bool Contains(float x, float y) => X <= x && x < X + Width && Y <= y && y < Y + Height;
+    public readonly bool Contains(T x, T y) => X <= x && x < X + Width && Y <= y && y < Y + Height;
 
     /// <summary>
     /// Determines if the specified point is contained within the rectangular region defined by this
     /// <see cref='System.Drawing.Rectangle'/> .
     /// </summary>
-    public readonly bool Contains(PointF pt) => Contains(pt.X, pt.Y);
+    public readonly bool Contains(Point<T> pt) => Contains(pt.X, pt.Y);
 
     /// <summary>
     /// Determines if the rectangular region represented by <paramref name="rect"/> is entirely contained within
     /// the rectangular region represented by this <see cref='System.Drawing.Rectangle'/> .
     /// </summary>
-    public readonly bool Contains(RectangleF rect) =>
+    public readonly bool Contains(Rectangle<T> rect) =>
         (X <= rect.X) && (rect.X + rect.Width <= X + Width) && (Y <= rect.Y) && (rect.Y + rect.Height <= Y + Height);
 
     /// <summary>
@@ -243,25 +245,25 @@ public struct RectangleF : IEquatable<RectangleF>, IParsable<RectangleF>
     /// <summary>
     /// Inflates this <see cref='System.Drawing.Rectangle'/> by the specified amount.
     /// </summary>
-    public void Inflate(float x, float y)
+    public void Inflate(T x, T y)
     {
         X -= x;
         Y -= y;
-        Width += 2 * x;
-        Height += 2 * y;
+        Width +=  (x+x);
+        Height += (y+y);
     }
 
     /// <summary>
     /// Inflates this <see cref='System.Drawing.Rectangle'/> by the specified amount.
     /// </summary>
-    public void Inflate(SizeF size) => Inflate(size.Width, size.Height);
+    public void Inflate(Size<T> size) => Inflate(size.Width, size.Height);
 
     /// <summary>
     /// Creates a <see cref='System.Drawing.Rectangle'/> that is inflated by the specified amount.
     /// </summary>
-    public static RectangleF Inflate(RectangleF rect, float x, float y)
+    public static Rectangle<T> Inflate(Rectangle<T> rect, T x, T y)
     {
-        RectangleF r = rect;
+        Rectangle<T> r = rect;
         r.Inflate(x, y);
         return r;
     }
@@ -269,22 +271,22 @@ public struct RectangleF : IEquatable<RectangleF>, IParsable<RectangleF>
     /// <summary>
     /// Creates a Rectangle that represents the intersection between this Rectangle and rect.
     /// </summary>
-    public RectangleF Intersect(RectangleF rect) => Intersect(rect, this);
+    public Rectangle<T> Intersect(Rectangle<T> rect) => Intersect(rect, this);
 
     /// <summary>
     /// Creates a rectangle that represents the intersection between a and b. If there is no intersection, an
     /// empty rectangle is returned.
     /// </summary>
-    public static RectangleF Intersect(RectangleF a, RectangleF b)
+    public static Rectangle<T> Intersect(Rectangle<T> a, Rectangle<T> b)
     {
-        float x1 = Math.Max(a.X, b.X);
-        float x2 = Math.Min(a.X + a.Width, b.X + b.Width);
-        float y1 = Math.Max(a.Y, b.Y);
-        float y2 = Math.Min(a.Y + a.Height, b.Y + b.Height);
+        T x1 = T.Max(a.X, b.X);
+        T x2 = T.Min(a.X + a.Width, b.X + b.Width);
+        T y1 = T.Max(a.Y, b.Y);
+        T y2 = T.Min(a.Y + a.Height, b.Y + b.Height);
 
         if (x2 >= x1 && y2 >= y1)
         {
-            return new RectangleF(x1, y1, x2 - x1, y2 - y1);
+            return new Rectangle<T>(x1, y1, x2 - x1, y2 - y1);
         }
 
         return Empty;
@@ -293,31 +295,31 @@ public struct RectangleF : IEquatable<RectangleF>, IParsable<RectangleF>
     /// <summary>
     /// Determines if this rectangle intersects with rect.
     /// </summary>
-    public readonly bool IntersectsWith(RectangleF rect) =>
+    public readonly bool IntersectsWith(Rectangle<T> rect) =>
         (rect.X < X + Width) && (X < rect.X + rect.Width) && (rect.Y < Y + Height) && (Y < rect.Y + rect.Height);
 
     /// <summary>
     /// Creates a rectangle that represents the union between a and b.
     /// </summary>
-    public static RectangleF Union(RectangleF a, RectangleF b)
+    public static Rectangle<T> Union(Rectangle<T> a, Rectangle<T> b)
     {
-        float x1 = Math.Min(a.X, b.X);
-        float x2 = Math.Max(a.X + a.Width, b.X + b.Width);
-        float y1 = Math.Min(a.Y, b.Y);
-        float y2 = Math.Max(a.Y + a.Height, b.Y + b.Height);
+        T x1 = T.Min(a.X, b.X);
+        T x2 = T.Max(a.X + a.Width, b.X + b.Width);
+        T y1 = T.Min(a.Y, b.Y);
+        T y2 = T.Max(a.Y + a.Height, b.Y + b.Height);
 
-        return new RectangleF(x1, y1, x2 - x1, y2 - y1);
+        return new Rectangle<T>(x1, y1, x2 - x1, y2 - y1);
     }
 
     /// <summary>
     /// Adjusts the location of this rectangle by the specified amount.
     /// </summary>
-    public void Offset(PointF pos) => Offset(pos.X, pos.Y);
+    public void Offset(Point<T> pos) => Offset(pos.X, pos.Y);
 
     /// <summary>
     /// Adjusts the location of this rectangle by the specified amount.
     /// </summary>
-    public void Offset(float x, float y)
+    public void Offset(T x, T y)
     {
         X += x;
         Y += y;
@@ -327,16 +329,17 @@ public struct RectangleF : IEquatable<RectangleF>, IParsable<RectangleF>
     /// Converts the specified <see cref='System.Drawing.Rectangle'/> to a
     /// 
     /// </summary>
-    public static implicit operator RectangleF(Rectangle r) => new RectangleF(r.X, r.Y, r.Width, r.Height);
+    public static implicit operator Rectangle<T>(Rectangle r) => new Rectangle<T>(T.CreateTruncating(r.X), 
+        T.CreateTruncating(r.Y), T.CreateTruncating(r.Width), T.CreateTruncating(r.Height));
 
     /// <summary>
-    /// Converts the <see cref='System.Drawing.RectangleF.Location'/> and <see cref='System.Drawing.RectangleF.Size'/>
+    /// Converts the <see cref='System.Drawing.Rectangle<T>.Location'/> and <see cref='System.Drawing.Rectangle<T>.Size'/>
     /// of this  to a human-readable string.
     /// </summary>
     public override readonly string ToString() => $"[{X} {Y} {Width} {Height}]";
 
     private static readonly char[] splitChars = new[] { ' ', ',' };
-    public static RectangleF Parse(string s, IFormatProvider? provider = null)
+    public static Rectangle<T> Parse(string s, IFormatProvider? provider = null)
     {
         if (TryParse(s, provider, out var r))
             return r;
@@ -345,26 +348,26 @@ public struct RectangleF : IEquatable<RectangleF>, IParsable<RectangleF>
         throw new ArgumentException($"Could not parse string {s} as rectangle.");
     }
 
-    public static bool TryParse(string? s, IFormatProvider? provider, out RectangleF result)
+    public static bool TryParse(string? s, IFormatProvider? provider, out Rectangle<T> result)
     {
         var items = s.Split(splitChars, StringSplitOptions.RemoveEmptyEntries);
         switch(items.Length)
         {
             case 4:
-                if (float.TryParse(items[0], out var x)
-                    && float.TryParse(items[1], out var y)
-                    && float.TryParse(items[2], out var w)
-                    && float.TryParse(items[3], out var h))
+                if (T.TryParse(items[0],NumberStyles.Float,null,out var x)
+                    && T.TryParse(items[1], NumberStyles.Float, null, out var y)
+                    && T.TryParse(items[2], NumberStyles.Float, null, out var w)
+                    && T.TryParse(items[3], NumberStyles.Float, null, out var h))
                 {
-                    result = new RectangleF(x, y, w, h);
+                    result = new Rectangle<T>(x, y, w, h);
                     return true;
                 }
                 break;
             case 2:
-                if (float.TryParse(items[0], out var w1)
-                    && float.TryParse(items[1], out var h1))
+                if (T.TryParse(items[0], NumberStyles.Float, null, out var w1)
+                    && T.TryParse(items[1], NumberStyles.Float, null, out var h1))
                 {
-                    result = new RectangleF(0, 0, w1, h1);
+                    result = new Rectangle<T>(T.Zero, T.Zero, w1, h1);
                     return true;
                 }
 

@@ -120,11 +120,11 @@ public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
     public static explicit operator Point<T>(Vector2 vector) => new Point<T>(vector);
 
    
-    public static Point<T> operator +(Point<T> pt, System.Drawing.SizeF sz) => Add(pt, sz);
+    public static Point<T> operator +(Point<T> pt, ISize<T> sz) => Add(pt, sz);
     public static Point<T> operator +(Point<T> pt, Vector<T> sz) => new Point<T>(pt.x + sz.X, pt.y + sz.Y);
     public static Point<T> operator -(Point<T> pt, Vector<T> sz) => new Point<T>(pt.x - sz.X, pt.y - sz.Y);
 
-    public static Point<T> operator -(Point<T> pt, System.Drawing.SizeF sz) => Subtract(pt, sz);
+    public static Point<T> operator -(Point<T> pt, ISize<T> sz) => Subtract(pt, sz);
 
     public static Vector<T> operator -(Point<T> pt, Point<T> sz) => new Vector<T>(pt.x - sz.x, pt.y -sz.y);
 
@@ -134,10 +134,10 @@ public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
     public static bool operator !=(Point<T> left, Point<T> right) => !(left == right);
 
     
-    public static Point<T> Add(Point<T> pt, System.Drawing.SizeF sz) => new Point<T>(pt.X + T.CreateTruncating(sz.Width), pt.Y + T.CreateTruncating(sz.Height));
+    public static Point<T> Add(Point<T> pt, ISize<T> sz) => new Point<T>(pt.X + sz.Width, pt.Y + sz.Height);
 
    
-    public static Point<T> Subtract(Point<T> pt, System.Drawing.SizeF sz) => new Point<T>(pt.X - T.CreateTruncating(sz.Width), pt.Y - T.CreateTruncating(sz.Height));
+    public static Point<T> Subtract(Point<T> pt, ISize<T> sz) => new Point<T>(pt.X -sz.Width, pt.Y - sz.Height);
 
     public override readonly bool Equals([NotNullWhen(true)] object? obj) => obj is Point<T> && Equals((Point<T>)obj);
 

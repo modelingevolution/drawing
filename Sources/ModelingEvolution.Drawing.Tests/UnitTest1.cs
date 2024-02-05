@@ -1,3 +1,4 @@
+using System.Text.Json;
 using FluentAssertions;
 using ModelingEvolution.Drawing.Equations;
 using PointF = ModelingEvolution.Drawing.Point<float>;
@@ -10,6 +11,40 @@ using RectangleAreaF = ModelingEvolution.Drawing.RectangleArea<float>;
 
 namespace ModelingEvolution.Drawing.Tests
 {
+    public class SerializationTests
+    {
+        record FooPoint(Point<float> Value);
+        record FooVector(Vector<float> Value);
+        record FooRectangle(Rectangle<float> Value);
+        [Fact]
+        public void PointSerialization()
+        {
+            FooPoint tmp = new FooPoint(PointF.Random());
+            var json = JsonSerializer.Serialize(tmp);
+            var actual = JsonSerializer.Deserialize<FooPoint>(json);
+
+            actual.Should().Be(tmp);
+        }
+        
+        [Fact]
+        public void VectorSerialization()
+        {
+            FooVector tmp = new FooVector(Vector<float>.Random());
+            var json = JsonSerializer.Serialize(tmp);
+            var actual = JsonSerializer.Deserialize<FooVector>(json);
+
+            actual.Should().Be(tmp);
+        }
+        [Fact]
+        public void RectangleSerialization()
+        {
+            FooRectangle tmp = new FooRectangle(Rectangle<float>.Random());
+            var json = JsonSerializer.Serialize(tmp);
+            var actual = JsonSerializer.Deserialize<FooRectangle>(json);
+
+            actual.Should().Be(tmp);
+        }
+    }
     public class SmoothCurveFTests
     {
         [Fact]

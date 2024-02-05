@@ -6,7 +6,7 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace ModelingEvolution.Drawing;
-
+[RectangleJsonConverterAttribute]
 public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {
@@ -371,5 +371,10 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
         }
         result = Empty;
         return false;
+    }
+
+    public static Rectangle<T> Random()
+    {
+        return new Rectangle<T>(Point<T>.Random(), new Size<T>(T.CreateTruncating(System.Random.Shared.NextDouble())));
     }
 }

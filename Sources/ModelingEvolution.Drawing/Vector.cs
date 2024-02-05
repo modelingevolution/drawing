@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace ModelingEvolution.Drawing;
 
-
+[VectorJsonConverterAttribute]
 public struct Vector<T> : IFormattable, IEquatable<Vector<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>
 {

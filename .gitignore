@@ -26,6 +26,8 @@ bld/
 [Oo]bj/
 [Ll]og/
 
+Build/
+
 # Visual Studio Code cache/options directory
 .vscode/
 # Visual Studio 2015/2017 cache/options directory

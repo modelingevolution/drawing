@@ -2,6 +2,7 @@
 using System.Numerics;
 
 namespace ModelingEvolution.Drawing;
+using static ModelingEvolution.Drawing.Radian;
 
 public struct Matrix<T> : IFormattable
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>
@@ -212,8 +213,8 @@ public struct Matrix<T> : IFormattable
     public Matrix<T> Rotate(Degree<T> angle) => Rotate((Radian<T>)angle);
     public Matrix<T> Rotate(Radian<T> theta)
     {
-        Matrix<T> r_theta = new Matrix<T>(theta.Cos(), theta.Sin(),
-            -theta.Sin(), theta.Cos(),
+        Matrix<T> r_theta = new Matrix<T>(Cos(theta), Sin(theta),
+            -Sin(theta), Cos(theta),
             T.Zero, T.Zero);
 
         Append(r_theta);

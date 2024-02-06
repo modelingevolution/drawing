@@ -3,19 +3,26 @@ using System.Numerics;
 
 namespace ModelingEvolution.Drawing;
 
+public static class Radian
+{
+    public static T Sin<T>(Radian<T> rad) 
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T> => T.Sin(rad._val);
+    public static T Cos<T>(Radian<T> rad) 
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T> => T.Cos(rad._val);
+    
+}
 [DebuggerDisplay("{_val}rad")]
 public readonly record struct Radian<T>: IComparisonOperators<Radian<T>, Radian<T>, bool>, IComparable<Radian<T>>, IComparable
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>
 {
     public static Radian<T> Zero { get; } = new Radian<T>();
-    private readonly T _val;
+    internal readonly T _val;
     private Radian(T value)
     {
         _val = value;
     }
 
-    public T Sin() => T.Sin(_val);
-    public T Cos() => T.Cos(_val);
+    
 
     public Radian<U> Truncate<U>()
         where U : INumber<U>, ITrigonometricFunctions<U>, IRootFunctions<U>, IFloatingPoint<U>

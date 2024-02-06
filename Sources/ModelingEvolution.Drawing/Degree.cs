@@ -3,12 +3,19 @@ using System.Numerics;
 
 namespace ModelingEvolution.Drawing;
 
+public static class Degree
+{
+    public static T Sin<T>(Degree<T> degree) 
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T> => Radian.Sin((Radian<T>)degree);
+    public static T Cos<T>(Degree<T> degree) 
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T> => Radian.Cos((Radian<T>)degree);
+}
 [DebuggerDisplay("{_val}")]
 public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree<T>, bool>, IComparable<Degree<T>>, IComparable 
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>
 {
     public static Degree<T> Zero { get; } = new Degree<T>();
-    private readonly T _val;
+    internal readonly T _val;
     public static implicit operator Degree<T>(T src) => new(src);
     public static Degree<T> Create(T degrees) => new Degree<T>(degrees);
     private Degree(T value)

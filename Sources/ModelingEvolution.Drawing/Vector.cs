@@ -144,6 +144,12 @@ public struct Vector<T> : IFormattable, IEquatable<Vector<T>>
     {
         return new Vector<T>(vector1.X - vector2.X, vector1.Y - vector2.Y);
     }
+    public Vector<U> Truncating<U>()
+        where U : INumber<U>, ITrigonometricFunctions<U>, IRootFunctions<U>, IFloatingPoint<U>, ISignedNumber<U>,
+        IFloatingPointIeee754<U>
+    {
+        return new Vector<U>(U.CreateTruncating(this._x), U.CreateTruncating(_y));
+    }
 
     public static Vector<T> Parse(string source)
     {
@@ -248,10 +254,10 @@ public struct Vector<T> : IFormattable, IEquatable<Vector<T>>
         return Multiply(vector1, vector2);
     }
 
-    //public static Vector<T> operator *(Vector<T> vector, Matrix matrix)
-    //{
-    //    return Multiply(vector, matrix);
-    //}
+    public static Vector<T> operator *(Vector<T> vector, Matrix<T> matrix)
+    {
+        return Multiply(vector, matrix);
+    }
 
     public static Vector<T> operator *(T scalar, Vector<T> vector)
     {

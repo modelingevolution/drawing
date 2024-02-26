@@ -27,6 +27,19 @@ public static class CollectionExtensions
     }
     public static Vector<double> Avg(this IEnumerable<Vector<float>> items)
     {
+      
+        Vector<double> sum = Vector<double>.Zero;
+        double c = 0;
+        foreach (var value in items)
+        {
+            sum += value.Truncating<double>();
+            c += 1.0d;
+        }
+
+        return sum / c;
+    }
+    public static Vector<double> AvgSkipMax(this IEnumerable<Vector<float>> items)
+    {
         int maxVecToSkip = GetIndexOfMaxVector(items);
         int counter = 0;
 
@@ -83,8 +96,22 @@ public static class CollectionExtensions
         }
         return indexOfMaxVector;
     }
-
     public static Vector<double> Avg(this IEnumerable<Vector<double>> items)
+    {
+        Vector<double> sum = Vector<double>.Zero;
+        double c = 0;
+   
+        foreach (var value in items)
+        {
+        
+            sum += value;
+            c += 1.0d;
+       
+        }
+
+        return sum / c;
+    }
+    public static Vector<double> AvgSkipMax(this IEnumerable<Vector<double>> items)
     {
         Vector<double> sum = Vector<double>.Zero;
         double c = 0;

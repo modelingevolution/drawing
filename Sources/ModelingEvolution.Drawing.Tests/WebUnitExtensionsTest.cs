@@ -31,12 +31,12 @@ public class WebUnitExtensionsTest
         List<Vector<float>> data = new List<Vector<float>>();
         data.Add(new Vector<float>(0, 0));
         data.Add(new Vector<float>(5, 5));
-        data.Avg().Should().Be(new Vector<double>(0, 0));
+        data.AvgSkipMax().Should().Be(new Vector<double>(0, 0));
 
         data.Add(new Vector<float>(-5, -5));
-        data.Avg().Should().Be(new Vector<double>(-2.5,-2.5));
+        data.AvgSkipMax().Should().Be(new Vector<double>(-2.5,-2.5));
         data.Add(new Vector<float>(6, 6));
-        data.Avg().Should().Be(new Vector<double>(0, 0));
+        data.AvgSkipMax().Should().Be(new Vector<double>(0, 0));
 
 
     }

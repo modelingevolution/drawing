@@ -1,9 +1,11 @@
 ﻿using System.Globalization;
 using System.Numerics;
 using System.Text.Json.Serialization;
+using ProtoBuf;
 
 namespace ModelingEvolution.Drawing;
 
+[ProtoContract]
 [VectorJsonConverterAttribute]
 public struct Vector<T> : IFormattable, IEquatable<Vector<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>
@@ -206,13 +208,13 @@ public struct Vector<T> : IFormattable, IEquatable<Vector<T>>
         get { return _x * _x + _y * _y; }
     }
 
-    
+    [ProtoMember(1)]
     public T X
     {
         get => _x;
         set => _x = value;
     }
-    
+    [ProtoMember(2)]
     public T Y
     {
         get => _y;

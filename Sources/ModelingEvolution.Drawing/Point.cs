@@ -3,9 +3,11 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
 using System.Runtime.Intrinsics;
+using ProtoBuf;
 
 namespace ModelingEvolution.Drawing;
 
+[ProtoContract]
 [PointJsonConverter()]
 public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>
@@ -102,7 +104,8 @@ public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
     [Browsable(false)]
     public readonly bool IsEmpty => x == T.Zero && y == T.Zero;
 
-   
+
+    [ProtoMember(1)]
     public T X
     {
         readonly get => x;
@@ -112,6 +115,7 @@ public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
     /// <summary>
     /// Gets the y-coordinate of this <see cref='System.Drawing.Point<T>'/>.
     /// </summary>
+       [ProtoMember(2)]
     public T Y
     {
         readonly get => y;

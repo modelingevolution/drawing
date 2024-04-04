@@ -19,7 +19,7 @@ public static class CollectionExtensions
     {
 
         Vector<double> sum = Vector<double>.Zero;
-
+        
         foreach (var value in items) 
             sum += value.Truncating<double>();
 

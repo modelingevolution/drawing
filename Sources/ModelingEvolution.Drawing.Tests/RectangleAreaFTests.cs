@@ -2,6 +2,7 @@ using FluentAssertions;
 
 namespace ModelingEvolution.Drawing.Tests;
 
+
 public class RectangleAreaFTests
 {
     [Fact]

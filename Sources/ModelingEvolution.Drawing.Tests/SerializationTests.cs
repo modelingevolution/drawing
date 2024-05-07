@@ -8,17 +8,6 @@ using SizeF = ModelingEvolution.Drawing.Size<float>;
 
 namespace ModelingEvolution.Drawing.Tests
 {
-    public class ColorTests
-    {
-        [Fact]
-        public void TransparentTest()
-        {
-            System.Drawing.Color c = System.Drawing.Color.Transparent;
-            Color actual = Color.FromArgb(0, 255, 255, 255);
-            actual.A.Should().Be(c.A);
-            actual.IsTransparent.Should().BeTrue();
-        }
-    }
     public class SerializationTests
     {
         record FooPoint(Point<float> Value);

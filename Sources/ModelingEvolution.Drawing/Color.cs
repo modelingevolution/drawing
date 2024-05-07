@@ -147,7 +147,7 @@ public readonly struct Color : IEquatable<Color>
         // rgba(,,,1) - color is not transparent
         // rgba(,,,0) - color is transparent
         //return A > 0 ? $"#{Value:x8}" : $"#{Value:x6}";
-        return IsTransparent ? $"rgba({R},{G},{B},{(A / 255f).ToString(EN_US)})" : $"#{Value:x6}";
+        return IsTransparent ? $"rgba({R},{G},{B},{(A / 255f).ToString(EN_US)})" : $"#{(Value & ~ARGBAlphaMask):x6}";
     }
     private static readonly CultureInfo EN_US = new CultureInfo("en-US");
     public Color MakeTransparent(float d)

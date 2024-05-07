@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
+using FluentAssertions;
 using Xunit.Abstractions;
 using PolarPointF=ModelingEvolution.Drawing.PolarPoint<float>;
 using VectorF = ModelingEvolution.Drawing.Vector<float>;
@@ -12,6 +13,7 @@ using CylindricalPointF = ModelingEvolution.Drawing.CylindricalPoint<float>;
 
 namespace ModelingEvolution.Drawing.Tests
 {
+   
     public class PolarPointTests
     {
         private readonly ITestOutputHelper testOutputHelper;

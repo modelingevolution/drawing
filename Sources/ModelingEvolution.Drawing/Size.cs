@@ -94,6 +94,11 @@ public struct Size<T> : IEquatable<Size<T>>, IParsable<Size<T>>, ISize<T>
     public static Size<T> operator /(Size<T> left, T right)
         => new Size<T>(left.width / right, left.height / right);
 
+    public static Size<T> operator /(Size<T> left, Size<T> right)
+        => new Size<T>(left.width / right.width, left.height / right.height);
+
+    public static Size<T> operator *(Size<T> left, Size<T> right)
+        => new Size<T>(left.width* right.width, left.height * right.height);
     /// <summary>
     /// Tests whether two <see cref='System.Drawing.Size<T>'/> objects are identical.
     /// </summary>

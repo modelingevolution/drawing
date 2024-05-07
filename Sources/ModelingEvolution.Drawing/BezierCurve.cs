@@ -4,8 +4,9 @@ using ModelingEvolution.Drawing.Equations;
 
 namespace ModelingEvolution.Drawing;
 
+
 public readonly record struct BezierCurve<T> : IEnumerable<Point<T>>
-    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>
+    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
     public Point<T> Start { get; }
     public Point<T> C0 { get; }
@@ -20,6 +21,64 @@ public readonly record struct BezierCurve<T> : IEnumerable<Point<T>>
         End = end;
     }
 
+    
+    public static IEnumerable<BezierCurve<T>> Create(params Point<T>[] points)
+    {
+        return Create((IReadOnlyList<Point<T>>)points, T.One / (T.One + T.One));
+    }
+    public static IEnumerable<BezierCurve<T>> Create(T coef, params Point<T>[] points)
+    {
+        return Create((IReadOnlyList<Point<T>> )points, coef);
+    }
+    public static IEnumerable<BezierCurve<T>> Create(IReadOnlyList<Point<T>> points, T coef)
+    {
+        if (points.Count >= 2)
+        {
+            var p0 = points[0];
+            var p1 = points[1];
+            if (points.Count >= 3)
+            {
+                var p2 = points[2];
+                var d = p1 - p0;
+                yield return new BezierCurve<T>(p0, 
+                    d * coef + p0, 
+                    p1 - coef*((p2 - p0).Normalize()) * d.Length, 
+                    p1);
+            }
+            else
+            {
+                var d = p1 - p0;
+                yield return new BezierCurve<T>(p0, p0 + d * coef, p1 - d * coef, p1);
+            }
+
+            for (int i = 0; i < points.Count-3; i++)
+            {
+                p0 = points[i];
+                p1 = points[i + 1];
+                var p2 = points[i + 2];
+                var p3 = points[i + 3];
+
+                var c0 = (p2 - p0).Normalize();
+                var c1 = (p3 - p1).Normalize();
+                var d = (p2 - p1).Length;
+                yield return new BezierCurve<T>(p1, 
+                    p1 + c0 * coef * d,
+                    p2 - c1 * coef * d, 
+                    p2);
+            }
+
+            if (points.Count >= 3)
+            {
+                var p3 = points[^1];
+                var p2 = points[^2];
+                p1 = points[^3];
+                var d = p3 - p2;
+                var c0 = (p3 - p1).Normalize();
+                yield return new BezierCurve<T>(p2, p2 + c0 * coef * d.Length, p3 - d * coef, p3);
+            }
+        }
+        else yield break;
+    }
     public BezierCurve(params Point<T>[] points) : this(points[0], points[1], points[2], points[3]) { }
     public BezierCurve<T> TransformBy(Matrix<T> m)
     {

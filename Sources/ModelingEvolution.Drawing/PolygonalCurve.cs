@@ -4,7 +4,7 @@ using System.Numerics;
 namespace ModelingEvolution.Drawing;
 
 public class PolygonalCurve<T> : IEnumerable<Point<T>>
-    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>
+    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
     private readonly List<Point<T>> _points;
     public Point<T> this[int index] => _points[index];

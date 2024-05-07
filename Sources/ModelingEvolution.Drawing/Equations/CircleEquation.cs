@@ -3,7 +3,7 @@
 namespace ModelingEvolution.Drawing.Equations;
 
 public readonly record struct CircleEquation<T>
-    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>
+    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
     public Point<T> Center { get;  }
     public T Radius { get; }

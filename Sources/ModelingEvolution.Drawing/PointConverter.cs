@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 namespace ModelingEvolution.Drawing;
 
 public abstract class PointConverter<T> : JsonConverter<Point<T>>
-    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>
+    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
     protected abstract T _readMth(ref Utf8JsonReader reader);
     protected abstract void _writeMth(Utf8JsonWriter writer, T value);
@@ -37,7 +37,7 @@ public abstract class PointConverter<T> : JsonConverter<Point<T>>
     }
 }
 public abstract class VectorConverter<T> : JsonConverter<Vector<T>>
-    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>
+    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
     protected abstract T _readMth(ref Utf8JsonReader reader);
     protected abstract void _writeMth(Utf8JsonWriter writer, T value);

@@ -5,7 +5,7 @@ namespace ModelingEvolution.Drawing;
 using static ModelingEvolution.Drawing.Radian;
 
 public struct Matrix<T> : IFormattable
-    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>
+    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
 
     T _m11;

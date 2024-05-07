@@ -12,7 +12,7 @@ public static class RadialCurveF
         return points.IntersectWith(f);
     }
     public static Point<T>? IntersectWith<T>(this IEnumerable<PolarPoint<T>> points, Radian<T> angle)
-        where T : IFloatingPointIeee754<T>
+        where T : IFloatingPointIeee754<T>, IMinMaxValue<T>
     {
         var iterator = points.GetEnumerator();
 
@@ -36,7 +36,7 @@ public static class RadialCurveF
     }
 
     private static Point<T>? Approximate<T>(Radian<T> angle, PolarPoint<T> a, PolarPoint<T> b) 
-        where T : IFloatingPointIeee754<T>
+        where T : IFloatingPointIeee754<T>, IMinMaxValue<T>
     {
         LinearEquation<T> e1 = LinearEquation<T>.From(angle);
         

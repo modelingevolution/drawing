@@ -5,7 +5,7 @@ namespace ModelingEvolution.Drawing;
 
 [DebuggerDisplay("[{RadialDistance},{Angle},{Z}]")]
 public readonly record struct CylindricalPoint<T>
-    where T : IFloatingPointIeee754<T>
+    where T : IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
     public Radian<T> Angle { get; }
     public T RadialDistance { get; }
@@ -35,7 +35,7 @@ public readonly record struct CylindricalPoint<T>
 
 [DebuggerDisplay("[{Angle},{Radius}]")]
 public readonly record struct PolarPoint<T>
-    where T : IFloatingPointIeee754<T>
+    where T : IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
     public Radian<T> Angle { get; }
     public T Radius { get; }

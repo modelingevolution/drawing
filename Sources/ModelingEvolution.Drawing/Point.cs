@@ -10,7 +10,7 @@ namespace ModelingEvolution.Drawing;
 [ProtoContract]
 [PointJsonConverter()]
 public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
-    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>
+    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
     public static readonly Point<T> Zero = new Point<T>(T.Zero, T.Zero);
     public static Point<T> Random()
@@ -90,7 +90,7 @@ public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
 
     public Vector<U> Truncating<U>()
         where U : INumber<U>, ITrigonometricFunctions<U>, IRootFunctions<U>, IFloatingPoint<U>, ISignedNumber<U>,
-        IFloatingPointIeee754<U>
+        IFloatingPointIeee754<U>, IMinMaxValue<U>
     {
         return  new Vector<U>(U.CreateTruncating( x),U.CreateTruncating(  y));
     }
@@ -125,7 +125,8 @@ public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
     
     public static explicit operator Point<T>(Vector2 vector) => new Point<T>(vector);
 
-   
+    public static Point<T> operator *(Point<T> pt, ISize<T> sz) => new Point<T>(pt.X * sz.Width, pt.Y * sz.Height);
+    public static Point<T> operator /(Point<T> pt, ISize<T> sz) => new Point<T>(pt.X / sz.Width, pt.Y / sz.Height);
     public static Point<T> operator +(Point<T> pt, ISize<T> sz) => Add(pt, sz);
     public static Point<T> operator +(Point<T> pt, Vector<T> sz) => new Point<T>(pt.x + sz.X, pt.y + sz.Y);
     public static Point<T> operator -(Point<T> pt, Vector<T> sz) => new Point<T>(pt.x - sz.X, pt.y - sz.Y);

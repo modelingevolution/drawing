@@ -8,7 +8,7 @@ namespace ModelingEvolution.Drawing;
 [ProtoContract]
 [VectorJsonConverterAttribute]
 public struct Vector<T> : IFormattable, IEquatable<Vector<T>>
-    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>
+    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
     public static Vector<T> Random()
     {
@@ -148,7 +148,7 @@ public struct Vector<T> : IFormattable, IEquatable<Vector<T>>
     }
     public Vector<U> Truncating<U>()
         where U : INumber<U>, ITrigonometricFunctions<U>, IRootFunctions<U>, IFloatingPoint<U>, ISignedNumber<U>,
-        IFloatingPointIeee754<U>
+        IFloatingPointIeee754<U>, IMinMaxValue<U>
     {
         return new Vector<U>(U.CreateTruncating(this._x), U.CreateTruncating(_y));
     }
@@ -270,7 +270,14 @@ public struct Vector<T> : IFormattable, IEquatable<Vector<T>>
     {
         return Multiply(vector, scalar);
     }
-   
+    public static Vector<T> operator *(Vector<T> vector, Size<T> ratio)
+    {
+        return new Vector<T>(vector.X * ratio.Width, vector.Y * ratio.Width);
+    }
+    public static Vector<T> operator /(Vector<T> vector, Size<T> ratio)
+    {
+        return new Vector<T>(vector.X / ratio.Width, vector.Y / ratio.Width);
+    }
 
     public static Vector<T> operator /(Vector<T> vector, T scalar)
     {

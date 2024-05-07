@@ -3,7 +3,7 @@
 namespace ModelingEvolution.Drawing.Equations;
 
 public readonly record struct QuadraticEquation<T>
-    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>
+    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
     public T A { get;  }
     public T B { get;  }

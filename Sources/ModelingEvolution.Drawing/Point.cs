@@ -19,6 +19,11 @@ public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
         T height = T.One;
         return Random(width, height);
     }
+    public static explicit operator System.Drawing.Point(Point<T> point)
+    {
+        
+        return new System.Drawing.Point(Convert.ToInt32(point.X), Convert.ToInt32(point.Y));
+    }
     public static Point<T> Random(T width, T height)
     {
         var t1 = T.CreateTruncating(System.Random.Shared.NextDouble());

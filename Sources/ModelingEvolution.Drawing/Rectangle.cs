@@ -6,6 +6,7 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace ModelingEvolution.Drawing;
+
 [RectangleJsonConverterAttribute]
 public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -304,7 +305,13 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
 
         return new Rectangle<T>(x1, y1, x2 - x1, y2 - y1);
     }
-
+    public  Point<T> Center() 
+    {
+        var t2 = T.One + T.One;
+        var centerX = (Left + Right) / t2;
+        var centerY = (Top + Bottom) / t2;
+        return new Point<T>(centerX, centerY);
+    }
     /// <summary>
     /// Adjusts the location of this rectangle by the specified amount.
     /// </summary>

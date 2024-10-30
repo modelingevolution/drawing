@@ -1,12 +1,21 @@
-﻿using System.Collections;
+﻿using ProtoBuf;
+using System.Collections;
 using System.Numerics;
+using ProtoBuf;
+using ProtoBuf.Meta;
 
 namespace ModelingEvolution.Drawing;
 
-public readonly record struct Polygon<T> : IEnumerable<Point<T>>, IReadOnlyList<Point<T>>
+
+
+
+[ProtoContract]
+public readonly record struct Polygon<T> 
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {
-    private readonly Point<T>[] _points;
+
+    [ProtoMember(1)]
+    internal readonly Point<T>[] _points;
     public T Area()
     {
         int n = _points.Length;
@@ -25,13 +34,21 @@ public readonly record struct Polygon<T> : IEnumerable<Point<T>>, IReadOnlyList<
         area = T.Abs(area) / (T.One+T.One);
         return area;
     }
+   
+    public bool Contains(Point<T> item)
+    {
+        return _points.Contains(item);
+    }
+
+    public bool IsReadOnly => true;
+   
     public static Polygon<T> operator *(Polygon<T> a, Size<T> f)
     {
-        return new Polygon<T>(a.Select(x => x * f).ToArray());
+        return new Polygon<T>(a.Points.Select(x => x * f).ToArray());
     }
     public static Polygon<T> operator /(Polygon<T> a, Size<T> f)
     {
-        return new Polygon<T>(a.Select(x => x / f).ToArray());
+        return new Polygon<T>(a.Points.Select(x => x / f).ToArray());
     }
 
     public Polygon<T> Intersect(Rectangle<T> rect)
@@ -112,13 +129,13 @@ public readonly record struct Polygon<T> : IEnumerable<Point<T>>, IReadOnlyList<
     }
     public static Polygon<T> operator -(Polygon<T> a, ModelingEvolution.Drawing.Vector<T> f)
     {
-        return new Polygon<T>(a.Select(x => x - f).ToArray());
+        return new Polygon<T>(a.Points.Select(x => x - f).ToArray());
     }
     public static Polygon<T> operator +(Polygon<T> a, ModelingEvolution.Drawing.Vector<T> f)
     {
-        return new Polygon<T>(a.Select(x => x + f).ToArray());
+        return new Polygon<T>(a.Points.Select(x => x + f).ToArray());
     }
-    private Polygon(Point<T>[] points)
+    public Polygon(params Point<T>[] points)
     {
         _points = points;
     }
@@ -136,15 +153,16 @@ public readonly record struct Polygon<T> : IEnumerable<Point<T>>, IReadOnlyList<
     public int Count => _points.Length;
 
     public Point<T> this[int index] => _points[index];
-    public IEnumerator<Point<T>> GetEnumerator()
+
+    public IEnumerable<Point<T>> Points
     {
-        for (int i = 0; i < _points.Length; i++)
-            yield return _points[i];
+        get
+        {
+            for (int i = 0; i < _points.Length; i++)
+                yield return _points[i];
+        }
     }
 
 
-    IEnumerator IEnumerable.GetEnumerator()
-    {
-        return _points.GetEnumerator();
-    }
+
 }

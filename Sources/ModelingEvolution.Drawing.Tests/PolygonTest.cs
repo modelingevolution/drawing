@@ -2,6 +2,7 @@
 
 using System.Drawing;
 using System.Linq;
+using System.Reflection;
 using ModelingEvolution.Drawing;
 using Xunit;
 
@@ -33,7 +34,7 @@ public class PolygonTest
     {
         var points = new float[] { 0, 0, 1, 0, 1, 1 };
         var polygon = new Polygon(points);
-        var renderedPoints = (polygon * new Size<float>(100, 100)).Select(x => (Point)x).ToList();
+        var renderedPoints = (polygon * new Size<float>(100, 100)).Points.Select(x => (Point)x).ToList();
         Assert.Equal(new Point(0, 0), renderedPoints[0]);
         Assert.Equal(new Point(100, 0), renderedPoints[1]);
         Assert.Equal(new Point(100, 100), renderedPoints[2]);
@@ -57,7 +58,7 @@ public class PolygonTest
         var polygon = new Polygon(points);
         var rect = new Rectangle<float>(5, 5, 2, 2);
         var intersectedPolygon = polygon.Intersect(rect);
-        Assert.Empty(intersectedPolygon);
+        Assert.Empty(intersectedPolygon.Points);
     }
     [Fact]
     public void Intersect_RectangleFullyInsidePolygon_ReturnsRectangleAsPolygon()
@@ -67,10 +68,10 @@ public class PolygonTest
         var rect = new Rectangle<float>(2, 2, 2, 2);
         var intersectedPolygon = polygon.Intersect(rect);
         Assert.Equal(4, intersectedPolygon.Count);
-        Assert.Contains(new Point<float>(2, 2), intersectedPolygon);
-        Assert.Contains(new Point<float>(4, 2), intersectedPolygon);
-        Assert.Contains(new Point<float>(4, 4), intersectedPolygon);
-        Assert.Contains(new Point<float>(2, 4), intersectedPolygon);
+        Assert.Contains(new Point<float>(2, 2), intersectedPolygon.Points);
+        Assert.Contains(new Point<float>(4, 2), intersectedPolygon.Points);
+        Assert.Contains(new Point<float>(4, 4), intersectedPolygon.Points);
+        Assert.Contains(new Point<float>(2, 4), intersectedPolygon.Points);
     }
     [Fact]
     public void Intersect_PolygonFullyInsideRectangle_ReturnsOriginalPolygon()
@@ -80,10 +81,10 @@ public class PolygonTest
         var rect = new Rectangle<float>(0, 0, 6, 6);
         var intersectedPolygon = polygon.Intersect(rect);
         Assert.Equal(4, intersectedPolygon.Count);
-        Assert.Contains(new Point<float>(2, 2), intersectedPolygon);
-        Assert.Contains(new Point<float>(4, 2), intersectedPolygon);
-        Assert.Contains(new Point<float>(4, 4), intersectedPolygon);
-        Assert.Contains(new Point<float>(2, 4), intersectedPolygon);
+        Assert.Contains(new Point<float>(2, 2), intersectedPolygon.Points);
+        Assert.Contains(new Point<float>(4, 2), intersectedPolygon.Points);
+        Assert.Contains(new Point<float>(4, 4), intersectedPolygon.Points);
+        Assert.Contains(new Point<float>(2, 4), intersectedPolygon.Points);
     }
     [Fact]
     public void Intersect_RectangleTouchesPolygonEdge_ReturnsCorrectIntersection()
@@ -93,10 +94,10 @@ public class PolygonTest
         var rect = new Rectangle<float>(3, 1, 2, 2);
         var intersectedPolygon = polygon.Intersect(rect);
         Assert.Equal(4, intersectedPolygon.Count);
-        Assert.Contains(new Point<float>(4, 1), intersectedPolygon);
-        Assert.Contains(new Point<float>(4, 3), intersectedPolygon);
-        Assert.Contains(new Point<float>(3, 1), intersectedPolygon);
-        Assert.Contains(new Point<float>(3, 3), intersectedPolygon);
+        Assert.Contains(new Point<float>(4, 1), intersectedPolygon.Points);
+        Assert.Contains(new Point<float>(4, 3), intersectedPolygon.Points);
+        Assert.Contains(new Point<float>(3, 1), intersectedPolygon.Points);
+        Assert.Contains(new Point<float>(3, 3), intersectedPolygon.Points);
     }
 
     [Fact]
@@ -154,7 +155,7 @@ public class PolygonTest
     {
         var points = new float[] { 0, 0, 4, 0, 4, 3 };
         var polygon = new Polygon(points);
-        var enumerator = polygon.GetEnumerator();
+        var enumerator = polygon.Points.GetEnumerator();
         int count = 0;
         while (enumerator.MoveNext())
         {

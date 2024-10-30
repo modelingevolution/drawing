@@ -4,10 +4,12 @@ using System.Drawing;
 using System.Globalization;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using ProtoBuf;
 
 namespace ModelingEvolution.Drawing;
 
 [RectangleJsonConverterAttribute]
+[ProtoContract]
 public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {
@@ -16,9 +18,13 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
     /// </summary>
     public static readonly Rectangle<T> Empty;
 
+    [ProtoMember(1)]
     private T x; // Do not rename (binary serialization)
-    private T y; // Do not rename (binary serialization)
+    [ProtoMember(2)]
+    private T y; // D3 not rename (binary serialization)
+    [ProtoMember(3)]
     private T width; // Do not rename (binary serialization)
+    [ProtoMember(4)]
     private T height; // Do not rename (binary serialization)
 
     /// <summary>
@@ -45,6 +51,15 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
         height = size.Height;
     }
     
+    public static implicit operator System.Drawing.Rectangle(Rectangle<T> rectangle)
+    {
+        return new System.Drawing.Rectangle(
+            Convert.ToInt32(rectangle.X),
+            Convert.ToInt32(rectangle.Y),
+            Convert.ToInt32(rectangle.Width),
+            Convert.ToInt32(rectangle.Height)
+        );
+    }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Rectangle<T> MoveTo(Vector<T> point) => MoveTo((Point<T>)point);
 

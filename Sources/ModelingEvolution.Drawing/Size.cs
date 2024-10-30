@@ -3,15 +3,19 @@ using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Globalization;
 using System.Numerics;
+using ProtoBuf;
 
 namespace ModelingEvolution.Drawing;
 
+[ProtoContract]
 public struct Size<T> : IEquatable<Size<T>>, IParsable<Size<T>>, ISize<T>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {
     public static readonly Size<T> Max = new Size<T>(T.MaxValue, T.MaxValue);
     public static readonly Size<T> Empty;
+    [ProtoMember(1)]
     private T width; // Do not rename (binary serialization)
+    [ProtoMember(2)]
     private T height; // Do not rename (binary serialization)
 
     public Size(T f) :this(f, f){}
@@ -20,7 +24,20 @@ public struct Size<T> : IEquatable<Size<T>>, IParsable<Size<T>>, ISize<T>
         width = size.width;
         height = size.height;
     }
-
+    public static implicit operator System.Drawing.Size(Size<T> size)
+    {
+        return new System.Drawing.Size(
+            Convert.ToInt32(size.Width),
+            Convert.ToInt32(size.Height)
+        );
+    }
+    public static implicit operator Size<T>(System.Drawing.Size size)
+    {
+        return new Size<T>(
+            T.CreateTruncating(size.Width),
+            T.CreateTruncating(size.Height)
+        );
+    }
     /// <summary>
     /// Initializes a new instance of the <see cref='System.Drawing.Size<T>'/> class from the specified
     /// <see cref='System.Drawing.Point<T>'/>.

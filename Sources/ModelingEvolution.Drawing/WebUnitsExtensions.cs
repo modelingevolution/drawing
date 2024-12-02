@@ -5,6 +5,15 @@ namespace ModelingEvolution.Drawing;
 
 public static class CollectionExtensions
 {
+    
+    
+public static List<T> ToList<T>(this IEnumerable<T> source, int capacity)
+    {
+        List<T> list = new List<T>(capacity);
+        list.AddRange(source);
+        
+        return list;
+    }
     public static Vector<double> Sum(this IEnumerable<Vector<double>> items)
     {
 

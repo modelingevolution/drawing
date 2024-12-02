@@ -3,6 +3,7 @@
 using System.Drawing;
 using System.Linq;
 using System.Reflection;
+using FluentAssertions;
 using ModelingEvolution.Drawing;
 using Xunit;
 
@@ -12,6 +13,17 @@ using Polygon = Polygon<float>;
 
 public class PolygonTest
 {
+    [Fact]
+    public void Indexer()
+    {
+        var points = new float[] { 0, 0, 4, 0, 4, 3 };
+        var polygon = new Polygon(points);
+        var polygon2 = polygon;
+        polygon2[0] = new Point<float>(1, 1);
+
+        polygon[0].Should().Be(polygon2[0]);
+    }
+
     [Fact]
     public void Area_ValidPolygon_ReturnsCorrectArea()
     {

@@ -12,6 +12,23 @@ public readonly record struct LinearEquation<T>
         A = a;
         B = b;
     }
+
+    /// <summary>
+    /// Returns linear equation that have given 'a' gradient and goes through the point 'point'
+    /// </summary>
+    /// <param name="a">a - gradient</param>
+    /// <param name="point">the point that belongs to the line</param>
+    /// <returns></returns>
+    public static LinearEquation<T> From(T a, Point<T> point)
+    {
+        var b = point.Y - a * point.X;
+        return new LinearEquation<T>(a, b);
+    }
+
+    public LinearEquation<T> Perpendicular(Point<T> point)
+    {
+        return From(-T.One / A, point);
+    }
     public static LinearEquation<T> From(Radian<T> angle)
     {
         return From(angle, T.Zero);

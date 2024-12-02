@@ -6,23 +6,24 @@ using ProtoBuf.Meta;
 
 namespace ModelingEvolution.Drawing;
 
-
-
-
 [ProtoContract]
-public readonly record struct Polygon<T> 
-    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
+/// <summary>
+/// This struct is not immutable, athrough operators are immutable.
+/// </summary>
+public readonly record struct Polygon<T>
+    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+    IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {
+    [ProtoMember(1)] internal readonly IList<Point<T>> _points;
 
-    [ProtoMember(1)]
-    internal readonly Point<T>[] _points;
     public T Area()
     {
-        int n = _points.Length;
+        int n = _points.Count;
         if (n < 3)
         {
             throw new ArgumentException("A polygon must have at least 3 points.");
         }
+
         T area = T.Zero;
         for (int i = 0; i < n; i++)
         {
@@ -31,41 +32,84 @@ public readonly record struct Polygon<T>
             area += current.X * next.Y;
             area -= current.Y * next.X;
         }
-        area = T.Abs(area) / (T.One+T.One);
+
+        area = T.Abs(area) / (T.One + T.One);
         return area;
     }
-   
+    // Implement computation of bounding box
+    public Rectangle<T> BoundingBox()
+    {
+        if (_points.Count == 0)
+        {
+            return new Rectangle<T>(new Point<T>(T.Zero, T.Zero), new Size<T>(T.Zero, T.Zero));
+        }
+
+        T minX = _points[0].X;
+        T minY = _points[0].Y;
+        T maxX = _points[0].X;
+        T maxY = _points[0].Y;
+
+        for (int i = 1; i < _points.Count; i++)
+        {
+            if (_points[i].X < minX)
+            {
+                minX = _points[i].X;
+            }
+
+            if (_points[i].Y < minY)
+            {
+                minY = _points[i].Y;
+            }
+
+            if (_points[i].X > maxX)
+            {
+                maxX = _points[i].X;
+            }
+
+            if (_points[i].Y > maxY)
+            {
+                maxY = _points[i].Y;
+            }
+        }
+
+        return new Rectangle<T>(minX, minY, maxX - minX, maxY - minY);
+    }
     public bool Contains(Point<T> item)
     {
         return _points.Contains(item);
     }
 
     public bool IsReadOnly => true;
-   
+
     public static Polygon<T> operator *(Polygon<T> a, Size<T> f)
     {
-        return new Polygon<T>(a.Points.Select(x => x * f).ToArray());
+        return new Polygon<T>(a.Points.Select(x => x * f).ToList(a._points.Count));
     }
+
     public static Polygon<T> operator /(Polygon<T> a, Size<T> f)
     {
-        return new Polygon<T>(a.Points.Select(x => x / f).ToArray());
+        return new Polygon<T>(a.Points.Select(x => x / f).ToList(a._points.Count));
     }
 
     public Polygon<T> Intersect(Rectangle<T> rect)
     {
-        var outputList = this._points.ToList();
+        var outputList = this._points.ToList(_points.Count);
 
         // Clip against each edge of the rectangle
-        outputList = ClipPolygon(outputList, new Point<T>(rect.Left, rect.Top), new Point<T>(rect.Right, rect.Top));   // Top edge
-        outputList = ClipPolygon(outputList, new Point<T>(rect.Right, rect.Top), new Point<T>(rect.Right, rect.Bottom)); // Right edge
-        outputList = ClipPolygon(outputList, new Point<T>(rect.Right, rect.Bottom), new Point<T>(rect.Left, rect.Bottom)); // Bottom edge
-        outputList = ClipPolygon(outputList, new Point<T>(rect.Left, rect.Bottom), new Point<T>(rect.Left, rect.Top));   // Left edge
+        outputList =
+            ClipPolygon(outputList, new Point<T>(rect.Left, rect.Top), new Point<T>(rect.Right, rect.Top)); // Top edge
+        outputList = ClipPolygon(outputList, new Point<T>(rect.Right, rect.Top),
+            new Point<T>(rect.Right, rect.Bottom)); // Right edge
+        outputList = ClipPolygon(outputList, new Point<T>(rect.Right, rect.Bottom),
+            new Point<T>(rect.Left, rect.Bottom)); // Bottom edge
+        outputList = ClipPolygon(outputList, new Point<T>(rect.Left, rect.Bottom),
+            new Point<T>(rect.Left, rect.Top)); // Left edge
 
         return new Polygon<T>(outputList.ToArray());
     }
 
     // Sutherland-Hodgman polygon clipping
-    private static List<Point<T>> ClipPolygon(List<Point<T>> polygon, Point<T> edgeStart, Point<T> edgeEnd)
+    private static List<Point<T>> ClipPolygon(IList<Point<T>> polygon, Point<T> edgeStart, Point<T> edgeEnd)
     {
         List<Point<T>> clippedPolygon = new List<Point<T>>();
 
@@ -119,7 +163,7 @@ public readonly record struct Polygon<T>
 
         if (T.Abs(det) <= T.Epsilon) // Lines are parallel
         {
-            return new Point<T>();  // No intersection
+            return new Point<T>(); // No intersection
         }
 
         T x = (B2 * C1 - B1 * C2) / det;
@@ -127,42 +171,62 @@ public readonly record struct Polygon<T>
 
         return new Point<T>(x, y);
     }
+
     public static Polygon<T> operator -(Polygon<T> a, ModelingEvolution.Drawing.Vector<T> f)
     {
-        return new Polygon<T>(a.Points.Select(x => x - f).ToArray());
+        return new Polygon<T>(a.Points.Select(x => x - f).ToList(a._points.Count));
     }
+
     public static Polygon<T> operator +(Polygon<T> a, ModelingEvolution.Drawing.Vector<T> f)
     {
-        return new Polygon<T>(a.Points.Select(x => x + f).ToArray());
+        return new Polygon<T>(a.Points.Select(x => x + f).ToList(a._points.Count));
     }
-    public Polygon(params Point<T>[] points)
+
+    /// <summary>
+    ///  Adds point at the end of the polygon.
+    /// </summary>
+    /// <param name="a"></param>
+    /// <param name="f"></param>
+    /// <returns></returns>
+    public static Polygon<T> operator +(Polygon<T> a, ModelingEvolution.Drawing.Point<T> f)
+    {
+        var ret = new Polygon<T>(a.Points.ToList(a._points.Count + 1));
+        ret._points.Add(f);
+        return ret;
+    }
+
+
+    public void InsertAt(int index, Point<T> point) => _points.Insert(index, point);
+    public void Add(int index, Point<T> point) => _points.Add(point);
+    public void RemoveAt(int index) => _points.RemoveAt(index);
+
+    public Polygon(IList<Point<T>> points)
     {
         _points = points;
     }
+
+    public Polygon(params Point<T>[] points) : this(points.ToList())
+    {
+        
+    }
+
     public Polygon(IReadOnlyList<T> points)
     {
-        _points = new Point<T>[points.Count / 2];
+        _points = new List<Point<T>>(points.Count / 2);
         for (int i = 0; i < points.Count; i += 2)
         {
-            _points[i / 2] = new Point<T>(points[i], points[i + 1]);
+            _points.Add(new Point<T>(points[i], points[i + 1]));
         }
     }
 
 
+    public int Count => _points.Count;
 
-    public int Count => _points.Length;
-
-    public Point<T> this[int index] => _points[index];
-
-    public IEnumerable<Point<T>> Points
+    public Point<T> this[int index]
     {
-        get
-        {
-            for (int i = 0; i < _points.Length; i++)
-                yield return _points[i];
-        }
+        get { return _points[index]; }
+        set => _points[index] = value;
     }
 
-
-
+    public IReadOnlyList<Point<T>> Points => (IReadOnlyList<Point<T>>)_points;
 }

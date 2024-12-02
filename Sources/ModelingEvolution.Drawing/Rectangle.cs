@@ -4,12 +4,14 @@ using System.Drawing;
 using System.Globalization;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using ProtoBuf;
 
 namespace ModelingEvolution.Drawing;
 
 [RectangleJsonConverterAttribute]
 [ProtoContract]
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
 public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {

@@ -13,6 +13,8 @@ namespace ModelingEvolution.Drawing.Tests
         record FooPoint(Point<float> Value);
         record FooVector(Vector<float> Value);
         record FooRectangle(Rectangle<float> Value);
+
+        record FooPolygon(Polygon<float> Value);
         [Fact]
         public void PointSerialization()
         {
@@ -32,6 +34,16 @@ namespace ModelingEvolution.Drawing.Tests
 
             actual.Should().Be(tmp);
         }
+        [Fact]
+        public void PolygonSerialization()
+        {
+            FooPolygon tmp = new FooPolygon(new Polygon<float>(new PointF(10,20), new PointF(10, 20)));
+            var json = JsonSerializer.Serialize(tmp);
+            var actual = JsonSerializer.Deserialize<FooPolygon>(json);
+
+            actual.Should().Be(tmp);
+        }
+
         [Fact]
         public void RectangleSerialization()
         {

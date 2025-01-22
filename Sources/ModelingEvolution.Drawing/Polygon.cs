@@ -1,11 +1,69 @@
 ﻿using ProtoBuf;
 using System.Collections;
 using System.Numerics;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using ProtoBuf;
 using ProtoBuf.Meta;
 
 namespace ModelingEvolution.Drawing;
+public class PolygonJsonConverterFactory : JsonConverterFactory
+{
+    public override bool CanConvert(Type typeToConvert)
+    {
+        if (!typeToConvert.IsGenericType) return false;
+        return typeToConvert.GetGenericTypeDefinition() == typeof(Polygon<>);
+    }
 
+    public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options)
+    {
+        Type elementType = typeToConvert.GetGenericArguments()[0];
+        Type converterType = typeof(PolygonJsonConverter<>).MakeGenericType(elementType);
+        return (JsonConverter)Activator.CreateInstance(converterType)!;
+    }
+}
+public class PolygonJsonConverter<T> : JsonConverter<Polygon<T>>
+    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+    IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
+{
+    public override Polygon<T> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType != JsonTokenType.StartArray)
+            throw new JsonException("Expected array start");
+
+        var points = new List<T>();
+
+        while (reader.Read())
+        {
+            if (reader.TokenType == JsonTokenType.EndArray)
+                break;
+
+            if (!T.TryParse(reader.GetString(), null, out T value))
+                throw new JsonException($"Cannot parse value {reader.GetString()} to type {typeof(T)}");
+
+            points.Add(value);
+        }
+
+        if (points.Count % 2 != 0)
+            throw new JsonException("Array length must be even");
+
+        return new Polygon<T>(points);
+    }
+
+    public override void Write(Utf8JsonWriter writer, Polygon<T> value, JsonSerializerOptions options)
+    {
+        writer.WriteStartArray();
+
+        foreach (var point in value.Points)
+        {
+            writer.WriteStringValue(point.X.ToString());
+            writer.WriteStringValue(point.Y.ToString());
+        }
+
+        writer.WriteEndArray();
+    }
+}
+[JsonConverter(typeof(PolygonJsonConverterFactory))]
 [ProtoContract]
 /// <summary>
 /// This struct is not immutable, athrough operators are immutable.
@@ -78,7 +136,7 @@ public readonly record struct Polygon<T>
     {
         return _points.Contains(item);
     }
-
+    [JsonIgnore]
     public bool IsReadOnly => true;
 
     public static Polygon<T> operator *(Polygon<T> a, Size<T> f)
@@ -89,6 +147,17 @@ public readonly record struct Polygon<T>
     public static Polygon<T> operator /(Polygon<T> a, Size<T> f)
     {
         return new Polygon<T>(a.Points.Select(x => x / f).ToList(a._points.Count));
+    }
+
+    public bool Equals(Polygon<T> other)
+    {
+        if (object.ReferenceEquals(_points, other._points)) return true;
+        return this._points.SequenceEqual(other._points);
+    }
+
+    public override int GetHashCode()
+    {
+        return _points.GetHashCode();
     }
 
     public Polygon<T> Intersect(Rectangle<T> rect)
@@ -219,13 +288,13 @@ public readonly record struct Polygon<T>
         }
     }
 
-
+    [JsonIgnore]
     public int Count => _points.Count;
 
     public Point<T> this[int index]
     {
         get { return _points[index]; }
-        set => _points[index] = value;
+        set => _points[index] = value;  
     }
 
     public IReadOnlyList<Point<T>> Points => (IReadOnlyList<Point<T>>)_points;

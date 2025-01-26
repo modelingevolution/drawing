@@ -1,7 +1,10 @@
-﻿using System.ComponentModel;
+﻿using ProtoBuf;
+using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Drawing;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using System.Runtime.Serialization;
 using System.Text.Json.Serialization;
 
 namespace ModelingEvolution.Drawing;
@@ -9,7 +12,8 @@ namespace ModelingEvolution.Drawing;
 [Serializable]
 [JsonConverter(typeof(JsonColorConverter))]
 [TypeConverter(typeof(ColorConverter))]
-public readonly struct Color : IEquatable<Color>
+[ProtoContract]
+public readonly record struct Color : IEquatable<Color>, IParsable<Color>
 {
     internal const int ARGBAlphaShift = 24;
     internal const int ARGBRedShift = 16;
@@ -19,7 +23,81 @@ public readonly struct Color : IEquatable<Color>
     internal const uint ARGBRedMask = 0xFFu << ARGBRedShift;
     internal const uint ARGBGreenMask = 0xFFu << ARGBGreenShift;
     internal const uint ARGBBlueMask = 0xFFu << ARGBBlueShift;
+
+
+    public static Color Parse(string s, IFormatProvider provider=null)
+    {
+        ArgumentNullException.ThrowIfNull(s);
+
+        if (s.StartsWith("hsv"))
+            return (Color)HsvColor.Parse(s, provider);
+
+        if (s.StartsWith("rgba("))
+        {
+            var values = s[5..^1].Split(',');
+            if (values.Length != 4)
+                throw new FormatException("Invalid rgba format. Expected rgba(r,g,b,a)");
+
+            byte r = byte.Parse(values[0], CultureInfo.InvariantCulture);
+            byte g = byte.Parse(values[1], CultureInfo.InvariantCulture);
+            byte b = byte.Parse(values[2], CultureInfo.InvariantCulture);
+            float a = float.Parse(values[3], CultureInfo.InvariantCulture);
+
+            return FromArgb((byte)(a * 255), r, g, b);
+        }
+
+        uint alpha = 255;
+        if (s.StartsWith("0x") || s.StartsWith("0X")) s = s[2..];
+
+        if (s.StartsWith("#"))
+            s = s[1..];
+        if (s.Length == 8) 
+            alpha = 0;
+        var value = Convert.ToUInt32(s , 16);
+        return new Color(value | alpha << ARGBAlphaShift);
+    }
+
+    public static bool TryParse([NotNullWhen(true)] string s, 
+        [MaybeNullWhen(false)] out Color result)
+    {
+        return TryParse(s, null, out result);
+    }
+    public static bool TryParse([NotNullWhen(true)] string s, IFormatProvider? provider, [MaybeNullWhen(false)] out Color result)
+    {
+        result = default;
+        if (string.IsNullOrWhiteSpace(s)) return false;
+
+        if (s.StartsWith("hsv"))
+        {
+            var r = HsvColor.TryParse(s, provider, out var c);
+            result = c;
+            return r;
+        }
+        if (s.StartsWith("rgba(") && s.EndsWith(")"))
+        {
+            var values = s[5..^1].Split(',');
+            if (values.Length != 4) return false;
+
+            if (!byte.TryParse(values[0], provider, out var r)) return false;
+            if (!byte.TryParse(values[1], provider, out var g)) return false;
+            if (!byte.TryParse(values[2], provider, out var b)) return false;
+            if (!float.TryParse(values[3], provider, out var a)) return false;
+
+            result = FromArgb((byte)(a * 255), r, g, b);
+            return true;
+        }
+        s = s.StartsWith("0x") || s.StartsWith("0X") ? s[2..] : s;
+        s = s.StartsWith("#") ? s[1..] : s;
+
+        if (!uint.TryParse(s, NumberStyles.HexNumber, provider, out var value)) return false;
         
+        result = new Color(value);
+        return true;
+
+    }
+
+    public static implicit operator Color(string hex) => FromString(hex);
+    [ProtoMember(1)]
     public uint Value { get; }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -49,14 +127,18 @@ public readonly struct Color : IEquatable<Color>
     {
         this.Value = value;
     }
-    public float GetBrightness()
+    // The L in HSL
+    public float GetLightness()
     {
         GetRgbValues(out int r, out int g, out int b);
-
         int min = Math.Min(Math.Min(r, g), b);
         int max = Math.Max(Math.Max(r, g), b);
 
         return (max + min) / (byte.MaxValue * 2f);
+    }
+    public float GetBrightness()
+    {
+        return (0.299f * R + 0.587f * G + 0.114f * B) / 255f;
     }
 
     public float GetHue()
@@ -85,23 +167,14 @@ public readonly struct Color : IEquatable<Color>
 
         return hue;
     }
+    /// <summary>
+    /// Gets a value indicating whether this instance is fully or partly transparent.
+    /// </summary>
     public bool IsTransparent
     {
         get => A < 255;
     }
-    public static bool operator ==(Color left, Color right) =>
-        left.Value == right.Value;
-
-    public static bool operator !=(Color left, Color right) => !(left == right);
-
-    public override bool Equals(object obj) => obj is Color other && Equals(other);
-
-    public bool Equals(Color other) => this == other;
-
-    public override int GetHashCode()
-    {
-        return this.Value.GetHashCode();
-    }
+   
     public float GetSaturation()
     {
         GetRgbValues(out int r, out int g, out int b);
@@ -119,17 +192,8 @@ public readonly struct Color : IEquatable<Color>
         return (max - min) / (float)div;
     }
 
-    public static Color FromString(string hex)
-    {
-        if (hex.StartsWith("0x") || hex.StartsWith("0X"))
-            hex = hex.Substring(2);
+    public static Color FromString(string hex) => Parse(hex, CultureInfo.InvariantCulture);
 
-        if (hex.StartsWith("#"))
-            hex = hex.Substring(1);
-
-        var value = Convert.ToUInt32(hex, 16);
-        return new Color(value);
-    }
     public static Color FromArgb(int alpha, int red, int green, int blue)
     {
         return new Color((uint)alpha << ARGBAlphaShift |
@@ -137,7 +201,15 @@ public readonly struct Color : IEquatable<Color>
                          (uint)green << ARGBGreenShift |
                          (uint)blue << ARGBBlueShift);
     }
-    // A == 255 - the color is fully transparent
+    public static Color FromRgb(int red, int green, int blue)
+    {
+        return new Color((uint)255 << ARGBAlphaShift |
+                         (uint)red << ARGBRedShift |
+                         (uint)green << ARGBGreenShift |
+                         (uint)blue << ARGBBlueShift);
+    }
+    
+    // A == 0 - the color is fully transparent, A< 255 is partially transparent.
     public string ToJson()
     {
         return IsTransparent ? $"#{Value:x8}" : $"#{Value:x6}";

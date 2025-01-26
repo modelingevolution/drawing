@@ -5,6 +5,9 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using ProtoBuf;
 using ProtoBuf.Meta;
+using ModelingEvolution.Drawing.Svg;
+using System.Text;
+using System.Globalization;
 
 namespace ModelingEvolution.Drawing;
 public class PolygonJsonConverterFactory : JsonConverterFactory
@@ -18,14 +21,35 @@ public class PolygonJsonConverterFactory : JsonConverterFactory
     public override JsonConverter CreateConverter(Type typeToConvert, JsonSerializerOptions options)
     {
         Type elementType = typeToConvert.GetGenericArguments()[0];
-        Type converterType = typeof(PolygonJsonConverter<>).MakeGenericType(elementType);
-        return (JsonConverter)Activator.CreateInstance(converterType)!;
+
+        if (elementType == typeof(float))
+            return new PolygonJsonConverter<float>(
+                (writer, value) => writer.WriteNumberValue((float)value),
+                reader => reader.GetSingle());
+
+        if (elementType == typeof(double))
+            return new PolygonJsonConverter<double>(
+                (writer, value) => writer.WriteNumberValue((double)value),
+                reader => reader.GetDouble());
+
+        
+        throw new JsonException($"Unsupported type parameter: {elementType}");
     }
 }
+
 public class PolygonJsonConverter<T> : JsonConverter<Polygon<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
     IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {
+    private readonly Action<Utf8JsonWriter, T> _writeNumber;
+    private readonly Func<Utf8JsonReader, T> _readNumber;
+
+    public PolygonJsonConverter(Action<Utf8JsonWriter, T> writeNumber, Func<Utf8JsonReader, T> readNumber)
+    {
+        _writeNumber = writeNumber;
+        _readNumber = readNumber;
+    }
+
     public override Polygon<T> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType != JsonTokenType.StartArray)
@@ -38,10 +62,7 @@ public class PolygonJsonConverter<T> : JsonConverter<Polygon<T>>
             if (reader.TokenType == JsonTokenType.EndArray)
                 break;
 
-            if (!T.TryParse(reader.GetString(), null, out T value))
-                throw new JsonException($"Cannot parse value {reader.GetString()} to type {typeof(T)}");
-
-            points.Add(value);
+            points.Add(_readNumber(reader));
         }
 
         if (points.Count % 2 != 0)
@@ -56,13 +77,49 @@ public class PolygonJsonConverter<T> : JsonConverter<Polygon<T>>
 
         foreach (var point in value.Points)
         {
-            writer.WriteStringValue(point.X.ToString());
-            writer.WriteStringValue(point.Y.ToString());
+            _writeNumber(writer, point.X);
+            _writeNumber(writer, point.Y);
         }
 
         writer.WriteEndArray();
     }
 }
+public class PolygonSvgExporterFactory : ISvgExporterFactory
+{
+    public ISvgExporter Create(Type obj)
+    {
+        Type elementType = obj.GetGenericArguments()[0];
+        var exporterType = typeof(PolygonSvgExporter<>).MakeGenericType(elementType);
+        return (ISvgExporter)Activator.CreateInstance(exporterType);
+    }
+}
+public class PolygonSvgExporter<T> : ISvgExporter
+    where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+    IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
+{
+    public string Export(object obj, in SvgPaint paint)
+    {
+        var polygon = (Polygon<T>)obj;
+        var points = polygon.Points;
+
+        if (points.Count < 2) return string.Empty;
+
+        var sb = new StringBuilder("<path ");
+        sb.AppendFormat(CultureInfo.InvariantCulture, "fill=\"{0}\" stroke=\"{1}\" stroke-width=\"{2}\" d=\"",
+            paint.Fill, paint.Stroke, paint.StrokeWidth);
+
+        sb.AppendFormat(CultureInfo.InvariantCulture, "M{0},{1}", Convert.ToDouble(points[0].X), Convert.ToDouble(points[0].Y));
+
+        for (int i = 1; i < points.Count; i++)
+        {
+            sb.AppendFormat(CultureInfo.InvariantCulture, " L{0},{1}", Convert.ToDouble(points[i].X), Convert.ToDouble(points[i].Y));
+        }
+
+        sb.Append(" Z\"/>");
+        return sb.ToString();
+    }
+}
+[SvgExporterAttribute(typeof(PolygonSvgExporterFactory))]
 [JsonConverter(typeof(PolygonJsonConverterFactory))]
 [ProtoContract]
 /// <summary>
@@ -274,6 +331,10 @@ public readonly record struct Polygon<T>
         _points = points;
     }
 
+    public Polygon() : this(Array.Empty<T>())
+    {
+        
+    }
     public Polygon(params Point<T>[] points) : this(points.ToList())
     {
         

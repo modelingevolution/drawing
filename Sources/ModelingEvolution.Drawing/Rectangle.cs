@@ -41,6 +41,13 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
         this.height = height;
     }
 
+    public IEnumerable<Point<T>> Points()
+    {
+        yield return new Point<T>(x, y);
+        yield return new Point<T>(x + width, y);
+        yield return new Point<T>(x, y + height);
+        yield return new Point<T>(x + width, y + height);
+    }
     /// <summary>
     /// Initializes a new instance of the  class with the specified location
     /// and size.
@@ -362,10 +369,25 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
     public readonly bool IntersectsWith(Rectangle<T> rect) =>
         (rect.X < X + Width) && (X < rect.X + rect.Width) && (rect.Y < Y + Height) && (Y < rect.Y + rect.Height);
 
+    public static Rectangle<T> Bounds(IEnumerable<Rectangle<T>> rects)
+    {
+        if (rects == null) throw new ArgumentNullException(nameof(rects));
+
+        T x1 = T.MaxValue, x2 = T.MinValue, y1 = T.MaxValue, y2 = T.MinValue;
+        foreach (var rect in rects)
+        {
+            x1 = T.Min(x1, rect.X);
+            x2 = T.Max(x2, rect.X + rect.Width);
+            y1 = T.Min(y1, rect.Y);
+            y2 = T.Max(y2, rect.Y + rect.Height);
+            
+        }
+        return new Rectangle<T>(x1, y1, x2 - x1, y2 - y1);
+    }
     /// <summary>
     /// Creates a rectangle that represents the union between a and b.
     /// </summary>
-    public static Rectangle<T> Union(Rectangle<T> a, Rectangle<T> b)
+    public static Rectangle<T> Bounds(Rectangle<T> a, Rectangle<T> b)
     {
         T x1 = T.Min(a.X, b.X);
         T x2 = T.Max(a.X + a.Width, b.X + b.Width);

@@ -6,9 +6,9 @@ using ProtoBuf;
 using ProtoBuf.Meta;
 using ModelingEvolution.Drawing.Svg;
 using System.Collections.Generic;
-using ClipperLib;
-using Path = System.Collections.Generic.List<ClipperLib.IntPoint>;
-using Paths = System.Collections.Generic.List<System.Collections.Generic.List<ClipperLib.IntPoint>>;
+
+using System.IO;
+using Clipper2Lib;
 
 namespace ModelingEvolution.Drawing;
 
@@ -43,6 +43,14 @@ public readonly record struct Polygon<T>
 
         area = T.Abs(area) / (T.One + T.One);
         return area;
+    }
+    public static explicit operator Rectangle<T>(Polygon<T> t)
+    {
+        return t.BoundingBox();
+    }
+    public static implicit operator Polygon<T>(Rectangle<T> t)
+    {
+        return new Polygon<T>(t.Points().ToList());
     }
     // Implement computation of bounding box
     public Rectangle<T> BoundingBox()
@@ -82,21 +90,35 @@ public readonly record struct Polygon<T>
 
         return new Rectangle<T>(minX, minY, maxX - minX, maxY - minY);
     }
-    public bool Contains(Point<T> item)
+    public bool Contains(in Point<T> item)
     {
         return _points.Contains(item);
     }
     [JsonIgnore]
     public bool IsReadOnly => true;
 
-    public static Polygon<T> operator *(Polygon<T> a, Size<T> f)
+    public static Polygon<T> operator *(in Polygon<T> a,in Size<T> f)
     {
-        return new Polygon<T>(a.Points.Select(x => x * f).ToList(a._points.Count));
+        var points = new List<Point<T>>(a._points.Count);
+        for (var index = 0; index < a.Points.Count; index++)
+        {
+            var point = a.Points[index];
+            points.Add(point * f);
+        }
+
+        return new Polygon<T>(points);
     }
 
-    public static Polygon<T> operator /(Polygon<T> a, Size<T> f)
+    public static Polygon<T> operator /(in Polygon<T> a,in Size<T> f)
     {
-        return new Polygon<T>(a.Points.Select(x => x / f).ToList(a._points.Count));
+        var points = new List<Point<T>>(a._points.Count);
+        for (var index = 0; index < a.Points.Count; index++)
+        {
+            var point = a.Points[index];
+            points.Add(point / f);
+        }
+
+        return new Polygon<T>(points);
     }
     public bool IsOverlapping(in Polygon<T> other)
     {
@@ -150,7 +172,7 @@ public readonly record struct Polygon<T>
         return clusters.Select(clusterIndices =>
         {
             var clusterItems = clusterIndices.Select(index => itemList[index]).ToList();
-            var result = Union(clusterItems.Select(polygonGetter)).Single();
+            var result = Union(clusterItems.Select(polygonGetter), true).Single();
             // Start with the first item as the base for merging
             return factory(clusterItems, result);
 
@@ -195,7 +217,7 @@ public readonly record struct Polygon<T>
         }
 
         // Union polygons in each cluster
-        return clusters.Select(x => Union(x).Single());
+        return clusters.Select(x => Union(x, true).Single());
     }
     public bool Equals(Polygon<T> other)
     {
@@ -207,21 +229,44 @@ public readonly record struct Polygon<T>
     {
         return _points.GetHashCode();
     }
-
-    /// <summary>
-    /// Converts polygon points to Clipper format with scaling for precision
-    /// </summary>
-    private Path ToClipperPath()
+    private static Polygon<T> FromClipper2Path(PathD path)
     {
-        Path result = new Path(_points.Count);
-        foreach (var pt in _points)
+        var resultPoints = new List<Point<T>>(path.Count);
+        foreach (PointD pt in path)
         {
-            result.Add(new IntPoint(
-                Convert.ToInt64(decimal.Multiply(Convert.ToDecimal(pt.X), 1000000m)),
-                Convert.ToInt64(decimal.Multiply(Convert.ToDecimal(pt.Y), 1000000m))
+            resultPoints.Add(new Point<T>(
+                T.CreateTruncating(pt.x),
+                T.CreateTruncating(pt.y)
             ));
         }
-        return result;
+        return new Polygon<T>(resultPoints);
+    }
+    private PathD ToClipper2Path()
+    {
+        var path = new PathD(_points.Count);
+        foreach (var pt in _points)
+        {
+            path.Add(new PointD(
+                Convert.ToDouble(pt.X),
+                Convert.ToDouble(pt.Y)
+            ));
+        }
+        return path;
+    }
+    public List<Polygon<T>> Union(in Polygon<T> other)
+    {
+        var subject = new PathsD { ToClipper2Path() };
+        var clip = new PathsD { other.ToClipper2Path() };
+
+        var solution = Clipper.Union(subject, clip, FillRule.NonZero);
+
+        var results = new List<Polygon<T>>(solution.Count);
+        foreach (var path in solution)
+        {
+            results.Add(FromClipper2Path(path));
+        }
+
+        return results;
     }
     /// <summary>
     /// Merges two polygons using the | operator.
@@ -230,7 +275,7 @@ public readonly record struct Polygon<T>
     /// </summary>
     public static Polygon<T> operator |(in Polygon<T> a, in Polygon<T> b)
     {
-        var results = a.Union(b);
+        var results = Union([a,b], true);
         if (results.Count != 1)
         {
             throw new InvalidOperationException("Cannot merge polygons - operation would result in multiple disconnected polygons");
@@ -243,24 +288,30 @@ public readonly record struct Polygon<T>
     /// </summary>
     public List<Polygon<T>> Intersect(in Polygon<T> other)
     {
-        // Convert both polygons to Clipper format
-        Path subject = ToClipperPath();
-        Path clip = other.ToClipperPath();
+        var subject = new PathsD { ToClipper2Path() };
+        var clip = new PathsD { other.ToClipper2Path() };
 
-        // Create Clipper instance
-        Clipper c = new Clipper();
-        c.AddPath(subject, PolyType.ptSubject, true);
-        c.AddPath(clip, PolyType.ptClip, true);
+        var solution = Clipper.Intersect(subject, clip, FillRule.NonZero);
 
-        // Perform intersection operation
-        Paths solution = new Paths();
-        c.Execute(ClipType.ctIntersection, solution);
-
-        // Convert results back to our format
         var results = new List<Polygon<T>>(solution.Count);
         foreach (var path in solution)
         {
-            results.Add(FromClipperPath(path));
+            results.Add(FromClipper2Path(path));
+        }
+
+        return results;
+    }
+    public List<Polygon<T>> Subtract(in Polygon<T> other)
+    {
+        var subject = new PathsD { ToClipper2Path() };
+        var clip = new PathsD { other.ToClipper2Path() };
+
+        var solution = Clipper.Difference(subject, clip, FillRule.NonZero);
+
+        var results = new List<Polygon<T>>(solution.Count);
+        foreach (var path in solution)
+        {
+            results.Add(FromClipper2Path(path));
         }
 
         return results;
@@ -279,34 +330,7 @@ public readonly record struct Polygon<T>
         }
         return results[0];
     }
-    /// <summary>
-    /// Subtracts another polygon from this polygon.
-    /// Returns a list of resulting polygons, as the subtraction may create multiple distinct polygons.
-    /// </summary>
-    public List<Polygon<T>> Subtract(in Polygon<T> other)
-    {
-        // Convert both polygons to Clipper format
-        Path subject = ToClipperPath();
-        Path clip = other.ToClipperPath();
-
-        // Create Clipper instance
-        Clipper c = new Clipper();
-        c.AddPath(subject, PolyType.ptSubject, true);
-        c.AddPath(clip, PolyType.ptClip, true);
-
-        // Perform difference operation
-        Paths solution = new Paths();
-        c.Execute(ClipType.ctDifference, solution);
-
-        // Convert results back to our format
-        var results = new List<Polygon<T>>(solution.Count);
-        foreach (var path in solution)
-        {
-            results.Add(FromClipperPath(path));
-        }
-
-        return results;
-    }
+    
     /// <summary>
     /// Performs intersection between two polygons using the & operator.
     /// Returns the intersected polygon if the result is a single polygon.
@@ -321,192 +345,95 @@ public readonly record struct Polygon<T>
         }
         return results[0];
     }
-    /// <summary>
-    /// Creates a polygon from a Clipper path, reversing the scaling
-    /// </summary>
-    private static Polygon<T> FromClipperPath(Path path)
-    {
-        var resultPoints = new List<Point<T>>(path.Count);
-        foreach (IntPoint pt in path)
-        {
-            resultPoints.Add(new Point<T>(
-                T.CreateTruncating(Convert.ToDecimal(pt.X) / 1000000m),
-                T.CreateTruncating(Convert.ToDecimal(pt.Y) / 1000000m)
-            ));
-        }
-        return new Polygon<T>(resultPoints);
-    }
 
-    /// <summary>
-    /// Merges this polygon with another polygon using a boolean union operation.
-    /// Returns a list of resulting polygons, as the merge may create multiple distinct polygons.
-    /// </summary>
-    public List<Polygon<T>> Union(Polygon<T> other)
-    {
-        // Convert both polygons to Clipper format
-        Path subject = ToClipperPath();
-        Path clip = other.ToClipperPath();
 
-        // Create Clipper instance
-        Clipper c = new Clipper();
-        c.AddPath(subject, PolyType.ptSubject, true);
-        c.AddPath(clip, PolyType.ptClip, true);
-
-        // Perform union operation
-        Paths solution = new Paths();
-        c.Execute(ClipType.ctUnion, solution);
-
-        // Convert results back to our format
-        var results = new List<Polygon<T>>(solution.Count);
-        foreach (var path in solution)
-        {
-            results.Add(FromClipperPath(path));
-        }
-
-        return results;
-    }
-
-    /// <summary>
-    /// Merges multiple polygons into a single result set using a boolean union operation.
-    /// Returns a list of resulting polygons, as the merge may create multiple distinct polygons.
-    /// </summary>
-    public static List<Polygon<T>> Union(IEnumerable<Polygon<T>> polygons)
+    public static List<Polygon<T>> Union(IEnumerable<Polygon<T>> polygons, bool removeHoles = false)
     {
         if (!polygons.Any())
             return new List<Polygon<T>>();
 
-        // Convert all polygons to Clipper format
-        Paths subj = new Paths();
+        var subject = new PathsD();
         foreach (var polygon in polygons)
         {
-            subj.Add(polygon.ToClipperPath());
+            subject.Add(polygon.ToClipper2Path());
         }
 
-        // Create Clipper instance
-        Clipper c = new Clipper();
-        c.AddPaths(subj, PolyType.ptSubject, true);
+        var solution = Clipper.Union(subject, FillRule.NonZero);
 
-        // Perform union operation
-        Paths solution = new Paths();
-        c.Execute(ClipType.ctUnion, solution);
-
-        // Convert results back to our format
+        
         var results = new List<Polygon<T>>(solution.Count);
         foreach (var path in solution)
         {
-            results.Add(FromClipperPath(path));
+            if (!Clipper.IsPositive(path) && removeHoles)
+                break;
+
+            var simplified = Clipper.SimplifyPath(path, Double.Epsilon, true);
+            results.Add(FromClipper2Path(simplified));
+            
         }
 
         return results;
     }
 
-    public Polygon<T> Intersect(Rectangle<T> rect)
-    {
-        // Convert polygon points to Clipper format
-        Path subj = ToClipperPath();
 
-        // Convert rectangle to polygon in Clipper format
-        Path clip = new Path
-        {
-            new IntPoint(Convert.ToInt64(decimal.Multiply(Convert.ToDecimal(rect.Left), 1000000m)),
-                        Convert.ToInt64(decimal.Multiply(Convert.ToDecimal(rect.Top), 1000000m))),
-            new IntPoint(Convert.ToInt64(decimal.Multiply(Convert.ToDecimal(rect.Right), 1000000m)),
-                        Convert.ToInt64(decimal.Multiply(Convert.ToDecimal(rect.Top), 1000000m))),
-            new IntPoint(Convert.ToInt64(decimal.Multiply(Convert.ToDecimal(rect.Right), 1000000m)),
-                        Convert.ToInt64(decimal.Multiply(Convert.ToDecimal(rect.Bottom), 1000000m))),
-            new IntPoint(Convert.ToInt64(decimal.Multiply(Convert.ToDecimal(rect.Left), 1000000m)),
-                        Convert.ToInt64(decimal.Multiply(Convert.ToDecimal(rect.Bottom), 1000000m)))
+    /// <summary>
+    /// Simplifies the polygon by removing points that are closer than epsilon to the line segments.
+    /// </summary>
+    /// <param name="epsilon">The maximum distance between the original and simplified curves.</param>
+    /// <returns>A new simplified polygon.</returns>
+    public Polygon<T> Simplify(T epsilon)
+    {
+        if (_points.Count <= 3)
+            return this;
+
+        var path = ToClipper2Path();
+        var simplified = Clipper.SimplifyPath(path, Convert.ToDouble(epsilon));
+
+        // If simplification resulted in too few points, return original
+        return simplified.Count < 3 ? this : FromClipper2Path(simplified);
+    }
+
+    
+
+    public Polygon<T> Intersect(in Rectangle<T> rect)
+    {
+        var subject = new PathsD { ToClipper2Path() };
+
+        var clip = new PathD {
+            new PointD(Convert.ToDouble(rect.Left), Convert.ToDouble(rect.Top)),
+            new PointD(Convert.ToDouble(rect.Right), Convert.ToDouble(rect.Top)),
+            new PointD(Convert.ToDouble(rect.Right), Convert.ToDouble(rect.Bottom)),
+            new PointD(Convert.ToDouble(rect.Left), Convert.ToDouble(rect.Bottom))
         };
 
-        // Create Clipper instance
-        Clipper c = new Clipper();
-        c.AddPath(subj, PolyType.ptSubject, true);
-        c.AddPath(clip, PolyType.ptClip, true);
+        var solution = Clipper.Intersect(subject, new PathsD { clip }, FillRule.NonZero);
 
-        // Perform intersection
-        Paths solution = new Paths();
-        c.Execute(ClipType.ctIntersection, solution);
-
-        // If no intersection, return empty polygon
         if (solution.Count == 0)
             return new Polygon<T>(new List<Point<T>>());
 
-        // Convert result back to our format
-        return FromClipperPath(solution[0]);
+        return FromClipper2Path(solution[0]);
     }
 
-    // Sutherland-Hodgman polygon clipping
-    //private static List<Point<T>> ClipPolygon(IList<Point<T>> polygon, Point<T> edgeStart, Point<T> edgeEnd)
-    //{
-    //    List<Point<T>> clippedPolygon = new List<Point<T>>();
+    
 
-    //    for (int i = 0; i < polygon.Count; i++)
-    //    {
-    //        Point<T> currentPoint = polygon[i];
-    //        Point<T> prevPoint = polygon[(i - 1 + polygon.Count) % polygon.Count];
-
-    //        bool currentInside = IsInside(currentPoint, edgeStart, edgeEnd);
-    //        bool prevInside = IsInside(prevPoint, edgeStart, edgeEnd);
-
-    //        if (currentInside && prevInside)
-    //        {
-    //            // Both points are inside, add current point
-    //            clippedPolygon.Add(currentPoint);
-    //        }
-    //        else if (!currentInside && prevInside)
-    //        {
-    //            // Leaving the clip area, add intersection point
-    //            clippedPolygon.Add(GetIntersection(prevPoint, currentPoint, edgeStart, edgeEnd));
-    //        }
-    //        else if (currentInside && !prevInside)
-    //        {
-    //            // Entering the clip area, add intersection point and current point
-    //            clippedPolygon.Add(GetIntersection(prevPoint, currentPoint, edgeStart, edgeEnd));
-    //            clippedPolygon.Add(currentPoint);
-    //        }
-    //    }
-
-    //    return clippedPolygon;
-    //}
-
-    // Helper function to check if a point is inside the clipping edge
-    //private static bool IsInside(Point<T> p, Point<T> edgeStart, Point<T> edgeEnd)
-    //{
-    //    return (edgeEnd.X - edgeStart.X) * (p.Y - edgeStart.Y) > (edgeEnd.Y - edgeStart.Y) * (p.X - edgeStart.X);
-    //}
-
-    //// Calculate intersection of line segment (p1, p2) with edge (edgeStart, edgeEnd)
-    //private static Point<T> GetIntersection(Point<T> p1, Point<T> p2, Point<T> edgeStart, Point<T> edgeEnd)
-    //{
-    //    T A1 = p2.Y - p1.Y;
-    //    T B1 = p1.X - p2.X;
-    //    T C1 = A1 * p1.X + B1 * p1.Y;
-
-    //    T A2 = edgeEnd.Y - edgeStart.Y;
-    //    T B2 = edgeStart.X - edgeEnd.X;
-    //    T C2 = A2 * edgeStart.X + B2 * edgeStart.Y;
-
-    //    T det = A1 * B2 - A2 * B1;
-
-    //    if (T.Abs(det) <= T.Epsilon) // Lines are parallel
-    //    {
-    //        return new Point<T>(); // No intersection
-    //    }
-
-    //    T x = (B2 * C1 - B1 * C2) / det;
-    //    T y = (A1 * C2 - A2 * C1) / det;
-
-    //    return new Point<T>(x, y);
-    //}
-
-    public static Polygon<T> operator -(Polygon<T> a, ModelingEvolution.Drawing.Vector<T> f)
+    public static Polygon<T> operator -(in Polygon<T> a, in ModelingEvolution.Drawing.Vector<T> f)
     {
-        return new Polygon<T>(a.Points.Select(x => x - f).ToList(a._points.Count));
+        var newPoints = new List<Point<T>>(a._points.Count);
+        for (int i = 0; i < a._points.Count; i++)
+        {
+            newPoints.Add(a._points[i] - f);
+        }
+        return new Polygon<T>(newPoints);
     }
 
-    public static Polygon<T> operator +(Polygon<T> a, ModelingEvolution.Drawing.Vector<T> f)
+    public static Polygon<T> operator +(in Polygon<T> a, in ModelingEvolution.Drawing.Vector<T> f)
     {
-        return new Polygon<T>(a.Points.Select(x => x + f).ToList(a._points.Count));
+        var newPoints = new List<Point<T>>(a._points.Count);
+        for (int i = 0; i < a._points.Count; i++)
+        {
+            newPoints.Add(a._points[i] + f);
+        }
+        return new Polygon<T>(newPoints);
     }
 
     /// <summary>
@@ -515,7 +442,7 @@ public readonly record struct Polygon<T>
     /// <param name="a"></param>
     /// <param name="f"></param>
     /// <returns></returns>
-    public static Polygon<T> operator +(Polygon<T> a, ModelingEvolution.Drawing.Point<T> f)
+    public static Polygon<T> operator +(in Polygon<T> a, in ModelingEvolution.Drawing.Point<T> f)
     {
         var ret = new Polygon<T>(a.Points.ToList(a._points.Count + 1));
         ret._points.Add(f);

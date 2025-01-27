@@ -30,7 +30,7 @@ public readonly record struct RectangleArea<T>
         if (right.Size == Size<T>.Empty) return left;
 
         return left._isEmpty ? new RectangleArea<T>(right) : 
-            new RectangleArea<T>(Rectangle<T>.Union(right, left._result));
+            new RectangleArea<T>(Rectangle<T>.Bounds(right, left._result));
     }
 
     public override string ToString()

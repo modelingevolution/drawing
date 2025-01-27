@@ -17,8 +17,56 @@ using FluentAssertions;
 public class PolygonTest
 {
 
-   
-    
+    [Fact]
+    public void Union_WithHoleFilling_ShouldProduceSinglePolygon()
+    {
+        // Arrange
+        // Create a C-shaped polygon
+        var cShape = new Polygon<float>(new List<Point<float>>
+        {
+            new(0, 0),   // Top-left
+            new(100, 0), // Top-right
+            new(100, 100), // Bottom-right
+            new(80, 100),  // Inner bottom-right
+            new(80, 20),   // Inner top-right
+            new(20, 20),   // Inner top-left
+            new(20, 100),  // Inner bottom-left
+            new(0, 100),   // Bottom-left
+        });
+
+        // Create a rectangle that bridges the gap
+        var bridge = new Polygon<float>(new List<Point<float>>
+        {
+            new(10, 40),
+            new(90, 40),
+            new(90, 60),
+            new(10, 60),
+        });
+
+        // Act
+        // Try union without hole filling
+        var resultWithHoles = Polygon<float>.Union([cShape,bridge]);
+        var isOberlapping = cShape.IsOverlapping(bridge);
+        // Try union with hole filling
+        var withoutHoles = Polygon<float>.Union([cShape, bridge], true);
+
+        // Assert
+        // Without hole filling, we expect multiple polygons
+        Assert.True(resultWithHoles.Count > 1,
+            "Union without hole filling should produce multiple polygons");
+        Assert.True(isOberlapping);
+        // With hole filling, we expect a single polygon
+        Assert.True(withoutHoles.Count == 1,
+            "Union with hole filling should produce a single polygon");
+
+        // Optional: Verify the area is larger with hole filling
+        float areaWithoutHoles = resultWithHoles[0].Area() - resultWithHoles[1].Area();
+        float areaWithHoles = withoutHoles[0].Area();
+        Assert.True(areaWithHoles > areaWithoutHoles,
+            "Area with hole filling should be larger than without");
+    }
+
+
     [Fact]
     public void Indexer()
     {

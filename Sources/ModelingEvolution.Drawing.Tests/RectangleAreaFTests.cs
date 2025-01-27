@@ -55,6 +55,7 @@ public class RectangleAreaFTests
         area.Value.Should().Be(900f);
 
         Rectangle<float> r = (Rectangle<float>)area;
-        r.Should().Be(Rectangle<float>.Union(r1,r2));
+        r.Should().Be(Rectangle<float>.Bounds(r1,r2));
+        r.Should().Be(Rectangle<float>.Bounds([r1,r2]));
     }
 }

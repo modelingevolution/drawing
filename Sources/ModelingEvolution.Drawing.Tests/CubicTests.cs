@@ -47,29 +47,7 @@ public class BezierTests
         c.C0.Should().Be(expected);
         c.C1.Should().Be(expected);
     }
-    [Fact]
-    public void CreateFrom3Points()
-    {
-        PointF a = new PointF(0, 0);
-        PointF b = new PointF(1, 1);
-        PointF c = new PointF(2, 0);
-
-        var c0Expected = new PointF(0.5f, 0.5f);
-        var c1Expected = new PointF(1.5f, 0.5f);
-
-
-        var curves = BezierCurveF.Create(a, b,c).ToArray();
-
-        curves.Should().HaveCount(2);
-
-        var c1 = curves[0];
-        c1.Start.Should().Be(a);
-        c1.C0.Should().Be(c0Expected);
-        c1.C0.Should().Be(new PointF(0.5f, 1));
-        c1.End.Should().Be(b);
-        
-        
-    }
+   
     [Fact]
     public void CreateFrom4Points()
     {

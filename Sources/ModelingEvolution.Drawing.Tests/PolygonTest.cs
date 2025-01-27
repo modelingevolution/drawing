@@ -176,4 +176,109 @@ public class PolygonTest
 
         Assert.Equal(3, count);
     }
+
+    [Fact]
+    public void Union_TouchingPolygons_ReturnsSinglePolygon()
+    {
+        // Arrange
+        var polygon1 = new Polygon<float>(new List<Point<float>>
+        {
+            new Point<float>(0, 0),
+            new Point<float>(1, 0),
+            new Point<float>(1, 1),
+            new Point<float>(0, 1)
+        });
+
+        var polygon2 = new Polygon<float>(new List<Point<float>>
+        {
+            new Point<float>(1, 0),
+            new Point<float>(2, 0),
+            new Point<float>(2, 1),
+            new Point<float>(1, 1)
+        });
+
+        // Act
+        var result = polygon1 | polygon2;
+
+        // Assert
+        Assert.Equal(4, result.Points.Count); // Should be a single rectangle
+        Assert.Equal(2.0f, result.Area(), 0.0001f); // Area should be 2 units
+    }
+    [Fact]
+    public void Union_DisconnectedPolygons_ThrowsInvalidOperationException()
+    {
+        // Arrange
+        var polygon1 = new Polygon<float>(new List<Point<float>>
+        {
+            new Point<float>(0, 0),
+            new Point<float>(1, 0),
+            new Point<float>(1, 1),
+            new Point<float>(0, 1)
+        });
+
+        var polygon2 = new Polygon<float>(new List<Point<float>>
+        {
+            new Point<float>(3, 3),
+            new Point<float>(4, 3),
+            new Point<float>(4, 4),
+            new Point<float>(3, 4)
+        });
+
+        // Act & Assert
+        Assert.Throws<InvalidOperationException>(() => polygon1 | polygon2);
+    }
+    [Fact]
+    public void Union_TwoOverlappingSquares_ReturnsSinglePolygon()
+    {
+        // Arrange
+        var polygon1 = new Polygon<float>(new List<Point<float>>
+        {
+            new Point<float>(0, 0),
+            new Point<float>(2, 0),
+            new Point<float>(2, 2),
+            new Point<float>(0, 2)
+        });
+
+        var polygon2 = new Polygon<float>(new List<Point<float>>
+        {
+            new Point<float>(1, 1),
+            new Point<float>(3, 1),
+            new Point<float>(3, 3),
+            new Point<float>(1, 3)
+        });
+
+        // Act
+        var result = polygon1 | polygon2;
+
+        // Assert
+        Assert.Equal(8, result.Points.Count); // Union of overlapping squares should have 8 vertices
+        Assert.True(result.Area() > polygon1.Area()); // Union should be larger than either input
+        Assert.True(result.Area() > polygon2.Area());
+    }
+
+    [Fact]
+    public void Intersection_PartiallyOverlappingTriangles_ReturnsSinglePolygon()
+    {
+        // Arrange
+        var polygon1 = new Polygon<float>(new List<Point<float>>
+        {
+            new Point<float>(0, 0),
+            new Point<float>(2, 0),
+            new Point<float>(1, 2)
+        });
+
+        var polygon2 = new Polygon<float>(new List<Point<float>>
+        {
+            new Point<float>(1, 0),
+            new Point<float>(3, 0),
+            new Point<float>(2, 2)
+        });
+
+        // Act
+        var result = polygon1 & polygon2;
+
+        // Assert
+        Assert.True(result.Points.Count > 2); // Should be a polygon
+        Assert.True(result.Area() > 0); // Should have positive area
+    }
 }

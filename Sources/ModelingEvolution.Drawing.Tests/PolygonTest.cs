@@ -7,12 +7,18 @@ using FluentAssertions;
 using ModelingEvolution.Drawing;
 using Xunit;
 
-namespace ModelingEvolution.Yolo.Tests;
-using Polygon = Polygon<float>;
-    
+
+using Polygon = ModelingEvolution.Drawing.Polygon<float>;
+using PointF = ModelingEvolution.Drawing.Point<float>;
+using Xunit;
+using FluentAssertions;
+
 
 public class PolygonTest
 {
+
+   
+    
     [Fact]
     public void Indexer()
     {
@@ -227,6 +233,46 @@ public class PolygonTest
         // Act & Assert
         Assert.Throws<InvalidOperationException>(() => polygon1 | polygon2);
     }
+    [Fact]
+    public void Intersection_TwoOverlappingSquares_ReturnsSinglePolygon()
+    {
+        // Arrange
+        var polygon1 = new Polygon<float>(new List<Point<float>>
+        {
+            new Point<float>(0, 0),
+            new Point<float>(2, 0),
+            new Point<float>(2, 2),
+            new Point<float>(0, 2)
+        });
+
+        var polygon2 = new Polygon<float>(new List<Point<float>>
+        {
+            new Point<float>(1, 1),
+            new Point<float>(3, 1),
+            new Point<float>(3, 3),
+            new Point<float>(1, 3)
+        });
+
+        // Act
+        var result = polygon1 & polygon2;
+
+        // Assert
+        Assert.Equal(4, result.Points.Count); // Union of overlapping squares should have 8 vertices
+        var exPoints = new PointF[]
+        {
+            new PointF(2, 2),
+            new PointF(1, 2),
+            new PointF(1, 1),
+            new PointF(2, 1)
+        };
+        for (int i = 0; i < result.Points.Count; i++)
+        {
+            var expectedPoint = exPoints[i];
+            Assert.True(result.Points[i].Equals(expectedPoint));
+        }
+        Assert.True(polygon1.IsOverlapping(polygon2));
+    }
+
     [Fact]
     public void Union_TwoOverlappingSquares_ReturnsSinglePolygon()
     {

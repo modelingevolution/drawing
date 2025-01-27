@@ -122,6 +122,7 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
         return result;
     }
 
+    
     /// <summary>
     /// Creates a new <see cref="System.Numerics.Vector4"/> from this <see cref="System.Drawing.Rectangle<T>"/>.
     /// </summary>

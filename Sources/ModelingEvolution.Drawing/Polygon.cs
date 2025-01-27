@@ -98,7 +98,105 @@ public readonly record struct Polygon<T>
     {
         return new Polygon<T>(a.Points.Select(x => x / f).ToList(a._points.Count));
     }
+    public bool IsOverlapping(in Polygon<T> other)
+    {
+        return this.Intersect(other).Count > 0;
+    }
+    public static IEnumerable<D> Cluster<D>(
+        IEnumerable<D> items,
+        Func<D, Polygon<T>> polygonGetter,
+        Func<IEnumerable<D>, Polygon<T>, D> factory)
+    {
+        if (items == null || !items.Any())
+            return Array.Empty<D>();
 
+        var itemList = items.ToList();
+        var visited = new HashSet<int>();
+        var clusters = new List<List<int>>();
+
+        // For each item, start a new cluster if not already visited
+        for (int i = 0; i < itemList.Count; i++)
+        {
+            if (visited.Contains(i))
+                continue;
+
+            var cluster = new List<int>();
+            var queue = new Queue<int>();
+            queue.Enqueue(i);
+
+            while (queue.Count > 0)
+            {
+                int current = queue.Dequeue();
+                if (!visited.Add(current))
+                    continue;
+
+                cluster.Add(current);
+
+                // Enqueue all overlapping items
+                for (int j = 0; j < itemList.Count; j++)
+                {
+                    if (!visited.Contains(j) &&
+                        polygonGetter(itemList[current]).IsOverlapping(polygonGetter(itemList[j])))
+                    {
+                        queue.Enqueue(j);
+                    }
+                }
+            }
+
+            clusters.Add(cluster);
+        }
+
+        // Merge each cluster into a single object of type D
+        return clusters.Select(clusterIndices =>
+        {
+            var clusterItems = clusterIndices.Select(index => itemList[index]).ToList();
+            var result = Union(clusterItems.Select(polygonGetter)).Single();
+            // Start with the first item as the base for merging
+            return factory(clusterItems, result);
+
+        });
+    }
+    public static IEnumerable<Polygon<T>> Cluster(IEnumerable<Polygon<T>> polygons)
+    {
+        if (polygons == null! || !polygons!.Any())
+            return Array.Empty<Polygon<T>>();
+
+        var polygonList = polygons.ToList();
+        var visited = new HashSet<int>();
+        var clusters = new List<List<Polygon<T>>>();
+
+        // For each polygon, start a new cluster if not already visited
+        for (int i = 0; i < polygonList.Count; i++)
+        {
+            if (visited.Contains(i))
+                continue;
+
+            var cluster = new List<Polygon<T>>();
+            var queue = new Queue<int>();
+            queue.Enqueue(i);
+
+            while (queue.Count > 0)
+            {
+                int current = queue.Dequeue();
+                if (!visited.Add(current))
+                    continue;
+
+                cluster.Add(polygonList[current]);
+
+                // Enqueue all overlapping polygons
+                for (int j = 0; j < polygonList.Count; j++)
+                {
+                    if (!visited.Contains(j) && polygonList[current].IsOverlapping(polygonList[j])) 
+                        queue.Enqueue(j);
+                }
+            }
+
+            clusters.Add(cluster);
+        }
+
+        // Union polygons in each cluster
+        return clusters.Select(x => Union(x).Single());
+    }
     public bool Equals(Polygon<T> other)
     {
         if (object.ReferenceEquals(_points, other._points)) return true;

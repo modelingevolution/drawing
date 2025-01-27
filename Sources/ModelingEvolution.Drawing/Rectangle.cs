@@ -80,6 +80,48 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
         height = T.CreateTruncating(vector.W);
     }
 
+    public Rectangle<T>[] ComputeTiles( Size<T> tileSize, T overlapPercentage = default)
+    {
+        if (tileSize.Width <= T.Zero || tileSize.Height <= T.Zero || Width <= T.Zero || Height <= T.Zero)
+            return Array.Empty<Rectangle<T>>();
+        if (overlapPercentage < T.Zero || overlapPercentage >= T.One)
+            throw new ArgumentOutOfRangeException(nameof(overlapPercentage), "Overlap percentage must be in the range [0, 1).");
+
+        // Calculate step sizes with overlap
+        T stepX = tileSize.Width * (T.One - overlapPercentage);
+        T stepY = tileSize.Height * (T.One - overlapPercentage);
+        // Ensure we don't have zero or negative steps
+        if (stepX <= T.Zero) stepX = tileSize.Width;
+        if (stepY <= T.Zero) stepY = tileSize.Height;
+        // Calculate number of tiles needed in each direction
+        T numTilesX = T.Ceiling((Width - tileSize.Width) / stepX) + T.One;
+        T numTilesY = T.Ceiling((Height - tileSize.Height) / stepY) + T.One;
+        int totalTiles = int.CreateTruncating(numTilesX * numTilesY);
+        if (numTilesX > T.CreateChecked(int.MaxValue) || numTilesY > T.CreateChecked(int.MaxValue))
+            throw new InvalidOperationException("Tile count exceeds maximum allowable array size.");
+
+        var result = new Rectangle<T>[totalTiles];
+        // Generate tiles
+        int index = 0;
+        for (T y = T.Zero; y < numTilesY; y++)
+        {
+            for (T x = T.Zero; x < numTilesX; x++)
+            {
+                // Calculate tile position
+                T tileX = X + x * stepX;
+                T tileY = Y + y * stepY;
+                // Adjust last tiles in each row/column to not exceed original rectangle
+                if (tileX + tileSize.Width > Right)
+                    tileX = Right - tileSize.Width;
+                if (tileY + tileSize.Height > Bottom)
+                    tileY = Bottom - tileSize.Height;
+                // Create and add the tile
+                result[index++] = new Rectangle<T>(tileX, tileY, tileSize.Width, tileSize.Height);
+            }
+        }
+        return result;
+    }
+
     /// <summary>
     /// Creates a new <see cref="System.Numerics.Vector4"/> from this <see cref="System.Drawing.Rectangle<T>"/>.
     /// </summary>
@@ -279,6 +321,15 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
         r.Inflate(x, y);
         return r;
     }
+    /// <summary>
+    /// Implements the operator &amp; Returns intersection.
+    /// </summary>
+    /// <param name="a">a.</param>
+    /// <param name="b">The b.</param>
+    /// <returns>
+    /// The result of the operator.
+    /// </returns>
+    public static Rectangle<T> operator &(in Rectangle<T> a, in Rectangle<T> b) => Rectangle<T>.Intersect(a, b);
 
     /// <summary>
     /// Creates a Rectangle that represents the intersection between this Rectangle and rect.

@@ -22,7 +22,8 @@ public readonly record struct Polygon<T>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
     IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {
-    [ProtoMember(1)] internal readonly IList<Point<T>> _points;
+    [ProtoMember(1)] 
+    internal readonly IList<Point<T>> _points;
 
     public T Area()
     {
@@ -178,6 +179,60 @@ public readonly record struct Polygon<T>
 
         });
     }
+    public static IEnumerable<D> ClusterRecursive<D>(
+        IEnumerable<D> items,
+        Func<D, Polygon<T>> polygonGetter,
+        Func<IEnumerable<D>, Polygon<T>, D> factory)
+    {
+        if (items == null || !items.Any())
+            return Array.Empty<D>();
+
+        var itemList = items.ToList();
+        var visited = new HashSet<int>();
+        var clusters = new List<List<int>>();
+
+        // For each item, start a new cluster if not already visited
+        for (int i = 0; i < itemList.Count; i++)
+        {
+            if (visited.Contains(i))
+                continue;
+
+            var cluster = new List<int>();
+            var queue = new Queue<int>();
+            queue.Enqueue(i);
+
+            while (queue.Count > 0)
+            {
+                int current = queue.Dequeue();
+                if (!visited.Add(current))
+                    continue;
+
+                cluster.Add(current);
+
+                // Enqueue all overlapping items
+                for (int j = 0; j < itemList.Count; j++)
+                {
+                    if (!visited.Contains(j) &&
+                        polygonGetter(itemList[current]).IsOverlapping(polygonGetter(itemList[j])))
+                    {
+                        queue.Enqueue(j);
+                    }
+                }
+            }
+
+            clusters.Add(cluster);
+        }
+
+        // Merge each cluster into a single object of type D
+        return clusters.Select(clusterIndices =>
+        {
+            var clusterItems = clusterIndices.Select(index => itemList[index]).ToList();
+            var result = UnionRecursive(clusterItems.Select(polygonGetter));
+            // Start with the first item as the base for merging
+            return factory(clusterItems, result);
+
+        });
+    }
     public static IEnumerable<Polygon<T>> Cluster(IEnumerable<Polygon<T>> polygons)
     {
         if (polygons == null! || !polygons!.Any())
@@ -219,6 +274,47 @@ public readonly record struct Polygon<T>
         // Union polygons in each cluster
         return clusters.Select(x => Union(x, true).Single());
     }
+    public static IEnumerable<Polygon<T>> ClusterRecursive(IEnumerable<Polygon<T>> polygons)
+    {
+        if (polygons == null! || !polygons!.Any())
+            return Array.Empty<Polygon<T>>();
+
+        var polygonList = polygons.ToList();
+        var visited = new HashSet<int>();
+        var clusters = new List<List<Polygon<T>>>();
+
+        // For each polygon, start a new cluster if not already visited
+        for (int i = 0; i < polygonList.Count; i++)
+        {
+            if (visited.Contains(i))
+                continue;
+
+            var cluster = new List<Polygon<T>>();
+            var queue = new Queue<int>();
+            queue.Enqueue(i);
+
+            while (queue.Count > 0)
+            {
+                int current = queue.Dequeue();
+                if (!visited.Add(current))
+                    continue;
+
+                cluster.Add(polygonList[current]);
+
+                // Enqueue all overlapping polygons
+                for (int j = 0; j < polygonList.Count; j++)
+                {
+                    if (!visited.Contains(j) && polygonList[current].IsOverlapping(polygonList[j]))
+                        queue.Enqueue(j);
+                }
+            }
+
+            clusters.Add(cluster);
+        }
+
+        // Union polygons in each cluster
+        return clusters.Select(x => UnionRecursive(x));
+    }
     public bool Equals(Polygon<T> other)
     {
         if (object.ReferenceEquals(_points, other._points)) return true;
@@ -251,23 +347,45 @@ public readonly record struct Polygon<T>
                 Convert.ToDouble(pt.Y)
             ));
         }
+
+        if (!Clipper.IsPositive(path)) path.Reverse();
         return path;
     }
-    public List<Polygon<T>> Union(in Polygon<T> other)
+    public List<Polygon<T>> Union2(in Polygon<T> other, bool removeHoles = false)
     {
-        var subject = new PathsD { ToClipper2Path() };
-        var clip = new PathsD { other.ToClipper2Path() };
-
-        var solution = Clipper.Union(subject, clip, FillRule.NonZero);
+        var subject = new PathsD { ToClipper2Path(), other.ToClipper2Path() };
+        
+        var solution = Clipper.Union(subject, FillRule.NonZero);
 
         var results = new List<Polygon<T>>(solution.Count);
         foreach (var path in solution)
         {
+            if (!Clipper.IsPositive(path) && removeHoles)
+                break;
             results.Add(FromClipper2Path(path));
         }
 
         return results;
     }
+    public List<Polygon<T>> Union(in Polygon<T> other, bool removeHoles = false)
+    {
+        var subject = new PathsD { ToClipper2Path() };
+        var clip = new PathsD { other.ToClipper2Path() };
+
+        
+        var solution = Clipper.Union(subject, clip, FillRule.NonZero);
+
+        var results = new List<Polygon<T>>(solution.Count);
+        foreach (var path in solution)
+        {
+            if (!Clipper.IsPositive(path) && removeHoles)
+                break;
+            results.Add(FromClipper2Path(path));
+        }
+
+        return results;
+    }
+    
     /// <summary>
     /// Merges two polygons using the | operator.
     /// Returns the merged polygon if the result is a single polygon.
@@ -346,6 +464,18 @@ public readonly record struct Polygon<T>
         return results[0];
     }
 
+    public static Polygon<T> UnionRecursive(IEnumerable<Polygon<T>> polygons)
+    {
+        var array = polygons.ToArray();
+        var tmp = array[0];
+
+        for (int i = 1; i < array.Length; i++)
+        {
+            tmp = tmp.Union(array[i], true).Single();
+        }
+
+        return tmp;
+    }
 
     public static List<Polygon<T>> Union(IEnumerable<Polygon<T>> polygons, bool removeHoles = false)
     {
@@ -478,7 +608,7 @@ public readonly record struct Polygon<T>
     }
 
     [JsonIgnore]
-    public int Count => _points.Count;
+    public int Count => _points?.Count ?? 0;
 
     public Point<T> this[int index]
     {
@@ -486,7 +616,7 @@ public readonly record struct Polygon<T>
         set => _points[index] = value;  
     }
 
-    public IReadOnlyList<Point<T>> Points => (IReadOnlyList<Point<T>>)_points;
+    public IReadOnlyList<Point<T>> Points => (IReadOnlyList<Point<T>>)(_points ?? Array.Empty<Point<T>>());
 
     
 }

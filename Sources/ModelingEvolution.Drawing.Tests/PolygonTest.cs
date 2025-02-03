@@ -232,6 +232,19 @@ public class PolygonTest
     }
 
     [Fact]
+    public void Add_Point()
+    {
+        var points = new float[] { 0, 0, 4, 0, 4, 3 };
+        var polygon = new Polygon(points);
+        var d = new Point<float>(1, 1);
+        polygon += d;
+        
+        Assert.Equal(4, polygon.Count);
+        Assert.Equal(new Point<float>(1,1), polygon.Points[0]);
+        Assert.Equal(new Point<float>(5, 1), polygon.Points[1]);
+        Assert.Equal(new Point<float>(5, 4), polygon.Points[2]);
+    }
+    [Fact]
     public void Union_TouchingPolygons_ReturnsSinglePolygon()
     {
         // Arrange

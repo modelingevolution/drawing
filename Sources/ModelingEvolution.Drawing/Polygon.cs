@@ -525,7 +525,7 @@ public readonly record struct Polygon<T>
 
     
 
-    public Polygon<T> Intersect(in Rectangle<T> rect)
+    public IEnumerable<Polygon<T>> Intersect( Rectangle<T> rect)
     {
         var subject = new PathsD { ToClipper2Path() };
 
@@ -539,9 +539,10 @@ public readonly record struct Polygon<T>
         var solution = Clipper.Intersect(subject, new PathsD { clip }, FillRule.NonZero);
 
         if (solution.Count == 0)
-            return new Polygon<T>(new List<Point<T>>());
+            yield break;
 
-        return FromClipper2Path(solution[0]);
+        foreach(var i in solution)
+            yield return FromClipper2Path(i);
     }
 
     

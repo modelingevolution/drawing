@@ -123,8 +123,7 @@ public class PolygonTest
         var points = new float[] { 0, 0, 4, 0, 4, 4, 0, 4 };
         var polygon = new Polygon(points);
         var rect = new Rectangle<float>(5, 5, 2, 2);
-        var intersectedPolygon = polygon.Intersect(rect);
-        Assert.Empty(intersectedPolygon.Points);
+        polygon.Intersect(rect).Should().BeEmpty();
     }
     [Fact]
     public void Intersect_RectangleFullyInsidePolygon_ReturnsRectangleAsPolygon()
@@ -132,7 +131,7 @@ public class PolygonTest
         var points = new float[] { 0, 0, 6, 0, 6, 6, 0, 6 };
         var polygon = new Polygon(points);
         var rect = new Rectangle<float>(2, 2, 2, 2);
-        var intersectedPolygon = polygon.Intersect(rect);
+        var intersectedPolygon = polygon.Intersect(rect).Single();
         Assert.Equal(4, intersectedPolygon.Count);
         Assert.Contains(new Point<float>(2, 2), intersectedPolygon.Points);
         Assert.Contains(new Point<float>(4, 2), intersectedPolygon.Points);
@@ -145,7 +144,7 @@ public class PolygonTest
         var points = new float[] { 2, 2, 4, 2, 4, 4, 2, 4 };
         var polygon = new Polygon(points);
         var rect = new Rectangle<float>(0, 0, 6, 6);
-        var intersectedPolygon = polygon.Intersect(rect);
+        var intersectedPolygon = polygon.Intersect(rect).Single();
         Assert.Equal(4, intersectedPolygon.Count);
         Assert.Contains(new Point<float>(2, 2), intersectedPolygon.Points);
         Assert.Contains(new Point<float>(4, 2), intersectedPolygon.Points);
@@ -158,7 +157,7 @@ public class PolygonTest
         var points = new float[] { 0, 0, 4, 0, 4, 4, 0, 4 };
         var polygon = new Polygon(points);
         var rect = new Rectangle<float>(3, 1, 2, 2);
-        var intersectedPolygon = polygon.Intersect(rect);
+        var intersectedPolygon = polygon.Intersect(rect).Single();
         Assert.Equal(4, intersectedPolygon.Count);
         Assert.Contains(new Point<float>(4, 1), intersectedPolygon.Points);
         Assert.Contains(new Point<float>(4, 3), intersectedPolygon.Points);
@@ -172,7 +171,7 @@ public class PolygonTest
         var points = new float[] { 0, 0, 4, 0, 4, 4, 0, 4 };
         var polygon = new Polygon(points);
         var rect = new Rectangle<float>(1, 1, 2, 2);
-        var intersectedPolygon = polygon.Intersect(rect);
+        var intersectedPolygon = polygon.Intersect(rect).Single();
         Assert.Equal(4, intersectedPolygon.Count);
     }
 
@@ -232,18 +231,29 @@ public class PolygonTest
     }
 
     [Fact]
+    public void Add_Vector()
+    {
+        var points = new float[] { 0, 0, 4, 0, 4, 3 };
+        var polygon = new Polygon(points);
+        var d = new Vector<float>(1, 1);
+        polygon += d;
+        
+        Assert.Equal(3, polygon.Count);
+        Assert.Equal(new Point<float>(1,1), polygon.Points[0]);
+        Assert.Equal(new Point<float>(5, 1), polygon.Points[1]);
+        Assert.Equal(new Point<float>(5, 4), polygon.Points[2]);
+    }
+    [Fact]
     public void Add_Point()
     {
         var points = new float[] { 0, 0, 4, 0, 4, 3 };
         var polygon = new Polygon(points);
         var d = new Point<float>(1, 1);
         polygon += d;
-        
+
         Assert.Equal(4, polygon.Count);
-        Assert.Equal(new Point<float>(1,1), polygon.Points[0]);
-        Assert.Equal(new Point<float>(5, 1), polygon.Points[1]);
-        Assert.Equal(new Point<float>(5, 4), polygon.Points[2]);
     }
+
     [Fact]
     public void Union_TouchingPolygons_ReturnsSinglePolygon()
     {

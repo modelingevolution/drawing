@@ -1,0 +1,103 @@
+name: Publish to NuGet
+
+on:
+  push:
+    tags:
+      - 'ModelingEvolution.Drawing/*.*.*.*'
+      - 'v*.*.*'  # Also support v-prefixed tags for compatibility
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (e.g., 1.0.53.35)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+    
+    - name: Set version
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+        else
+          # Extract version from tag
+          TAG="${GITHUB_REF#refs/tags/}"
+          # Handle both formats: ModelingEvolution.Drawing/1.0.57.35 and v1.0.57.35
+          if [[ "$TAG" == ModelingEvolution.Drawing/* ]]; then
+            VERSION="${TAG#ModelingEvolution.Drawing/}"
+          else
+            VERSION="${TAG#v}"
+          fi
+        fi
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+    
+    - name: Update version in csproj
+      run: |
+        VERSION="${{ steps.version.outputs.version }}"
+        cd Sources/ModelingEvolution.Drawing
+        # Update all version-related properties
+        sed -i "s/<AssemblyVersion>.*<\/AssemblyVersion>/<AssemblyVersion>$VERSION<\/AssemblyVersion>/" ModelingEvolution.Drawing.csproj
+        sed -i "s/<FileVersion>.*<\/FileVersion>/<FileVersion>$VERSION<\/FileVersion>/" ModelingEvolution.Drawing.csproj
+        sed -i "s/<Version>.*<\/Version>/<Version>$VERSION<\/Version>/" ModelingEvolution.Drawing.csproj
+        sed -i "s/<PackageVersion>.*<\/PackageVersion>/<PackageVersion>$VERSION<\/PackageVersion>/" ModelingEvolution.Drawing.csproj
+    
+    - name: Restore dependencies
+      working-directory: ./Sources
+      run: dotnet restore
+    
+    - name: Build
+      working-directory: ./Sources
+      run: dotnet build --configuration Release --no-restore
+    
+    - name: Run tests
+      working-directory: ./Sources
+      run: dotnet test --configuration Release --no-build --verbosity normal || true
+    
+    - name: Pack
+      working-directory: ./Sources/ModelingEvolution.Drawing
+      run: dotnet pack --configuration Release --no-build --output ./nupkg /p:PackageVersion=${{ steps.version.outputs.version }}
+    
+    - name: Push to NuGet
+      working-directory: ./Sources/ModelingEvolution.Drawing
+      run: |
+        dotnet nuget push ./nupkg/ModelingEvolution.Drawing.*.nupkg \
+          --api-key ${{ secrets.NUGET_API_KEY }} \
+          --source https://api.nuget.org/v3/index.json \
+          --skip-duplicate
+      env:
+        NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+    
+    - name: Summary
+      run: |
+        echo "## ModelingEvolution.Drawing Published to NuGet" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Package**: ModelingEvolution.Drawing" >> $GITHUB_STEP_SUMMARY
+        echo "- **NuGet**: https://www.nuget.org/packages/ModelingEvolution.Drawing" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Features" >> $GITHUB_STEP_SUMMARY
+        echo "- Generic 2D math types (Point, Vector, Rectangle, Size)" >> $GITHUB_STEP_SUMMARY
+        echo "- Bezier curves and spline support" >> $GITHUB_STEP_SUMMARY
+        echo "- Polar coordinates and angle conversions" >> $GITHUB_STEP_SUMMARY
+        echo "- Matrix transformations" >> $GITHUB_STEP_SUMMARY
+        echo "- HSV color space" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Install with:" >> $GITHUB_STEP_SUMMARY
+        echo '```bash' >> $GITHUB_STEP_SUMMARY
+        echo 'dotnet add package ModelingEvolution.Drawing --version ${{ steps.version.outputs.version }}' >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY

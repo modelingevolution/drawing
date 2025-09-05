@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master, develop ]
+    paths:
+      - 'Sources/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    branches: [ main, master, develop ]
+    paths:
+      - 'Sources/**'
+      - '.github/workflows/ci.yml'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        dotnet-version: ['8.0.x', '9.0.x']
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ matrix.dotnet-version }}
+    
+    - name: Restore dependencies
+      working-directory: ./Sources
+      run: dotnet restore
+    
+    - name: Build
+      working-directory: ./Sources
+      run: dotnet build --configuration Release --no-restore
+    
+    - name: Test
+      working-directory: ./Sources
+      run: dotnet test --configuration Release --no-build --verbosity normal --logger:"console;verbosity=detailed"
+    
+    - name: Pack (dry run)
+      if: matrix.dotnet-version == '9.0.x'
+      working-directory: ./Sources/ModelingEvolution.Drawing
+      run: dotnet pack --configuration Release --no-build --output ./test-nupkg
+    
+    - name: Validate package
+      if: matrix.dotnet-version == '9.0.x'
+      run: |
+        # Check that package was created
+        ls -la Sources/ModelingEvolution.Drawing/test-nupkg/
+        
+        # Extract and inspect package contents
+        cd Sources/ModelingEvolution.Drawing/test-nupkg
+        unzip -l ModelingEvolution.Drawing.*.nupkg | head -20
+    
+    - name: Summary
+      if: always()
+      run: |
+        echo "## CI Build Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- **.NET Version**: ${{ matrix.dotnet-version }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Build**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY

@@ -36,6 +36,12 @@ public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
         return new Point<T>(t1 * width, t2* height);
     }
 
+    public Point<T> Clamp(Rectangle<T> area)
+    {
+        var clampedX = T.Max(area.X, T.Min(area.Right, x));
+        var clampedY = T.Max(area.Y, T.Min(area.Bottom, y));
+        return new Point<T>(clampedX, clampedY);
+    }
     private static readonly T Two = T.CreateTruncating(2);
     public static Point<T> Middle(Point<T> a, Point<T> b)
     {

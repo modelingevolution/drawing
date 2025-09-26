@@ -34,6 +34,15 @@ public readonly record struct Path<T> : IParsable<Path<T>>
     }
 
     private readonly ImmutableList<BezierCurve<T>> _segments;
+    /// <summary>
+    /// Equals based on content.
+    /// </summary>
+    /// <param name="other"></param>
+    /// <returns></returns>
+    public bool Equals(Path<T>? other)
+    {
+        return this._segments.SequenceEqual(other?._segments ?? Enumerable.Empty<BezierCurve<T>>());
+    }
 
     /// <summary>
     /// Gets the segments of the path.

@@ -356,3 +356,4 @@ wordpress/*
 /Modellution.LiveMockups/.parcel-cache
 /Source2/Modellution3/ModelingEvolution.EventAggregator.Blazor/.parcel-cache
 /Source2/Modellution3/Modellution.App.Blazor/Modellution.App.Blazor/.parcel-cache
+*.tokens

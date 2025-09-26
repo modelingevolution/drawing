@@ -2,12 +2,27 @@
 
 namespace ModelingEvolution.Drawing.Equations;
 
+/// <summary>
+/// Represents a circle equation defined by a center point and radius.
+/// </summary>
+/// <typeparam name="T">The numeric type used for coordinates and radius.</typeparam>
 public readonly record struct CircleEquation<T>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
+    /// <summary>
+    /// Gets the center point of the circle.
+    /// </summary>
     public Point<T> Center { get;  }
+    /// <summary>
+    /// Gets the radius of the circle.
+    /// </summary>
     public T Radius { get; }
 
+    /// <summary>
+    /// Initializes a new instance of the CircleEquation struct.
+    /// </summary>
+    /// <param name="center">The center point of the circle.</param>
+    /// <param name="radius">The radius of the circle.</param>
     public CircleEquation(Point<T> center, T radius)
     {
         Center = center;
@@ -17,6 +32,11 @@ public readonly record struct CircleEquation<T>
     private static readonly T t2 = T.CreateTruncating(2);
     private static readonly T t4 = T.CreateTruncating(4);
     
+    /// <summary>
+    /// Finds the intersection points between this circle and a linear equation.
+    /// </summary>
+    /// <param name="line">The linear equation to intersect with.</param>
+    /// <returns>An array of intersection points (0, 1, or 2 points).</returns>
     public Point<T>[] Intersect(LinearEquation<T> line)
     {
         // Transform the line to the circle's local coordinate system

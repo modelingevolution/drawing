@@ -9,6 +9,9 @@ using System.Text.Json.Serialization;
 
 namespace ModelingEvolution.Drawing;
 
+/// <summary>
+/// Represents a color with ARGB (alpha, red, green, blue) components.
+/// </summary>
 [Serializable]
 [JsonConverter(typeof(JsonColorConverter))]
 [TypeConverter(typeof(ColorConverter))]
@@ -25,6 +28,12 @@ public readonly record struct Color : IEquatable<Color>, IParsable<Color>
     internal const uint ARGBBlueMask = 0xFFu << ARGBBlueShift;
 
 
+    /// <summary>
+    /// Parses a string representation of a color.
+    /// </summary>
+    /// <param name="s">The string to parse (supports hex, rgba, and hsv formats).</param>
+    /// <param name="provider">An optional format provider.</param>
+    /// <returns>The parsed color.</returns>
     public static Color Parse(string s, IFormatProvider provider=null)
     {
         ArgumentNullException.ThrowIfNull(s);
@@ -57,11 +66,24 @@ public readonly record struct Color : IEquatable<Color>, IParsable<Color>
         return new Color(value | alpha << ARGBAlphaShift);
     }
 
+    /// <summary>
+    /// Tries to parse a string representation of a color.
+    /// </summary>
+    /// <param name="s">The string to parse.</param>
+    /// <param name="result">When this method returns, contains the parsed color if successful.</param>
+    /// <returns>true if the parsing was successful; otherwise, false.</returns>
     public static bool TryParse([NotNullWhen(true)] string s, 
         [MaybeNullWhen(false)] out Color result)
     {
         return TryParse(s, null, out result);
     }
+    /// <summary>
+    /// Tries to parse a string representation of a color with a format provider.
+    /// </summary>
+    /// <param name="s">The string to parse.</param>
+    /// <param name="provider">An optional format provider.</param>
+    /// <param name="result">When this method returns, contains the parsed color if successful.</param>
+    /// <returns>true if the parsing was successful; otherwise, false.</returns>
     public static bool TryParse([NotNullWhen(true)] string s, IFormatProvider? provider, [MaybeNullWhen(false)] out Color result)
     {
         result = default;
@@ -96,7 +118,14 @@ public readonly record struct Color : IEquatable<Color>, IParsable<Color>
 
     }
 
+    /// <summary>
+    /// Implicitly converts a string to a Color.
+    /// </summary>
+    /// <param name="hex">The string representation of the color.</param>
     public static implicit operator Color(string hex) => FromString(hex);
+    /// <summary>
+    /// Gets the ARGB value of the color as a 32-bit unsigned integer.
+    /// </summary>
     [ProtoMember(1)]
     public uint Value { get; }
 
@@ -115,19 +144,38 @@ public readonly record struct Color : IEquatable<Color>, IParsable<Color>
         b = (int)(value & ARGBBlueMask) >> ARGBBlueShift;
     }
 
+    /// <summary>
+    /// Gets the red component value of the color.
+    /// </summary>
     public byte R => unchecked((byte)(Value >> ARGBRedShift));
 
+    /// <summary>
+    /// Gets the green component value of the color.
+    /// </summary>
     public byte G => unchecked((byte)(Value >> ARGBGreenShift));
 
+    /// <summary>
+    /// Gets the blue component value of the color.
+    /// </summary>
     public byte B => unchecked((byte)(Value >> ARGBBlueShift));
 
+    /// <summary>
+    /// Gets the alpha component value of the color.
+    /// </summary>
     public byte A => unchecked((byte)(Value >> ARGBAlphaShift));
 
+    /// <summary>
+    /// Initializes a new instance of the Color struct from a 32-bit ARGB value.
+    /// </summary>
+    /// <param name="value">The 32-bit ARGB value.</param>
     public Color(uint value)
     {
         this.Value = value;
     }
-    // The L in HSL
+    /// <summary>
+    /// Gets the lightness component (L in HSL) of the color.
+    /// </summary>
+    /// <returns>The lightness value between 0 and 1.</returns>
     public float GetLightness()
     {
         GetRgbValues(out int r, out int g, out int b);
@@ -136,11 +184,19 @@ public readonly record struct Color : IEquatable<Color>, IParsable<Color>
 
         return (max + min) / (byte.MaxValue * 2f);
     }
+    /// <summary>
+    /// Gets the brightness of the color.
+    /// </summary>
+    /// <returns>The brightness value between 0 and 1.</returns>
     public float GetBrightness()
     {
         return (0.299f * R + 0.587f * G + 0.114f * B) / 255f;
     }
 
+    /// <summary>
+    /// Gets the hue component of the color.
+    /// </summary>
+    /// <returns>The hue value in degrees (0-360).</returns>
     public float GetHue()
     {
         GetRgbValues(out int r, out int g, out int b);
@@ -175,6 +231,10 @@ public readonly record struct Color : IEquatable<Color>, IParsable<Color>
         get => A < 255;
     }
    
+    /// <summary>
+    /// Gets the saturation component of the color.
+    /// </summary>
+    /// <returns>The saturation value between 0 and 1.</returns>
     public float GetSaturation()
     {
         GetRgbValues(out int r, out int g, out int b);
@@ -192,8 +252,21 @@ public readonly record struct Color : IEquatable<Color>, IParsable<Color>
         return (max - min) / (float)div;
     }
 
+    /// <summary>
+    /// Creates a Color from a string representation.
+    /// </summary>
+    /// <param name="hex">The string representation of the color.</param>
+    /// <returns>The created color.</returns>
     public static Color FromString(string hex) => Parse(hex, CultureInfo.InvariantCulture);
 
+    /// <summary>
+    /// Creates a Color from ARGB components.
+    /// </summary>
+    /// <param name="alpha">The alpha component (0-255).</param>
+    /// <param name="red">The red component (0-255).</param>
+    /// <param name="green">The green component (0-255).</param>
+    /// <param name="blue">The blue component (0-255).</param>
+    /// <returns>The created color.</returns>
     public static Color FromArgb(int alpha, int red, int green, int blue)
     {
         return new Color((uint)alpha << ARGBAlphaShift |
@@ -201,6 +274,13 @@ public readonly record struct Color : IEquatable<Color>, IParsable<Color>
                          (uint)green << ARGBGreenShift |
                          (uint)blue << ARGBBlueShift);
     }
+    /// <summary>
+    /// Creates a Color from RGB components with full opacity.
+    /// </summary>
+    /// <param name="red">The red component (0-255).</param>
+    /// <param name="green">The green component (0-255).</param>
+    /// <param name="blue">The blue component (0-255).</param>
+    /// <returns>The created color.</returns>
     public static Color FromRgb(int red, int green, int blue)
     {
         return new Color((uint)255 << ARGBAlphaShift |
@@ -209,11 +289,18 @@ public readonly record struct Color : IEquatable<Color>, IParsable<Color>
                          (uint)blue << ARGBBlueShift);
     }
     
-    // A == 0 - the color is fully transparent, A< 255 is partially transparent.
+    /// <summary>
+    /// Converts the color to a JSON string representation.
+    /// </summary>
+    /// <returns>A JSON-compatible string representation of the color.</returns>
     public string ToJson()
     {
         return IsTransparent ? $"#{Value:x8}" : $"#{Value:x6}";
     }
+    /// <summary>
+    /// Returns a string representation of the color.
+    /// </summary>
+    /// <returns>A string representation in rgba or hex format.</returns>
     public override string ToString()
     {
         // rgba(,,,1) - color is not transparent
@@ -222,6 +309,11 @@ public readonly record struct Color : IEquatable<Color>, IParsable<Color>
         return IsTransparent ? $"rgba({R},{G},{B},{(A / 255f).ToString(EN_US)})" : $"#{(Value & ~ARGBAlphaMask):x6}";
     }
     private static readonly CultureInfo EN_US = new CultureInfo("en-US");
+    /// <summary>
+    /// Creates a new color with adjusted transparency.
+    /// </summary>
+    /// <param name="d">The transparency factor (0 = fully transparent, 1 = original alpha).</param>
+    /// <returns>A new color with adjusted transparency.</returns>
     public Color MakeTransparent(float d)
     {
         float value = MathF.Min(MathF.Max(0, d), 1);

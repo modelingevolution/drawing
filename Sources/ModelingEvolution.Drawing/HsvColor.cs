@@ -6,8 +6,18 @@ using System.Text.Json.Serialization;
 
 namespace ModelingEvolution.Drawing;
 
+/// <summary>
+/// JSON converter for HsvColor that supports both string and array formats.
+/// </summary>
 public class JsonHsvColorConverter : JsonConverter<HsvColor>
 {
+    /// <summary>
+    /// Reads a JSON representation of an HsvColor.
+    /// </summary>
+    /// <param name="reader">The JSON reader.</param>
+    /// <param name="typeToConvert">The type to convert to.</param>
+    /// <param name="options">Serializer options.</param>
+    /// <returns>The deserialized HsvColor.</returns>
     public override HsvColor Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         if (reader.TokenType == JsonTokenType.String)
@@ -38,6 +48,12 @@ public class JsonHsvColorConverter : JsonConverter<HsvColor>
         }
     }
 
+    /// <summary>
+    /// Writes an HsvColor to JSON format.
+    /// </summary>
+    /// <param name="writer">The JSON writer.</param>
+    /// <param name="value">The HsvColor value to write.</param>
+    /// <param name="options">Serializer options.</param>
     public override void Write(Utf8JsonWriter writer, HsvColor value, JsonSerializerOptions options)
     {
         if (value.IsTransparent)
@@ -59,20 +75,42 @@ public class JsonHsvColorConverter : JsonConverter<HsvColor>
         }
     }
 }
+/// <summary>
+/// Represents a color in HSV (Hue, Saturation, Value) color space with optional alpha channel.
+/// </summary>
 [JsonConverter(typeof(JsonHsvColorConverter))]
 [ProtoContract]
 public readonly struct HsvColor : IEquatable<HsvColor>, IParsable<HsvColor>
 {
+    /// <summary>
+    /// Gets the hue component of the color in degrees (0-360).
+    /// </summary>
     [ProtoMember(1)]
     public float H { get; init; }  // Hue: 0-360 degrees
+    /// <summary>
+    /// Gets the saturation component of the color (0-1).
+    /// </summary>
     [ProtoMember(2)]
     public float S { get; init; }  // Saturation: 0-1
+    /// <summary>
+    /// Gets the value (brightness) component of the color (0-1).
+    /// </summary>
     [ProtoMember(3)]
     public float V { get; init; }  // Value: 0-1
 
+    /// <summary>
+    /// Gets the alpha (transparency) component of the color (0-1).
+    /// </summary>
     [ProtoMember(4)]
     public float A { get; }  // Alpha: 0-1
 
+    /// <summary>
+    /// Initializes a new instance of the HsvColor struct.
+    /// </summary>
+    /// <param name="hue">The hue component in degrees (0-360).</param>
+    /// <param name="saturation">The saturation component (0-1).</param>
+    /// <param name="value">The value (brightness) component (0-1).</param>
+    /// <param name="alpha">The alpha (transparency) component (0-1). Default is 1.0 (opaque).</param>
     public HsvColor(float hue, float saturation, float value, float alpha = 1f)
     {
         H = hue % 360f;
@@ -80,8 +118,15 @@ public readonly struct HsvColor : IEquatable<HsvColor>, IParsable<HsvColor>
         V = Math.Clamp(value, 0f, 1f);
         A = Math.Clamp(alpha, 0f, 1f);
     }
+    /// <summary>
+    /// Gets a value indicating whether the color has transparency (alpha less than 1.0).
+    /// </summary>
     public bool IsTransparent => A < 1f;
 
+    /// <summary>
+    /// Returns a string representation of the HsvColor in hsv() or hsva() format.
+    /// </summary>
+    /// <returns>A string representation of the color.</returns>
     public override string ToString()
     {
         return IsTransparent
@@ -90,6 +135,14 @@ public readonly struct HsvColor : IEquatable<HsvColor>, IParsable<HsvColor>
 
     }
 
+    /// <summary>
+    /// Parses a string representation of an HsvColor.
+    /// </summary>
+    /// <param name="s">The string to parse.</param>
+    /// <param name="provider">An optional format provider.</param>
+    /// <returns>The parsed HsvColor.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when the input string is null.</exception>
+    /// <exception cref="FormatException">Thrown when the input string is not in a valid format.</exception>
     public static HsvColor Parse(string s, IFormatProvider? provider = null)
     {
         ArgumentNullException.ThrowIfNull(s);
@@ -127,11 +180,24 @@ public readonly struct HsvColor : IEquatable<HsvColor>, IParsable<HsvColor>
 
         throw new FormatException("Invalid format. Expected hsv(360,100%,100%), hsv(360,1,1), hsva(360,100%,100%,1.0), [360,1,1] or #RRGGBB");
     }
+    /// <summary>
+    /// Tries to parse a string representation of an HsvColor.
+    /// </summary>
+    /// <param name="s">The string to parse.</param>
+    /// <param name="result">The parsed HsvColor if successful; otherwise, the default value.</param>
+    /// <returns>true if the parsing was successful; otherwise, false.</returns>
     public static bool TryParse([NotNullWhen(true)] string s,
         [MaybeNullWhen(false)] out HsvColor result)
     {
         return TryParse(s, null, out result);
     }
+    /// <summary>
+    /// Tries to parse a string representation of an HsvColor with a specified format provider.
+    /// </summary>
+    /// <param name="s">The string to parse.</param>
+    /// <param name="provider">An optional format provider.</param>
+    /// <param name="result">The parsed HsvColor if successful; otherwise, the default value.</param>
+    /// <returns>true if the parsing was successful; otherwise, false.</returns>
     public static bool TryParse([NotNullWhen(true)] string s, IFormatProvider? provider, [MaybeNullWhen(false)] out HsvColor result)
     {
         result = default;
@@ -190,6 +256,11 @@ public readonly struct HsvColor : IEquatable<HsvColor>, IParsable<HsvColor>
 
         return false;
     }
+    /// <summary>
+    /// Implicitly converts an HsvColor to a Color (RGB).
+    /// </summary>
+    /// <param name="hsv">The HsvColor to convert.</param>
+    /// <returns>The equivalent Color in RGB format.</returns>
     public static implicit operator Color(in HsvColor hsv)
     {
         float h = hsv.H / 60f;
@@ -213,6 +284,11 @@ public readonly struct HsvColor : IEquatable<HsvColor>, IParsable<HsvColor>
         return Color.FromArgb(alpha, red, green, blue);
     }
 
+    /// <summary>
+    /// Implicitly converts a Color (RGB) to an HsvColor.
+    /// </summary>
+    /// <param name="color">The Color to convert.</param>
+    /// <returns>The equivalent HsvColor.</returns>
     public static implicit operator HsvColor(Color color)
     {
         float r = color.R / 255f;
@@ -242,17 +318,43 @@ public readonly struct HsvColor : IEquatable<HsvColor>, IParsable<HsvColor>
 
         return new HsvColor(h, s, v, a);
     }
+    /// <summary>
+    /// Determines whether two HsvColor instances are equal.
+    /// </summary>
+    /// <param name="left">The first HsvColor to compare.</param>
+    /// <param name="right">The second HsvColor to compare.</param>
+    /// <returns>true if the colors are equal; otherwise, false.</returns>
     public static bool operator ==(in HsvColor left, in HsvColor right) =>
         MathF.Abs(left.H - right.H) < float.Epsilon && 
         MathF.Abs(left.S - right.S) < float.Epsilon && 
         MathF.Abs(left.V - right.V) < float.Epsilon && 
         MathF.Abs(left.A - right.A) < float.Epsilon;
 
+    /// <summary>
+    /// Determines whether two HsvColor instances are not equal.
+    /// </summary>
+    /// <param name="left">The first HsvColor to compare.</param>
+    /// <param name="right">The second HsvColor to compare.</param>
+    /// <returns>true if the colors are not equal; otherwise, false.</returns>
     public static bool operator !=(in HsvColor left, in HsvColor right) => !(left == right);
 
+    /// <summary>
+    /// Determines whether the specified object is equal to the current HsvColor.
+    /// </summary>
+    /// <param name="obj">The object to compare with the current HsvColor.</param>
+    /// <returns>true if the specified object is equal to the current HsvColor; otherwise, false.</returns>
     public override bool Equals(object obj) => obj is HsvColor other && Equals(other);
 
+    /// <summary>
+    /// Determines whether the specified HsvColor is equal to the current HsvColor.
+    /// </summary>
+    /// <param name="other">The HsvColor to compare with the current HsvColor.</param>
+    /// <returns>true if the specified HsvColor is equal to the current HsvColor; otherwise, false.</returns>
     public bool Equals(HsvColor other) => this == other;
 
+    /// <summary>
+    /// Returns the hash code for this HsvColor.
+    /// </summary>
+    /// <returns>A 32-bit signed integer hash code.</returns>
     public override int GetHashCode() => HashCode.Combine(H, S, V, A);
 }

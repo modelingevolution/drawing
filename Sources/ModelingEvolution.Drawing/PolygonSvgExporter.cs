@@ -5,10 +5,20 @@ using ModelingEvolution.Drawing.Svg;
 
 namespace ModelingEvolution.Drawing;
 
+/// <summary>
+/// SVG exporter for Polygon{T} objects that generates SVG path elements.
+/// </summary>
+/// <typeparam name="T">The numeric type used for polygon coordinates.</typeparam>
 public class PolygonSvgExporter<T> : ISvgExporter
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
     IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {
+    /// <summary>
+    /// Exports a Polygon{T} to SVG format as a closed path element.
+    /// </summary>
+    /// <param name="obj">The polygon object to export (must be of type Polygon{T}).</param>
+    /// <param name="paint">The paint settings for fill, stroke, and stroke width.</param>
+    /// <returns>An SVG path element string representing the polygon.</returns>
     public string Export(object obj, in SvgPaint paint)
     {
         var polygon = (Polygon<T>)obj;

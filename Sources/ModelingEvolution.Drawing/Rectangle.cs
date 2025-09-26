@@ -9,6 +9,10 @@ using ProtoBuf;
 
 namespace ModelingEvolution.Drawing;
 
+/// <summary>
+/// Represents a rectangle defined by its location and size, with generic numeric type support.
+/// </summary>
+/// <typeparam name="T">The numeric type used for coordinates and dimensions.</typeparam>
 [RectangleJsonConverterAttribute]
 [ProtoContract]
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -16,7 +20,7 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {
     /// <summary>
-    /// Initializes a new instance of the  class.
+    /// Represents a Rectangle with all properties set to zero.
     /// </summary>
     public static readonly Rectangle<T> Empty;
 
@@ -30,9 +34,12 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
     private T height; // Do not rename (binary serialization)
 
     /// <summary>
-    /// Initializes a new instance of the  class with the specified location
-    /// and size.
+    /// Initializes a new instance of the Rectangle struct with the specified location and size.
     /// </summary>
+    /// <param name="x">The x-coordinate of the upper-left corner of the rectangle.</param>
+    /// <param name="y">The y-coordinate of the upper-left corner of the rectangle.</param>
+    /// <param name="width">The width of the rectangle.</param>
+    /// <param name="height">The height of the rectangle.</param>
     public Rectangle(T x, T y, T width, T height)
     {
         this.x = x;
@@ -41,6 +48,10 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
         this.height = height;
     }
 
+    /// <summary>
+    /// Gets the four corner points of this rectangle.
+    /// </summary>
+    /// <returns>An enumerable of the four corner points (top-left, top-right, bottom-left, bottom-right).</returns>
     public IEnumerable<Point<T>> Points()
     {
         yield return new Point<T>(x, y);
@@ -49,9 +60,10 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
         yield return new Point<T>(x + width, y + height);
     }
     /// <summary>
-    /// Initializes a new instance of the  class with the specified location
-    /// and size.
+    /// Initializes a new instance of the Rectangle struct with the specified location and size.
     /// </summary>
+    /// <param name="location">The location of the upper-left corner of the rectangle.</param>
+    /// <param name="size">The size of the rectangle.</param>
     public Rectangle(Point<T> location, Size<T> size)
     {
         x = location.X;
@@ -60,6 +72,11 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
         height = size.Height;
     }
     
+    /// <summary>
+    /// Implicitly converts a generic Rectangle to a System.Drawing.Rectangle.
+    /// </summary>
+    /// <param name="rectangle">The rectangle to convert.</param>
+    /// <returns>A System.Drawing.Rectangle with integer coordinates.</returns>
     public static implicit operator System.Drawing.Rectangle(Rectangle<T> rectangle)
     {
         return new System.Drawing.Rectangle(
@@ -69,16 +86,26 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
             Convert.ToInt32(rectangle.Height)
         );
     }
+    /// <summary>
+    /// Creates a new rectangle with the same size but moved to the specified vector position.
+    /// </summary>
+    /// <param name="point">The new position for the rectangle.</param>
+    /// <returns>A new rectangle with the specified position.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Rectangle<T> MoveTo(Vector<T> point) => MoveTo((Point<T>)point);
 
+    /// <summary>
+    /// Creates a new rectangle with the same size but moved to the specified point.
+    /// </summary>
+    /// <param name="point">The new position for the rectangle.</param>
+    /// <returns>A new rectangle with the specified position.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Rectangle<T> MoveTo(Point<T> point) => new(point, Size);
 
     /// <summary>
-    /// Initializes a new instance of the  struct from the specified
-    /// <see cref="System.Numerics.Vector4"/>.
+    /// Initializes a new instance of the Rectangle struct from the specified Vector4.
     /// </summary>
+    /// <param name="vector">The Vector4 containing X, Y, Width, and Height values.</param>
     public Rectangle(Vector4 vector)
     {
         x =  T.CreateTruncating(vector.X);
@@ -87,6 +114,14 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
         height = T.CreateTruncating(vector.W);
     }
 
+    /// <summary>
+    /// Divides this rectangle into tiles of the specified size, with optional overlap.
+    /// </summary>
+    /// <param name="tileSize">The size of each tile.</param>
+    /// <param name="overlapPercentage">The percentage of overlap between adjacent tiles (0-1).</param>
+    /// <returns>An array of rectangles representing the tiles.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when overlap percentage is not in range [0, 1).</exception>
+    /// <exception cref="InvalidOperationException">Thrown when the tile count exceeds maximum allowable array size.</exception>
     public Rectangle<T>[] ComputeTiles( Size<T> tileSize, T overlapPercentage = default)
     {
         if (tileSize.Width <= T.Zero || tileSize.Height <= T.Zero || Width <= T.Zero || Height <= T.Zero)
@@ -131,17 +166,17 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
 
     
     /// <summary>
-    /// Creates a new <see cref="System.Numerics.Vector4"/> from this <see cref="System.Drawing.Rectangle<T>"/>.
+    /// Creates a new <see cref="System.Numerics.Vector4"/> from this <see cref="Rectangle{T}"/>.
     /// </summary>
     public Vector4 ToVector4() => new Vector4(float.CreateTruncating(x), float.CreateTruncating(y), float.CreateTruncating(width), float.CreateTruncating(height));
 
     /// <summary>
-    /// Converts the specified <see cref="System.Drawing.Rectangle<T>"/> to a <see cref="System.Numerics.Vector4"/>.
+    /// Converts the specified <see cref="Rectangle{T}"/> to a <see cref="System.Numerics.Vector4"/>.
     /// </summary>
     public static explicit operator Vector4(Rectangle<T> rectangle) => rectangle.ToVector4();
 
     /// <summary>
-    /// Converts the specified <see cref="System.Numerics.Vector2"/> to a <see cref="System.Drawing.Rectangle<T>"/>.
+    /// Converts the specified <see cref="System.Numerics.Vector2"/> to a <see cref="Rectangle{T}"/>.
     /// </summary>
     public static explicit operator Rectangle<T>(Vector4 vector) => new Rectangle<T>(vector);
 
@@ -151,10 +186,22 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
     public static Rectangle<T> FromLTRB(T left, T top, T right, T bottom) =>
         new Rectangle<T>(left, top, right - left, bottom - top);
 
+    /// <summary>
+    /// Translates a rectangle by a vector.
+    /// </summary>
+    /// <param name="rect">The rectangle to translate.</param>
+    /// <param name="vector">The vector to translate by.</param>
+    /// <returns>The translated rectangle.</returns>
     public static Rectangle<T> operator +(Rectangle<T> rect, Vector<T> vector)
     {
         return new Rectangle<T>(rect.Location + vector, rect.Size);
     }
+    /// <summary>
+    /// Translates a rectangle by the negative of a vector.
+    /// </summary>
+    /// <param name="rect">The rectangle to translate.</param>
+    /// <param name="vector">The vector to translate by (negated).</param>
+    /// <returns>The translated rectangle.</returns>
     public static Rectangle<T> operator -(Rectangle<T> rect, Vector<T> vector)
     {
         return new Rectangle<T>(rect.Location - vector, rect.Size);
@@ -228,8 +275,7 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
     }
 
     /// <summary>
-    /// Gets the x-coordinate of the upper-left corner of the rectangular region defined by this
-    
+    /// Gets the x-coordinate of the upper-left corner of the rectangular region defined by this Rectangle.
     /// </summary>
     [Browsable(false)]
     public readonly T Left => X;
@@ -256,17 +302,22 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
     public readonly T Bottom => Y + Height;
 
     /// <summary>
-    /// Tests whether this  has a <see cref='System.Drawing.Rectangle<T>.Width'/> or a <see cref='System.Drawing.Rectangle<T>.Height'/> of 0.
+    /// Tests whether this Rectangle has a <see cref='System.Drawing.Rectangle{T}.Width'/> or a <see cref='System.Drawing.Rectangle{T}.Height'/> of 0.
     /// </summary>
     [Browsable(false)]
     public readonly bool IsEmpty => (Width <= T.Zero) || (Height <= T.Zero);
 
     /// <summary>
-    /// Tests whether <paramref name="obj"/> is a  with the same location and
-    /// size of this 
+    /// Tests whether <paramref name="obj"/> is a Rectangle with the same location and
+    /// size of this Rectangle.
     /// </summary>
     public override readonly bool Equals([NotNullWhen(true)] object? obj) => obj is Rectangle<T> && Equals((Rectangle<T>)obj);
 
+    /// <summary>
+    /// Tests whether the specified Rectangle has the same location and size as this Rectangle.
+    /// </summary>
+    /// <param name="other">The Rectangle to compare with this Rectangle.</param>
+    /// <returns>true if the specified Rectangle has the same location and size as this Rectangle; otherwise, false.</returns>
     public readonly bool Equals(Rectangle<T> other) => this == other;
 
     /// <summary>
@@ -369,6 +420,12 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
     public readonly bool IntersectsWith(Rectangle<T> rect) =>
         (rect.X < X + Width) && (X < rect.X + rect.Width) && (rect.Y < Y + Height) && (Y < rect.Y + rect.Height);
 
+    /// <summary>
+    /// Computes the bounding rectangle that contains all the specified rectangles.
+    /// </summary>
+    /// <param name="rects">The rectangles to compute bounds for.</param>
+    /// <returns>The smallest rectangle that contains all specified rectangles.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when rects is null.</exception>
     public static Rectangle<T> Bounds(IEnumerable<Rectangle<T>> rects)
     {
         if (rects == null) throw new ArgumentNullException(nameof(rects));
@@ -396,6 +453,10 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
 
         return new Rectangle<T>(x1, y1, x2 - x1, y2 - y1);
     }
+    /// <summary>
+    /// Gets the center point of this rectangle.
+    /// </summary>
+    /// <returns>The center point of the rectangle.</returns>
     public  Point<T> Center() 
     {
         var t2 = T.One + T.One;
@@ -425,12 +486,19 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
         T.CreateTruncating(r.Y), T.CreateTruncating(r.Width), T.CreateTruncating(r.Height));
 
     /// <summary>
-    /// Converts the <see cref='System.Drawing.Rectangle<T>.Location'/> and <see cref='System.Drawing.Rectangle<T>.Size'/>
-    /// of this  to a human-readable string.
+    /// Converts the <see cref='System.Drawing.Rectangle{T}.Location'/> and <see cref='System.Drawing.Rectangle{T}.Size'/>
+    /// of this Rectangle to a human-readable string.
     /// </summary>
     public override readonly string ToString() => $"[{X} {Y} {Width} {Height}]";
 
     private static readonly char[] splitChars = new[] { ' ', ',' };
+    /// <summary>
+    /// Parses a string representation of a rectangle.
+    /// </summary>
+    /// <param name="s">The string to parse.</param>
+    /// <param name="provider">An optional format provider.</param>
+    /// <returns>The parsed rectangle.</returns>
+    /// <exception cref="ArgumentException">Thrown when the string cannot be parsed as a rectangle.</exception>
     public static Rectangle<T> Parse(string s, IFormatProvider? provider = null)
     {
         if (TryParse(s, provider, out var r))
@@ -440,6 +508,13 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
         throw new ArgumentException($"Could not parse string {s} as rectangle.");
     }
 
+    /// <summary>
+    /// Tries to parse a string representation of a rectangle.
+    /// </summary>
+    /// <param name="s">The string to parse.</param>
+    /// <param name="provider">An optional format provider.</param>
+    /// <param name="result">When this method returns, contains the parsed rectangle if successful; otherwise, Empty.</param>
+    /// <returns>true if parsing was successful; otherwise, false.</returns>
     public static bool TryParse(string? s, IFormatProvider? provider, out Rectangle<T> result)
     {
         var items = s.Split(splitChars, StringSplitOptions.RemoveEmptyEntries);
@@ -471,6 +546,10 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
         return false;
     }
 
+    /// <summary>
+    /// Creates a rectangle with random position and size.
+    /// </summary>
+    /// <returns>A rectangle with random values.</returns>
     public static Rectangle<T> Random()
     {
         return new Rectangle<T>(Point<T>.Random(), new Size<T>(T.CreateTruncating(System.Random.Shared.NextDouble())));

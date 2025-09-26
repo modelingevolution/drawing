@@ -16,8 +16,10 @@ namespace ModelingEvolution.Drawing;
 [JsonConverter(typeof(PolygonJsonConverterFactory))]
 [ProtoContract]
 /// <summary>
-/// This struct is not immutable, athrough operators are immutable.
+/// Represents a polygon defined by a collection of points. This struct supports various geometric operations
+/// including area calculation, boolean operations, and transformations.
 /// </summary>
+/// <typeparam name="T">The numeric type used for coordinates.</typeparam>
 public readonly record struct Polygon<T>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
     IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -25,6 +27,11 @@ public readonly record struct Polygon<T>
     [ProtoMember(1)] 
     internal readonly IList<Point<T>> _points;
 
+    /// <summary>
+    /// Calculates the area of this polygon using the shoelace formula.
+    /// </summary>
+    /// <returns>The area of the polygon.</returns>
+    /// <exception cref="ArgumentException">Thrown when the polygon has fewer than 3 points.</exception>
     public T Area()
     {
         int n = _points.Count;
@@ -45,15 +52,28 @@ public readonly record struct Polygon<T>
         area = T.Abs(area) / (T.One + T.One);
         return area;
     }
+    /// <summary>
+    /// Explicitly converts a polygon to its bounding rectangle.
+    /// </summary>
+    /// <param name="t">The polygon to convert.</param>
+    /// <returns>The bounding rectangle of the polygon.</returns>
     public static explicit operator Rectangle<T>(Polygon<T> t)
     {
         return t.BoundingBox();
     }
+    /// <summary>
+    /// Implicitly converts a rectangle to a polygon with four corner points.
+    /// </summary>
+    /// <param name="t">The rectangle to convert.</param>
+    /// <returns>A polygon representing the rectangle.</returns>
     public static implicit operator Polygon<T>(Rectangle<T> t)
     {
         return new Polygon<T>(t.Points().ToList());
     }
-    // Implement computation of bounding box
+    /// <summary>
+    /// Computes the bounding box (axis-aligned rectangle) that encloses all points of this polygon.
+    /// </summary>
+    /// <returns>The smallest rectangle that contains all points of the polygon.</returns>
     public Rectangle<T> BoundingBox()
     {
         if (_points.Count == 0)
@@ -91,13 +111,27 @@ public readonly record struct Polygon<T>
 
         return new Rectangle<T>(minX, minY, maxX - minX, maxY - minY);
     }
+    /// <summary>
+    /// Determines whether the polygon contains the specified point in its vertex collection.
+    /// </summary>
+    /// <param name="item">The point to locate in the polygon.</param>
+    /// <returns>true if the point is found in the polygon's vertices; otherwise, false.</returns>
     public bool Contains(in Point<T> item)
     {
         return _points.Contains(item);
     }
+    /// <summary>
+    /// Gets a value indicating whether the polygon is read-only. Always returns true.
+    /// </summary>
     [JsonIgnore]
     public bool IsReadOnly => true;
 
+    /// <summary>
+    /// Multiplies (scales) a polygon by a size, scaling each vertex.
+    /// </summary>
+    /// <param name="a">The polygon to scale.</param>
+    /// <param name="f">The size to scale by.</param>
+    /// <returns>A new polygon with scaled vertices.</returns>
     public static Polygon<T> operator *(in Polygon<T> a,in Size<T> f)
     {
         var points = new List<Point<T>>(a._points.Count);
@@ -110,6 +144,12 @@ public readonly record struct Polygon<T>
         return new Polygon<T>(points);
     }
 
+    /// <summary>
+    /// Divides (scales down) a polygon by a size, scaling each vertex.
+    /// </summary>
+    /// <param name="a">The polygon to scale.</param>
+    /// <param name="f">The size to divide by.</param>
+    /// <returns>A new polygon with scaled vertices.</returns>
     public static Polygon<T> operator /(in Polygon<T> a,in Size<T> f)
     {
         var points = new List<Point<T>>(a._points.Count);
@@ -121,10 +161,23 @@ public readonly record struct Polygon<T>
 
         return new Polygon<T>(points);
     }
+    /// <summary>
+    /// Determines whether this polygon overlaps with another polygon.
+    /// </summary>
+    /// <param name="other">The other polygon to check for overlap.</param>
+    /// <returns>true if the polygons overlap; otherwise, false.</returns>
     public bool IsOverlapping(in Polygon<T> other)
     {
         return this.Intersect(other).Count > 0;
     }
+    /// <summary>
+    /// Clusters items based on their polygon representations, grouping overlapping items together.
+    /// </summary>
+    /// <typeparam name="D">The type of items to cluster.</typeparam>
+    /// <param name="items">The items to cluster.</param>
+    /// <param name="polygonGetter">Function to extract polygon from each item.</param>
+    /// <param name="factory">Function to create a clustered item from a group of items and their union polygon.</param>
+    /// <returns>An enumerable of clustered items.</returns>
     public static IEnumerable<D> Cluster<D>(
         IEnumerable<D> items,
         Func<D, Polygon<T>> polygonGetter,
@@ -179,6 +232,15 @@ public readonly record struct Polygon<T>
 
         });
     }
+    /// <summary>
+    /// Recursively clusters items based on their polygon representations, grouping overlapping items together.
+    /// Uses recursive union operations for merging polygon clusters.
+    /// </summary>
+    /// <typeparam name="D">The type of items to cluster.</typeparam>
+    /// <param name="items">The items to cluster.</param>
+    /// <param name="polygonGetter">Function to extract polygon from each item.</param>
+    /// <param name="factory">Function to create a clustered item from a group of items and their union polygon.</param>
+    /// <returns>An enumerable of clustered items with recursively merged polygons.</returns>
     public static IEnumerable<D> ClusterRecursive<D>(
         IEnumerable<D> items,
         Func<D, Polygon<T>> polygonGetter,
@@ -233,6 +295,11 @@ public readonly record struct Polygon<T>
 
         });
     }
+    /// <summary>
+    /// Clusters polygons by grouping overlapping ones together and merging each cluster into a single polygon.
+    /// </summary>
+    /// <param name="polygons">The polygons to cluster.</param>
+    /// <returns>An enumerable of clustered polygons, where each result represents a merged cluster.</returns>
     public static IEnumerable<Polygon<T>> Cluster(IEnumerable<Polygon<T>> polygons)
     {
         if (polygons == null! || !polygons!.Any())
@@ -274,6 +341,11 @@ public readonly record struct Polygon<T>
         // Union polygons in each cluster
         return clusters.Select(x => Union(x, true).Single());
     }
+    /// <summary>
+    /// Recursively clusters polygons by grouping overlapping ones together and merging each cluster using recursive union operations.
+    /// </summary>
+    /// <param name="polygons">The polygons to cluster.</param>
+    /// <returns>An enumerable of clustered polygons, where each result represents a recursively merged cluster.</returns>
     public static IEnumerable<Polygon<T>> ClusterRecursive(IEnumerable<Polygon<T>> polygons)
     {
         if (polygons == null! || !polygons!.Any())
@@ -315,12 +387,21 @@ public readonly record struct Polygon<T>
         // Union polygons in each cluster
         return clusters.Select(x => UnionRecursive(x));
     }
+    /// <summary>
+    /// Determines whether the specified polygon is equal to this polygon by comparing their point sequences.
+    /// </summary>
+    /// <param name="other">The polygon to compare with this polygon.</param>
+    /// <returns>true if the specified polygon is equal to this polygon; otherwise, false.</returns>
     public bool Equals(Polygon<T> other)
     {
         if (object.ReferenceEquals(_points, other._points)) return true;
         return this._points.SequenceEqual(other._points);
     }
 
+    /// <summary>
+    /// Returns the hash code for this polygon based on its point collection.
+    /// </summary>
+    /// <returns>A hash code for this polygon.</returns>
     public override int GetHashCode()
     {
         return _points.GetHashCode();
@@ -351,6 +432,12 @@ public readonly record struct Polygon<T>
         if (!Clipper.IsPositive(path)) path.Reverse();
         return path;
     }
+    /// <summary>
+    /// Computes the union of this polygon with another polygon using an alternative algorithm.
+    /// </summary>
+    /// <param name="other">The other polygon to union with.</param>
+    /// <param name="removeHoles">Whether to remove holes from the result.</param>
+    /// <returns>A list of resulting polygons from the union operation.</returns>
     public List<Polygon<T>> Union2(in Polygon<T> other, bool removeHoles = false)
     {
         var subject = new PathsD { ToClipper2Path(), other.ToClipper2Path() };
@@ -367,6 +454,12 @@ public readonly record struct Polygon<T>
 
         return results;
     }
+    /// <summary>
+    /// Computes the union of this polygon with another polygon.
+    /// </summary>
+    /// <param name="other">The other polygon to union with.</param>
+    /// <param name="removeHoles">Whether to remove holes from the result.</param>
+    /// <returns>A list of resulting polygons from the union operation.</returns>
     public List<Polygon<T>> Union(in Polygon<T> other, bool removeHoles = false)
     {
         var subject = new PathsD { ToClipper2Path() };
@@ -404,6 +497,8 @@ public readonly record struct Polygon<T>
     /// Intersects this polygon with another polygon.
     /// Returns a list of resulting polygons, as the intersection may create multiple distinct polygons.
     /// </summary>
+    /// <param name="other">The polygon to intersect with this polygon.</param>
+    /// <returns>A list of polygons representing the intersection areas.</returns>
     public List<Polygon<T>> Intersect(in Polygon<T> other)
     {
         var subject = new PathsD { ToClipper2Path() };
@@ -419,6 +514,11 @@ public readonly record struct Polygon<T>
 
         return results;
     }
+    /// <summary>
+    /// Subtracts another polygon from this polygon (boolean difference operation).
+    /// </summary>
+    /// <param name="other">The polygon to subtract from this polygon.</param>
+    /// <returns>A list of resulting polygons from the subtraction operation.</returns>
     public List<Polygon<T>> Subtract(in Polygon<T> other)
     {
         var subject = new PathsD { ToClipper2Path() };
@@ -439,6 +539,10 @@ public readonly record struct Polygon<T>
     /// Returns the result if it is a single polygon.
     /// Throws InvalidOperationException if the subtraction would result in multiple disconnected polygons.
     /// </summary>
+    /// <param name="a">The polygon to subtract from.</param>
+    /// <param name="b">The polygon to subtract.</param>
+    /// <returns>The resulting polygon after subtraction.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when the subtraction results in multiple disconnected polygons.</exception>
     public static Polygon<T> operator -(in Polygon<T> a, in Polygon<T> b)
     {
         var results = a.Subtract(b);
@@ -450,7 +554,7 @@ public readonly record struct Polygon<T>
     }
     
     /// <summary>
-    /// Performs intersection between two polygons using the & operator.
+    /// Performs intersection between two polygons using the &amp; operator.
     /// Returns the intersected polygon if the result is a single polygon.
     /// Throws InvalidOperationException if the intersection would result in multiple disconnected polygons.
     /// </summary>
@@ -464,6 +568,12 @@ public readonly record struct Polygon<T>
         return results[0];
     }
 
+    /// <summary>
+    /// Computes the union of multiple polygons using recursive operations, merging them one by one.
+    /// </summary>
+    /// <param name="polygons">The collection of polygons to union.</param>
+    /// <returns>A single polygon representing the union of all input polygons.</returns>
+    /// <exception cref="InvalidOperationException">Thrown when polygons collection is empty or contains no polygons.</exception>
     public static Polygon<T> UnionRecursive(IEnumerable<Polygon<T>> polygons)
     {
         var array = polygons.ToArray();
@@ -477,6 +587,12 @@ public readonly record struct Polygon<T>
         return tmp;
     }
 
+    /// <summary>
+    /// Computes the union of multiple polygons using batch operations.
+    /// </summary>
+    /// <param name="polygons">The collection of polygons to union.</param>
+    /// <param name="removeHoles">Whether to remove holes from the result polygons.</param>
+    /// <returns>A list of polygons representing the union of all input polygons.</returns>
     public static List<Polygon<T>> Union(IEnumerable<Polygon<T>> polygons, bool removeHoles = false)
     {
         if (!polygons.Any())
@@ -525,6 +641,12 @@ public readonly record struct Polygon<T>
 
     
 
+    /// <summary>
+    /// Computes the intersection of this polygon with the specified rectangle.
+    /// Returns the intersection areas as a collection of polygons.
+    /// </summary>
+    /// <param name="rect">The rectangle to intersect with this polygon.</param>
+    /// <returns>An enumerable collection of polygons representing the intersection areas.</returns>
     public IEnumerable<Polygon<T>> Intersect( Rectangle<T> rect)
     {
         var subject = new PathsD { ToClipper2Path() };
@@ -547,6 +669,12 @@ public readonly record struct Polygon<T>
 
     
 
+    /// <summary>
+    /// Translates a polygon by subtracting a vector from each vertex.
+    /// </summary>
+    /// <param name="a">The polygon to translate.</param>
+    /// <param name="f">The vector to subtract from each vertex.</param>
+    /// <returns>A new polygon with all vertices translated by the negative of the vector.</returns>
     public static Polygon<T> operator -(in Polygon<T> a, in ModelingEvolution.Drawing.Vector<T> f)
     {
         var newPoints = new List<Point<T>>(a._points.Count);
@@ -557,6 +685,12 @@ public readonly record struct Polygon<T>
         return new Polygon<T>(newPoints);
     }
 
+    /// <summary>
+    /// Translates a polygon by adding a vector to each vertex.
+    /// </summary>
+    /// <param name="a">The polygon to translate.</param>
+    /// <param name="f">The vector to add to each vertex.</param>
+    /// <returns>A new polygon with all vertices translated by the vector.</returns>
     public static Polygon<T> operator +(in Polygon<T> a, in ModelingEvolution.Drawing.Vector<T> f)
     {
         var newPoints = new List<Point<T>>(a._points.Count);
@@ -568,11 +702,11 @@ public readonly record struct Polygon<T>
     }
 
     /// <summary>
-    ///  Adds point at the end of the polygon.
+    /// Adds a point at the end of the polygon, creating a new polygon with an additional vertex.
     /// </summary>
-    /// <param name="a"></param>
-    /// <param name="f"></param>
-    /// <returns></returns>
+    /// <param name="a">The polygon to add the point to.</param>
+    /// <param name="f">The point to add to the polygon.</param>
+    /// <returns>A new polygon with the specified point added as the last vertex.</returns>
     public static Polygon<T> operator +(in Polygon<T> a, in ModelingEvolution.Drawing.Point<T> f)
     {
         var ret = new Polygon<T>(a.Points.ToList(a._points.Count + 1));
@@ -581,24 +715,56 @@ public readonly record struct Polygon<T>
     }
 
 
+    /// <summary>
+    /// Inserts a point at the specified index in the polygon's vertex collection.
+    /// </summary>
+    /// <param name="index">The zero-based index at which to insert the point.</param>
+    /// <param name="point">The point to insert.</param>
     public void InsertAt(int index, Point<T> point) => _points.Insert(index, point);
+    
+    /// <summary>
+    /// Adds a point to the end of the polygon's vertex collection.
+    /// </summary>
+    /// <param name="index">This parameter is not used and will be ignored.</param>
+    /// <param name="point">The point to add.</param>
     public void Add(int index, Point<T> point) => _points.Add(point);
+    
+    /// <summary>
+    /// Removes the point at the specified index from the polygon's vertex collection.
+    /// </summary>
+    /// <param name="index">The zero-based index of the point to remove.</param>
     public void RemoveAt(int index) => _points.RemoveAt(index);
 
+    /// <summary>
+    /// Initializes a new instance of the Polygon struct with the specified list of points.
+    /// </summary>
+    /// <param name="points">The list of points that define the polygon vertices.</param>
     public Polygon(IList<Point<T>> points)
     {
         _points = points;
     }
 
+    /// <summary>
+    /// Initializes a new instance of the Polygon struct with no points (empty polygon).
+    /// </summary>
     public Polygon() : this(Array.Empty<T>())
     {
         
     }
+    /// <summary>
+    /// Initializes a new instance of the Polygon struct with the specified array of points.
+    /// </summary>
+    /// <param name="points">The array of points that define the polygon vertices.</param>
     public Polygon(params Point<T>[] points) : this(points.ToList())
     {
         
     }
 
+    /// <summary>
+    /// Initializes a new instance of the Polygon struct from a flat list of coordinate values.
+    /// The coordinates are interpreted as pairs (x1, y1, x2, y2, ...).
+    /// </summary>
+    /// <param name="points">The flat list of coordinate values.</param>
     public Polygon(IReadOnlyList<T> points)
     {
         _points = new List<Point<T>>(points.Count / 2);
@@ -608,15 +774,26 @@ public readonly record struct Polygon<T>
         }
     }
 
+    /// <summary>
+    /// Gets the number of vertices in this polygon.
+    /// </summary>
     [JsonIgnore]
     public int Count => _points?.Count ?? 0;
 
+    /// <summary>
+    /// Gets or sets the vertex at the specified index.
+    /// </summary>
+    /// <param name="index">The zero-based index of the vertex to get or set.</param>
+    /// <returns>The vertex at the specified index.</returns>
     public Point<T> this[int index]
     {
         get { return _points[index]; }
         set => _points[index] = value;  
     }
 
+    /// <summary>
+    /// Gets a read-only collection of all vertices in this polygon.
+    /// </summary>
     public IReadOnlyList<Point<T>> Points => (IReadOnlyList<Point<T>>)(_points ?? Array.Empty<Point<T>>());
 
     

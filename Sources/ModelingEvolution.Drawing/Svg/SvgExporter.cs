@@ -7,33 +7,87 @@ using System.Threading.Tasks;
 
 namespace ModelingEvolution.Drawing.Svg
 {
+    /// <summary>
+    /// Attribute that specifies the SVG exporter type for a class.
+    /// </summary>
+    /// <param name="exporterType">The type that implements ISvgExporter or ISvgExporterFactory.</param>
     public class SvgExporterAttribute(Type exporterType) : Attribute
     {
+        /// <summary>
+        /// Gets the exporter type specified for this attribute.
+        /// </summary>
         public Type Exporter => exporterType;
     }
 
 
+    /// <summary>
+    /// Represents paint settings for SVG elements including fill, stroke, and dimensions.
+    /// </summary>
+    /// <param name="Fill">The fill color.</param>
+    /// <param name="Stroke">The stroke color.</param>
+    /// <param name="StrokeWidth">The stroke width (default: 1f).</param>
+    /// <param name="PointRadius">The point radius for point elements (default: 2f).</param>
     public readonly record struct SvgPaint(Color Fill, Color Stroke, float StrokeWidth=1f, float PointRadius = 2f)
     {
+        /// <summary>
+        /// Creates an SvgPaint with only fill color (no stroke).
+        /// </summary>
+        /// <param name="fill">The fill color to use.</param>
+        /// <returns>An SvgPaint with the specified fill and transparent stroke.</returns>
         public static SvgPaint WithFill(Color fill) => new SvgPaint(fill, Colors.Transparent, 0);
+        
+        /// <summary>
+        /// Creates an SvgPaint with only stroke (no fill).
+        /// </summary>
+        /// <param name="stroke">The stroke color to use.</param>
+        /// <param name="strokeWidth">The stroke width (default: 1f).</param>
+        /// <returns>An SvgPaint with the specified stroke and transparent fill.</returns>
         public static SvgPaint WithStroke(Color stroke, float strokeWidth=1f) => new SvgPaint(Colors.Transparent, stroke, strokeWidth);
 
     }
 
+    /// <summary>
+    /// Factory interface for creating SVG exporters for specific types.
+    /// </summary>
     public interface ISvgExporterFactory
     {
+        /// <summary>
+        /// Creates an SVG exporter for the specified type.
+        /// </summary>
+        /// <param name="obj">The type to create an exporter for.</param>
+        /// <returns>An SVG exporter instance for the specified type.</returns>
         ISvgExporter Create(Type obj);
     }
+    /// <summary>
+    /// Interface for exporting objects to SVG format.
+    /// </summary>
     public interface ISvgExporter
     {
+        /// <summary>
+        /// Exports an object to SVG format.
+        /// </summary>
+        /// <param name="obj">The object to export.</param>
+        /// <param name="paint">The paint settings to apply.</param>
+        /// <returns>An SVG string representation of the object.</returns>
         public string Export(object obj, in SvgPaint paint);
     }
     
+    /// <summary>
+    /// Static class providing methods to export objects to SVG format.
+    /// </summary>
     public static class SvgExporter
     {
         private static readonly ConcurrentDictionary<Type, ISvgExporter> _exporter = new();
 
 
+        /// <summary>
+        /// Exports an object to SVG format with the specified dimensions and fill color.
+        /// </summary>
+        /// <param name="obj">The object to export to SVG.</param>
+        /// <param name="width">The width of the SVG canvas.</param>
+        /// <param name="height">The height of the SVG canvas.</param>
+        /// <param name="fill">The fill color to apply to the exported object.</param>
+        /// <returns>A complete SVG string representation of the object with the specified dimensions and fill.</returns>
         public static string Export(object obj, int width, int height, Color fill) =>
             Export(obj, width, height, SvgPaint.WithFill(fill));
 
@@ -56,7 +110,7 @@ namespace ModelingEvolution.Drawing.Svg
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="items"/> is null.</exception>
         /// <example>
         /// The following example demonstrates how to use the Export method:
-        /// <code>
+        /// <code><![CDATA[
         /// // Define a class with a Polygon property
         /// public class MyObject
         /// {
@@ -80,7 +134,7 @@ namespace ModelingEvolution.Drawing.Svg
         /// );
         ///
         /// Console.WriteLine(svg);
-        /// </code>
+        /// ]]></code>
         /// </example>
         public static string Export<T>(IEnumerable<T> items, Func<T, object> objectSelector, Func<T, SvgPaint> paintSelector, int width, int height)
         {

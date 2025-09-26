@@ -2,10 +2,24 @@
 
 namespace ModelingEvolution.Drawing.Equations;
 
+/// <summary>
+/// Represents a cubic equation of the form ax³ + bx² + cx + d = 0.
+/// </summary>
+/// <typeparam name="T">The numeric type used for coefficients.</typeparam>
 public readonly record struct CubicEquation<T>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
+    /// <summary>
+    /// The coefficients of the cubic equation.
+    /// </summary>
     private readonly T a, b, c, d;
+    /// <summary>
+    /// Initializes a new instance of the CubicEquation struct.
+    /// </summary>
+    /// <param name="a">The coefficient of the x³ term.</param>
+    /// <param name="b">The coefficient of the x² term.</param>
+    /// <param name="c">The coefficient of the x term.</param>
+    /// <param name="d">The constant term.</param>
     public CubicEquation(T a, T b, T c, T d)
     {
         this.a = a;
@@ -14,6 +28,10 @@ public readonly record struct CubicEquation<T>
         this.d = d;
     }
 
+    /// <summary>
+    /// Returns a string representation of this cubic equation.
+    /// </summary>
+    /// <returns>A string representation in the format "ax^3 + bx^2 + cx + d".</returns>
     public override string ToString()
     {
         return $"{a}x^3 + {b}x^2 + {c}x + {d}";
@@ -24,15 +42,29 @@ public readonly record struct CubicEquation<T>
     private static readonly T t27 = T.CreateTruncating(27);
     private static readonly T t8 = T.CreateTruncating(9);
     private static readonly T t4 = T.CreateTruncating(4);
+    /// <summary>
+    /// Evaluates the cubic equation at the given x value.
+    /// </summary>
+    /// <param name="x">The x value to evaluate.</param>
+    /// <returns>The result of the cubic equation.</returns>
     private T Evaluate(T x)
     {
         return a * x * x * x + b * x * x + c * x + d;
     }
 
+    /// <summary>
+    /// Evaluates the derivative of the cubic equation at the given x value.
+    /// </summary>
+    /// <param name="x">The x value to evaluate.</param>
+    /// <returns>The result of the derivative.</returns>
     private T EvaluateDerivative(T x)
     {
         return t3 * a * x * x + t2 * b * x + c;
     }
+    /// <summary>
+    /// Calculates all real roots of the cubic equation.
+    /// </summary>
+    /// <returns>An array containing all real roots of the equation.</returns>
     public T[] ZeroPoints()
     {
         // Handle the special case where the equation is not actually cubic
@@ -83,6 +115,11 @@ public readonly record struct CubicEquation<T>
 
 
     }
+    /// <summary>
+    /// Finds a root of the cubic equation using Newton's method with the specified initial guess.
+    /// </summary>
+    /// <param name="initialGuess">The initial guess for the root.</param>
+    /// <returns>A root of the cubic equation.</returns>
     public T FindRoot(T initialGuess)
     {
         T x = initialGuess;

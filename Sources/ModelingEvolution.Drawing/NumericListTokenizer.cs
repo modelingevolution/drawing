@@ -25,6 +25,11 @@ internal class NumericListTokenizer
         _separator = GetSeparator(formatProvider ?? throw new ArgumentNullException(nameof(formatProvider)));
     }
 
+    /// <summary>
+    /// Gets the appropriate separator character based on the format provider's decimal separator.
+    /// </summary>
+    /// <param name="formatProvider">The format provider to examine.</param>
+    /// <returns>The separator character (',' if decimal separator is not ',', otherwise ';').</returns>
     public static char GetSeparator(IFormatProvider formatProvider)
     {
         // By convention, string representations of target classes always use ';' as a separator

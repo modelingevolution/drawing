@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
 using System.Text;
+using System.Text.Json.Serialization;
 using ModelingEvolution.Drawing.Svg;
 
 namespace ModelingEvolution.Drawing;
@@ -12,6 +13,7 @@ namespace ModelingEvolution.Drawing;
 /// </summary>
 /// <typeparam name="T">The numeric type for the coordinates.</typeparam>
 [SvgExporter(typeof(PathSvgExporterFactory))]
+[JsonConverter(typeof(PathJsonConverterFactory))]
 public readonly record struct Path<T> : IParsable<Path<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {

@@ -50,6 +50,26 @@ public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
     {
         return new Point<T>(T.CreateTruncating(point.X), T.CreateTruncating(point.Y));
     }
+
+    /// <summary>
+    /// Implicitly converts a tuple to a Point.
+    /// </summary>
+    /// <param name="tuple">The tuple containing X and Y coordinates.</param>
+    /// <returns>A Point with the specified coordinates.</returns>
+    public static implicit operator Point<T>((T x, T y) tuple)
+    {
+        return new Point<T>(tuple.x, tuple.y);
+    }
+
+    /// <summary>
+    /// Implicitly converts a Point to a tuple.
+    /// </summary>
+    /// <param name="point">The Point to convert.</param>
+    /// <returns>A tuple containing the X and Y coordinates.</returns>
+    public static implicit operator (T x, T y)(Point<T> point)
+    {
+        return (point.x, point.y);
+    }
     /// <summary>
     /// Generates a random point within the specified dimensions.
     /// </summary>

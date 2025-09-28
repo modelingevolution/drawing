@@ -66,6 +66,26 @@ public struct Size<T> : IEquatable<Size<T>>, IParsable<Size<T>>, ISize<T>
             T.CreateTruncating(size.Height)
         );
     }
+
+    /// <summary>
+    /// Implicitly converts a tuple to a Size.
+    /// </summary>
+    /// <param name="tuple">The tuple containing Width and Height values.</param>
+    /// <returns>A Size with the specified dimensions.</returns>
+    public static implicit operator Size<T>((T width, T height) tuple)
+    {
+        return new Size<T>(tuple.width, tuple.height);
+    }
+
+    /// <summary>
+    /// Implicitly converts a Size to a tuple.
+    /// </summary>
+    /// <param name="size">The Size to convert.</param>
+    /// <returns>A tuple containing the Width and Height values.</returns>
+    public static implicit operator (T width, T height)(Size<T> size)
+    {
+        return (size.width, size.height);
+    }
     /// <summary>
     /// Initializes a new instance of the <see cref='Size{T}'/> class from the specified
     /// <see cref='Point{T}'/>.

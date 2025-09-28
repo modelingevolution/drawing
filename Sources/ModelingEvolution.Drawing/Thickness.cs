@@ -32,6 +32,22 @@ namespace ModelingEvolution.Drawing
             Top = Bottom = y;
             Left = Right = x;
         }
+
+        /// <summary>
+        /// Initializes a new instance with all four thickness values.
+        /// </summary>
+        /// <param name="left">The left thickness value.</param>
+        /// <param name="top">The top thickness value.</param>
+        /// <param name="right">The right thickness value.</param>
+        /// <param name="bottom">The bottom thickness value.</param>
+        public Thickness(T left, T top, T right, T bottom)
+        {
+            Left = left;
+            Top = top;
+            Right = right;
+            Bottom = bottom;
+        }
+
         /// <summary>
         /// Gets the top thickness value.
         /// </summary>
@@ -48,6 +64,26 @@ namespace ModelingEvolution.Drawing
         /// Gets the left thickness value.
         /// </summary>
         public T Left { get; init; }
+
+        /// <summary>
+        /// Implicitly converts a tuple to a Thickness.
+        /// </summary>
+        /// <param name="tuple">The tuple containing Left, Top, Right, and Bottom thickness values.</param>
+        /// <returns>A Thickness with the specified values.</returns>
+        public static implicit operator Thickness<T>((T left, T top, T right, T bottom) tuple)
+        {
+            return new Thickness<T>(tuple.left, tuple.top, tuple.right, tuple.bottom);
+        }
+
+        /// <summary>
+        /// Implicitly converts a Thickness to a tuple.
+        /// </summary>
+        /// <param name="thickness">The Thickness to convert.</param>
+        /// <returns>A tuple containing the Left, Top, Right, and Bottom thickness values.</returns>
+        public static implicit operator (T left, T top, T right, T bottom)(Thickness<T> thickness)
+        {
+            return (thickness.Left, thickness.Top, thickness.Right, thickness.Bottom);
+        }
 
         /// <summary>
         /// Converts the thickness to a CSS-style string representation.

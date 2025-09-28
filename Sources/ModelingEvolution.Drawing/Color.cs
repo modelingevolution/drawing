@@ -123,6 +123,37 @@ public readonly record struct Color : IEquatable<Color>, IParsable<Color>
     /// </summary>
     /// <param name="hex">The string representation of the color.</param>
     public static implicit operator Color(string hex) => FromString(hex);
+
+    /// <summary>
+    /// Implicitly converts an RGBA tuple to a Color.
+    /// </summary>
+    /// <param name="tuple">The tuple containing R, G, B, and A values.</param>
+    /// <returns>A Color with the specified RGBA values.</returns>
+    public static implicit operator Color((byte r, byte g, byte b, byte a) tuple)
+    {
+        return FromArgb(tuple.a, tuple.r, tuple.g, tuple.b);
+    }
+
+    /// <summary>
+    /// Implicitly converts an RGB tuple to a Color (with full opacity).
+    /// </summary>
+    /// <param name="tuple">The tuple containing R, G, and B values.</param>
+    /// <returns>A Color with the specified RGB values and full opacity.</returns>
+    public static implicit operator Color((byte r, byte g, byte b) tuple)
+    {
+        return FromRgb(tuple.r, tuple.g, tuple.b);
+    }
+
+    /// <summary>
+    /// Implicitly converts a Color to an RGBA tuple.
+    /// </summary>
+    /// <param name="color">The Color to convert.</param>
+    /// <returns>A tuple containing the R, G, B, and A values.</returns>
+    public static implicit operator (byte r, byte g, byte b, byte a)(Color color)
+    {
+        return (color.R, color.G, color.B, color.A);
+    }
+
     /// <summary>
     /// Gets the ARGB value of the color as a 32-bit unsigned integer.
     /// </summary>

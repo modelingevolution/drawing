@@ -124,6 +124,26 @@ public readonly struct HsvColor : IEquatable<HsvColor>, IParsable<HsvColor>
     public bool IsTransparent => A < 1f;
 
     /// <summary>
+    /// Implicitly converts an HSV tuple to an HsvColor.
+    /// </summary>
+    /// <param name="tuple">The tuple containing H, S, and V values.</param>
+    /// <returns>An HsvColor with the specified HSV values and full opacity.</returns>
+    public static implicit operator HsvColor((float h, float s, float v) tuple)
+    {
+        return new HsvColor(tuple.h, tuple.s, tuple.v);
+    }
+
+    /// <summary>
+    /// Implicitly converts an HsvColor to an HSV tuple.
+    /// </summary>
+    /// <param name="color">The HsvColor to convert.</param>
+    /// <returns>A tuple containing the H, S, and V values.</returns>
+    public static implicit operator (float h, float s, float v)(HsvColor color)
+    {
+        return (color.H, color.S, color.V);
+    }
+
+    /// <summary>
     /// Returns a string representation of the HsvColor in hsv() or hsva() format.
     /// </summary>
     /// <returns>A string representation of the color.</returns>

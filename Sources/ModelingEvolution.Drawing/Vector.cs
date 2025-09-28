@@ -397,6 +397,26 @@ public struct Vector<T> : IFormattable, IEquatable<Vector<T>>
         return new Point<T>(vector.X, vector.Y);
     }
 
+    /// <summary>
+    /// Implicitly converts a tuple to a Vector.
+    /// </summary>
+    /// <param name="tuple">The tuple containing X and Y components.</param>
+    /// <returns>A Vector with the specified components.</returns>
+    public static implicit operator Vector<T>((T x, T y) tuple)
+    {
+        return new Vector<T>(tuple.x, tuple.y);
+    }
+
+    /// <summary>
+    /// Implicitly converts a Vector to a tuple.
+    /// </summary>
+    /// <param name="vector">The Vector to convert.</param>
+    /// <returns>A tuple containing the X and Y components.</returns>
+    public static implicit operator (T x, T y)(Vector<T> vector)
+    {
+        return (vector._x, vector._y);
+    }
+
 
 
     /// <summary>

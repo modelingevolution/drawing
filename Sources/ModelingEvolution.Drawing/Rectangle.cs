@@ -86,6 +86,26 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
             Convert.ToInt32(rectangle.Height)
         );
     }
+
+    /// <summary>
+    /// Implicitly converts a tuple to a Rectangle.
+    /// </summary>
+    /// <param name="tuple">The tuple containing X, Y, Width, and Height values.</param>
+    /// <returns>A Rectangle with the specified values.</returns>
+    public static implicit operator Rectangle<T>((T x, T y, T width, T height) tuple)
+    {
+        return new Rectangle<T>(tuple.x, tuple.y, tuple.width, tuple.height);
+    }
+
+    /// <summary>
+    /// Implicitly converts a Rectangle to a tuple.
+    /// </summary>
+    /// <param name="rectangle">The Rectangle to convert.</param>
+    /// <returns>A tuple containing the X, Y, Width, and Height values.</returns>
+    public static implicit operator (T x, T y, T width, T height)(Rectangle<T> rectangle)
+    {
+        return (rectangle.x, rectangle.y, rectangle.width, rectangle.height);
+    }
     /// <summary>
     /// Creates a new rectangle with the same size but moved to the specified vector position.
     /// </summary>

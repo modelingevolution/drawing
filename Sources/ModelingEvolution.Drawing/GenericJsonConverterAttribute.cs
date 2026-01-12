@@ -93,3 +93,103 @@ public class RectangleJsonConverterAttribute : JsonConverterAttribute
         })();
     }
 }
+
+/// <summary>
+/// JSON converter attribute for Point3{T} types that serializes as [x, y, z] array.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Property | AttributeTargets.Field)]
+public class Point3JsonConverterAttribute : JsonConverterAttribute
+{
+    private readonly ConcurrentDictionary<Type, Func<JsonConverter>> typeFactory = new();
+
+    public override JsonConverter CreateConverter(Type typeToConvert)
+    {
+        return typeFactory.GetOrAdd(typeToConvert, x =>
+        {
+            Func<JsonConverter> f = null;
+            var genericArg = typeToConvert.GetGenericArguments()[0];
+            if (genericArg == typeof(float))
+                f = () => new Point3ConverterF();
+            else if (genericArg == typeof(double))
+                f = () => new Point3ConverterD();
+            else throw new NotSupportedException();
+
+            return f;
+        })();
+    }
+}
+
+/// <summary>
+/// JSON converter attribute for Vector3{T} types that serializes as [x, y, z] array.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Property | AttributeTargets.Field)]
+public class Vector3JsonConverterAttribute : JsonConverterAttribute
+{
+    private readonly ConcurrentDictionary<Type, Func<JsonConverter>> typeFactory = new();
+
+    public override JsonConverter CreateConverter(Type typeToConvert)
+    {
+        return typeFactory.GetOrAdd(typeToConvert, x =>
+        {
+            Func<JsonConverter> f = null;
+            var genericArg = typeToConvert.GetGenericArguments()[0];
+            if (genericArg == typeof(float))
+                f = () => new Vector3ConverterF();
+            else if (genericArg == typeof(double))
+                f = () => new Vector3ConverterD();
+            else throw new NotSupportedException();
+
+            return f;
+        })();
+    }
+}
+
+/// <summary>
+/// JSON converter attribute for Rotation3{T} types that serializes as [rx, ry, rz] array.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Property | AttributeTargets.Field)]
+public class Rotation3JsonConverterAttribute : JsonConverterAttribute
+{
+    private readonly ConcurrentDictionary<Type, Func<JsonConverter>> typeFactory = new();
+
+    public override JsonConverter CreateConverter(Type typeToConvert)
+    {
+        return typeFactory.GetOrAdd(typeToConvert, x =>
+        {
+            Func<JsonConverter> f = null;
+            var genericArg = typeToConvert.GetGenericArguments()[0];
+            if (genericArg == typeof(float))
+                f = () => new Rotation3ConverterF();
+            else if (genericArg == typeof(double))
+                f = () => new Rotation3ConverterD();
+            else throw new NotSupportedException();
+
+            return f;
+        })();
+    }
+}
+
+/// <summary>
+/// JSON converter attribute for Pose3{T} types that serializes as [x, y, z, rx, ry, rz] array.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Property | AttributeTargets.Field)]
+public class Pose3JsonConverterAttribute : JsonConverterAttribute
+{
+    private readonly ConcurrentDictionary<Type, Func<JsonConverter>> typeFactory = new();
+
+    public override JsonConverter CreateConverter(Type typeToConvert)
+    {
+        return typeFactory.GetOrAdd(typeToConvert, x =>
+        {
+            Func<JsonConverter> f = null;
+            var genericArg = typeToConvert.GetGenericArguments()[0];
+            if (genericArg == typeof(float))
+                f = () => new Pose3ConverterF();
+            else if (genericArg == typeof(double))
+                f = () => new Pose3ConverterD();
+            else throw new NotSupportedException();
+
+            return f;
+        })();
+    }
+}

@@ -515,6 +515,39 @@ public struct Vector<T> : IFormattable, IEquatable<Vector<T>>
 
     T _x;
     T _y;
+
+    /// <summary>
+    /// Maps this 2D vector onto a 3D plane perpendicular to the given normal.
+    /// For axis-aligned normals:
+    /// - Z normal (top-down): (x, y) → (x, y, 0)
+    /// - Y normal (front): (x, y) → (x, 0, y)
+    /// - X normal (side): (x, y) → (0, x, y)
+    /// </summary>
+    /// <param name="planeNormal">The normal vector of the target plane.</param>
+    /// <returns>A 3D vector lying on the plane.</returns>
+    public Vector3<T> MapOnPlane(Vector3<T> planeNormal)
+    {
+        var absX = T.Abs(planeNormal.X);
+        var absY = T.Abs(planeNormal.Y);
+        var absZ = T.Abs(planeNormal.Z);
+
+        if (absZ >= absX && absZ >= absY)
+        {
+            // Normal is mostly Z, plane is XY
+            return new Vector3<T>(_x, _y, T.Zero);
+        }
+        else if (absY >= absX)
+        {
+            // Normal is mostly Y, plane is XZ
+            return new Vector3<T>(_x, T.Zero, _y);
+        }
+        else
+        {
+            // Normal is mostly X, plane is YZ
+            return new Vector3<T>(T.Zero, _x, _y);
+        }
+    }
+
     /// <summary>
     /// Represents the unit vector in the X direction (1, 0).
     /// </summary>

@@ -8,10 +8,10 @@
     <Authors>ModelingEvolution Team</Authors>
     <Copyright>ModelingEvolution</Copyright>
     <RepositoryUrl>https://github.com/modelingevolution/drawing.git</RepositoryUrl>
-    <AssemblyVersion>1.1.3.49</AssemblyVersion>
-    <Version>1.1.3.49</Version>
+    <AssemblyVersion>1.1.4.50</AssemblyVersion>
+    <Version>1.1.4.50</Version>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <FileVersion>1.1.3.49</FileVersion>
+    <FileVersion>1.1.4.50</FileVersion>
     <PackageTags>2D Math, BazierCurve, Matrix, Point, Vector, Degree, PolarPoint, Radian</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>

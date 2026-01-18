@@ -282,4 +282,189 @@ public class Pose3Tests
     }
 
     #endregion
+
+    #region FromSurface
+
+    [Fact]
+    public void FromSurface_HorizontalPlane_HintAbove_ZPointsUp()
+    {
+        // Horizontal plane at Z=0 (XY plane)
+        var a = new Point3<double>(0, 0, 0);
+        var b = new Point3<double>(1, 0, 0);
+        var c = new Point3<double>(0, 1, 0);
+        // Hint point above the plane
+        var h = new Point3<double>(0.5, 0.5, 10);
+
+        var pose = Pose3<double>.FromSurface(a, b, c, h);
+
+        // Origin should be projection of h onto plane
+        pose.X.Should().BeApproximately(0.5, Tolerance);
+        pose.Y.Should().BeApproximately(0.5, Tolerance);
+        pose.Z.Should().BeApproximately(0, Tolerance);
+
+        // Z-axis should point up (toward h)
+        var zDir = pose.Rotation.Rotate(Vector3<double>.EZ);
+        zDir.X.Should().BeApproximately(0, Tolerance);
+        zDir.Y.Should().BeApproximately(0, Tolerance);
+        zDir.Z.Should().BeApproximately(1, Tolerance);
+    }
+
+    [Fact]
+    public void FromSurface_HorizontalPlane_HintBelow_ZPointsDown()
+    {
+        // Horizontal plane at Z=0
+        var a = new Point3<double>(0, 0, 0);
+        var b = new Point3<double>(1, 0, 0);
+        var c = new Point3<double>(0, 1, 0);
+        // Hint point below the plane
+        var h = new Point3<double>(0.5, 0.5, -10);
+
+        var pose = Pose3<double>.FromSurface(a, b, c, h);
+
+        // Origin should be projection of h onto plane
+        pose.X.Should().BeApproximately(0.5, Tolerance);
+        pose.Y.Should().BeApproximately(0.5, Tolerance);
+        pose.Z.Should().BeApproximately(0, Tolerance);
+
+        // Z-axis should point down (toward h)
+        var zDir = pose.Rotation.Rotate(Vector3<double>.EZ);
+        zDir.X.Should().BeApproximately(0, Tolerance);
+        zDir.Y.Should().BeApproximately(0, Tolerance);
+        zDir.Z.Should().BeApproximately(-1, Tolerance);
+    }
+
+    [Fact]
+    public void FromSurface_VerticalPlane_XZ_HintInFront()
+    {
+        // Vertical plane (XZ plane, Y=0)
+        var a = new Point3<double>(0, 0, 0);
+        var b = new Point3<double>(1, 0, 0);
+        var c = new Point3<double>(0, 0, 1);
+        // Hint point in front (positive Y)
+        var h = new Point3<double>(0.5, 5, 0.5);
+
+        var pose = Pose3<double>.FromSurface(a, b, c, h);
+
+        // Origin should be projection of h onto plane (Y=0)
+        pose.X.Should().BeApproximately(0.5, Tolerance);
+        pose.Y.Should().BeApproximately(0, Tolerance);
+        pose.Z.Should().BeApproximately(0.5, Tolerance);
+
+        // Z-axis should point toward positive Y
+        var zDir = pose.Rotation.Rotate(Vector3<double>.EZ);
+        zDir.X.Should().BeApproximately(0, Tolerance);
+        zDir.Y.Should().BeApproximately(1, Tolerance);
+        zDir.Z.Should().BeApproximately(0, Tolerance);
+    }
+
+    [Fact]
+    public void FromSurface_XAxisAlongEdgeAB()
+    {
+        // Horizontal plane
+        var a = new Point3<double>(0, 0, 0);
+        var b = new Point3<double>(2, 0, 0);  // X direction
+        var c = new Point3<double>(0, 2, 0);
+        var h = new Point3<double>(1, 1, 5);
+
+        var pose = Pose3<double>.FromSurface(a, b, c, h);
+
+        // X-axis should be along a→b direction (positive X)
+        var xDir = pose.Rotation.Rotate(Vector3<double>.EX);
+        xDir.X.Should().BeApproximately(1, Tolerance);
+        xDir.Y.Should().BeApproximately(0, Tolerance);
+        xDir.Z.Should().BeApproximately(0, Tolerance);
+    }
+
+    [Fact]
+    public void FromSurface_TiltedPlane()
+    {
+        // Plane tilted 45° around X axis (normal points in Y-Z direction)
+        // Plane equation: z = y (passes through origin with normal (0, -1, 1))
+        var a = new Point3<double>(0, 0, 0);
+        var b = new Point3<double>(1, 0, 0);
+        var c = new Point3<double>(0, 1, 1);  // 45° tilt
+        // Hint point OFF the plane (z ≠ y, so z - y ≠ 0)
+        var h = new Point3<double>(0.5, 2, 5);  // z=5, y=2, so h is above the plane
+
+        var pose = Pose3<double>.FromSurface(a, b, c, h);
+
+        // Z should point toward h - normal is (0, -1/√2, 1/√2)
+        // Since h has z > y, h is on the +normal side, so Z = +normal
+        var zDir = pose.Rotation.Rotate(Vector3<double>.EZ);
+        zDir.X.Should().BeApproximately(0, Tolerance);
+        // Y and Z components should have same magnitude (45° angle from Y-Z plane)
+        Math.Abs(zDir.Y).Should().BeApproximately(Math.Abs(zDir.Z), 0.01);
+        // Z component should be positive (normal points toward +Z more than -Y)
+        zDir.Z.Should().BeGreaterThan(0);
+    }
+
+    [Fact]
+    public void FromSurface_ThrowsWhenHintOnPlane()
+    {
+        var a = new Point3<double>(0, 0, 0);
+        var b = new Point3<double>(1, 0, 0);
+        var c = new Point3<double>(0, 1, 0);
+        // Hint point ON the plane
+        var h = new Point3<double>(0.5, 0.5, 0);
+
+        var act = () => Pose3<double>.FromSurface(a, b, c, h);
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*lies on the surface*");
+    }
+
+    [Fact]
+    public void FromSurface_ThrowsWhenPointsCollinear()
+    {
+        // All three points on a line
+        var a = new Point3<double>(0, 0, 0);
+        var b = new Point3<double>(1, 0, 0);
+        var c = new Point3<double>(2, 0, 0);
+        var h = new Point3<double>(0, 1, 0);
+
+        var act = () => Pose3<double>.FromSurface(a, b, c, h);
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*collinear*");
+    }
+
+    [Fact]
+    public void FromSurface_TransformPointOnSurface_HasZeroZ()
+    {
+        // Create any surface
+        var a = new Point3<double>(10, 20, 5);
+        var b = new Point3<double>(15, 20, 5);
+        var c = new Point3<double>(10, 25, 8);
+        var h = new Point3<double>(12, 22, 20);
+
+        var pose = Pose3<double>.FromSurface(a, b, c, h);
+
+        // Point 'a' is on the surface, so in local coordinates its Z should be 0
+        var inverse = pose.Inverse();
+        var aLocal = inverse.TransformPoint(a);
+
+        aLocal.Z.Should().BeApproximately(0, 0.0001);
+    }
+
+    [Fact]
+    public void FromSurface_HintPointTransforms_ToPositiveZ()
+    {
+        var a = new Point3<double>(0, 0, 0);
+        var b = new Point3<double>(1, 0, 0);
+        var c = new Point3<double>(0, 1, 0);
+        var h = new Point3<double>(0.5, 0.5, 10);
+
+        var pose = Pose3<double>.FromSurface(a, b, c, h);
+
+        // Transform h to local coordinates - should have positive Z
+        var inverse = pose.Inverse();
+        var hLocal = inverse.TransformPoint(h);
+
+        hLocal.Z.Should().BeGreaterThan(0);
+        // Local X and Y should be near 0 (h is directly above origin)
+        hLocal.X.Should().BeApproximately(0, 0.0001);
+        hLocal.Y.Should().BeApproximately(0, 0.0001);
+    }
+
+    #endregion
 }

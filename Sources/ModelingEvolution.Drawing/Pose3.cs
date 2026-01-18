@@ -215,6 +215,106 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// </summary>
     public static Pose3<T> From(Vector3<T> position, Rotation3<T> rotation) => new((Point3<T>)position, rotation);
 
+    /// <summary>
+    /// Creates a pose from three points defining a surface plane and a hint point indicating the Z direction.
+    /// </summary>
+    /// <param name="a">First point on the surface (also defines X-axis origin direction with b).</param>
+    /// <param name="b">Second point on the surface (defines X-axis direction from a).</param>
+    /// <param name="c">Third point on the surface (completes the plane definition).</param>
+    /// <param name="h">Hint point off the surface - Z-axis will point toward this point.</param>
+    /// <returns>A pose where origin is the projection of h onto the plane, X-Y plane is the surface, and Z points toward h.</returns>
+    /// <exception cref="ArgumentException">Thrown when h lies on the surface plane.</exception>
+    /// <exception cref="ArgumentException">Thrown when points a, b, c are collinear.</exception>
+    public static Pose3<T> FromSurface(Point3<T> a, Point3<T> b, Point3<T> c, Point3<T> h)
+    {
+        var epsilon = T.CreateTruncating(1e-9);
+
+        // Edge vectors
+        var ab = b - a;
+        var ac = c - a;
+
+        // Plane normal (unsigned)
+        var normal = Vector3<T>.Cross(ab, ac);
+        var normalLength = normal.Length;
+
+        if (normalLength < epsilon)
+            throw new ArgumentException("Points a, b, c are collinear and do not define a plane.");
+
+        normal = normal / normalLength; // Normalize
+
+        // Signed distance from h to plane
+        var ah = h - a;
+        var d = Vector3<T>.Dot(ah, normal);
+
+        if (T.Abs(d) < epsilon)
+            throw new ArgumentException("Point h lies on the surface plane. Cannot determine Z direction.", nameof(h));
+
+        // Origin = foot of perpendicular from h to plane
+        var origin = new Point3<T>(
+            h.X - d * normal.X,
+            h.Y - d * normal.Y,
+            h.Z - d * normal.Z);
+
+        // Z-axis points toward h
+        var zAxis = d > T.Zero ? normal : -normal;
+
+        // X-axis along edge a→b, normalized
+        var xAxis = ab.Normalize();
+
+        // Y-axis completes right-hand system: Y = Z × X
+        var yAxis = Vector3<T>.Cross(zAxis, xAxis);
+
+        // Convert orthonormal basis to Euler angles (ZYX convention)
+        var rotation = RotationFromAxes(xAxis, yAxis, zAxis);
+
+        return new Pose3<T>(origin, rotation);
+    }
+
+    /// <summary>
+    /// Creates a Rotation3 from orthonormal basis vectors (X, Y, Z axes).
+    /// The resulting rotation satisfies: Rotate(EX)=X, Rotate(EY)=Y, Rotate(EZ)=Z.
+    /// </summary>
+    private static Rotation3<T> RotationFromAxes(Vector3<T> xAxis, Vector3<T> yAxis, Vector3<T> zAxis)
+    {
+        // We want Rotation3 R such that R.Rotate(e_i) = axis_i
+        // This requires extracting Euler angles from the TRANSPOSE of matrix [X|Y|Z]
+        // R^T[i,j] = R[j,i], so:
+        //   R^T[0,2] = xAxis.Z
+        //   R^T[1,2] = yAxis.Z
+        //   R^T[2,2] = zAxis.Z
+        //   R^T[0,1] = xAxis.Y
+        //   R^T[0,0] = xAxis.X
+
+        var one = T.One;
+        var rad2Deg = T.CreateTruncating(180) / T.Pi;
+        var epsilon = T.CreateTruncating(1e-6);
+
+        // Clamp to [-1, 1] to avoid NaN from asin
+        var sinPitch = -xAxis.Z;
+        if (sinPitch > one) sinPitch = one;
+        if (sinPitch < -one) sinPitch = -one;
+
+        var ry = T.Asin(sinPitch); // Pitch
+        var cosPitch = T.Cos(ry);
+
+        T rx, rz;
+
+        if (T.Abs(cosPitch) > epsilon)
+        {
+            // Normal case
+            rx = T.Atan2(yAxis.Z, zAxis.Z); // Roll
+            rz = T.Atan2(xAxis.Y, xAxis.X); // Yaw
+        }
+        else
+        {
+            // Gimbal lock - pitch is ±90°
+            rx = T.Atan2(-zAxis.Y, yAxis.Y);
+            rz = T.Zero;
+        }
+
+        return new Rotation3<T>(rx * rad2Deg, ry * rad2Deg, rz * rad2Deg);
+    }
+
     #endregion
 
     #region Conversions

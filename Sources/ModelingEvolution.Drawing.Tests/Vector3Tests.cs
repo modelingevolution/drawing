@@ -250,6 +250,82 @@ public class Vector3Tests
 
     #endregion
 
+    #region RotationTo
+
+    [Fact]
+    public void Vector3_RotationTo_EZtoEX_Rotates90DegreesAroundY()
+    {
+        var rotation = Vector3<double>.EZ.RotationTo(Vector3<double>.EX);
+
+        var result = rotation.Rotate(Vector3<double>.EZ);
+
+        result.X.Should().BeApproximately(1, 1e-6);
+        result.Y.Should().BeApproximately(0, 1e-6);
+        result.Z.Should().BeApproximately(0, 1e-6);
+    }
+
+    [Fact]
+    public void Vector3_RotationTo_EZtoEY_Rotates90DegreesAroundX()
+    {
+        var rotation = Vector3<double>.EZ.RotationTo(Vector3<double>.EY);
+
+        var result = rotation.Rotate(Vector3<double>.EZ);
+
+        result.X.Should().BeApproximately(0, 1e-6);
+        result.Y.Should().BeApproximately(1, 1e-6);
+        result.Z.Should().BeApproximately(0, 1e-6);
+    }
+
+    [Fact]
+    public void Vector3_RotationTo_ParallelVectors_ReturnsIdentity()
+    {
+        var rotation = Vector3<double>.EZ.RotationTo(Vector3<double>.EZ);
+
+        rotation.Should().Be(Rotation3<double>.Identity);
+    }
+
+    [Fact]
+    public void Vector3_RotationTo_AntiParallelVectors_Rotates180Degrees()
+    {
+        var rotation = Vector3<double>.EZ.RotationTo(-Vector3<double>.EZ);
+
+        var result = rotation.Rotate(Vector3<double>.EZ);
+
+        result.X.Should().BeApproximately(0, 1e-6);
+        result.Y.Should().BeApproximately(0, 1e-6);
+        result.Z.Should().BeApproximately(-1, 1e-6);
+    }
+
+    [Fact]
+    public void Vector3_RotationTo_ArbitraryVectors_AlignsCorrectly()
+    {
+        var from = new Vector3<double>(1, 2, 3).Normalize();
+        var to = new Vector3<double>(-2, 1, 0.5).Normalize();
+
+        var rotation = from.RotationTo(to);
+        var result = rotation.Rotate(from);
+
+        result.X.Should().BeApproximately(to.X, 1e-6);
+        result.Y.Should().BeApproximately(to.Y, 1e-6);
+        result.Z.Should().BeApproximately(to.Z, 1e-6);
+    }
+
+    [Fact]
+    public void Vector3_RotationTo_NonUnitVectors_NormalizesFirst()
+    {
+        var from = new Vector3<double>(0, 0, 5); // length 5
+        var to = new Vector3<double>(10, 0, 0);  // length 10
+
+        var rotation = from.RotationTo(to);
+        var result = rotation.Rotate(Vector3<double>.EZ);
+
+        result.X.Should().BeApproximately(1, 1e-6);
+        result.Y.Should().BeApproximately(0, 1e-6);
+        result.Z.Should().BeApproximately(0, 1e-6);
+    }
+
+    #endregion
+
     #region Interpolation
 
     [Fact]

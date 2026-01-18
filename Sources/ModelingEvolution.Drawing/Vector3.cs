@@ -161,6 +161,82 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     }
 
     /// <summary>
+    /// Computes the rotation that transforms this vector to align with the target vector.
+    /// </summary>
+    /// <param name="target">The target direction to rotate towards.</param>
+    /// <returns>A rotation R such that R.Rotate(this.Normalize()) ≈ target.Normalize().</returns>
+    /// <remarks>
+    /// When vectors are parallel, returns identity. When anti-parallel, rotation axis is chosen arbitrarily.
+    /// </remarks>
+    public Rotation3<T> RotationTo(Vector3<T> target)
+    {
+        var epsilon = T.CreateTruncating(1e-6);
+        var rad2Deg = T.CreateTruncating(180) / T.Pi;
+
+        var from = Normalize();
+        var to = target.Normalize();
+
+        var dot = Dot(from, to);
+
+        // Parallel vectors (same direction)
+        if (dot > T.One - epsilon)
+            return Rotation3<T>.Identity;
+
+        // Anti-parallel vectors (opposite direction)
+        if (dot < -T.One + epsilon)
+        {
+            // Find a perpendicular axis
+            var axis = T.Abs(from.X) < T.CreateTruncating(0.9)
+                ? Cross(from, EX).Normalize()
+                : Cross(from, EY).Normalize();
+
+            // 180 degree rotation around the perpendicular axis
+            return RotationFromAxisAngle(axis, T.Pi);
+        }
+
+        // General case: rotation around cross product axis
+        var rotationAxis = Cross(from, to).Normalize();
+        var angle = T.Acos(T.Clamp(dot, -T.One, T.One));
+
+        return RotationFromAxisAngle(rotationAxis, angle);
+    }
+
+    /// <summary>
+    /// Creates a Rotation3 from axis-angle representation.
+    /// </summary>
+    private static Rotation3<T> RotationFromAxisAngle(Vector3<T> axis, T angleRadians)
+    {
+        var rad2Deg = T.CreateTruncating(180) / T.Pi;
+        var halfAngle = angleRadians / T.CreateTruncating(2);
+        var s = T.Sin(halfAngle);
+        var c = T.Cos(halfAngle);
+
+        // Quaternion components
+        var qw = c;
+        var qx = axis.X * s;
+        var qy = axis.Y * s;
+        var qz = axis.Z * s;
+
+        // Convert quaternion to Euler angles (ZYX convention)
+        // Roll (X)
+        var sinRoll = T.CreateTruncating(2) * (qw * qx + qy * qz);
+        var cosRoll = T.One - T.CreateTruncating(2) * (qx * qx + qy * qy);
+        var rx = T.Atan2(sinRoll, cosRoll);
+
+        // Pitch (Y)
+        var sinPitch = T.CreateTruncating(2) * (qw * qy - qz * qx);
+        sinPitch = T.Clamp(sinPitch, -T.One, T.One);
+        var ry = T.Asin(sinPitch);
+
+        // Yaw (Z)
+        var sinYaw = T.CreateTruncating(2) * (qw * qz + qx * qy);
+        var cosYaw = T.One - T.CreateTruncating(2) * (qy * qy + qz * qz);
+        var rz = T.Atan2(sinYaw, cosYaw);
+
+        return new Rotation3<T>(rx * rad2Deg, ry * rad2Deg, rz * rad2Deg);
+    }
+
+    /// <summary>
     /// Calculates the projection of this vector onto another vector.
     /// </summary>
     public Vector3<T> ProjectOnto(Vector3<T> direction)

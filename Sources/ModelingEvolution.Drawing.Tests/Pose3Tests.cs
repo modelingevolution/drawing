@@ -467,4 +467,115 @@ public class Pose3Tests
     }
 
     #endregion
+
+    #region FromSurface (3-point, right-hand rule)
+
+    [Fact]
+    public void FromSurface_ThreePoints_OriginAtA()
+    {
+        var a = new Point3<double>(10, 20, 30);
+        var b = new Point3<double>(11, 20, 30);
+        var c = new Point3<double>(10, 21, 30);
+
+        var pose = Pose3<double>.FromSurface(a, b, c);
+
+        pose.X.Should().Be(10);
+        pose.Y.Should().Be(20);
+        pose.Z.Should().Be(30);
+    }
+
+    [Fact]
+    public void FromSurface_ThreePoints_XAxisAlongAB()
+    {
+        var a = new Point3<double>(0, 0, 0);
+        var b = new Point3<double>(5, 0, 0);
+        var c = new Point3<double>(0, 5, 0);
+
+        var pose = Pose3<double>.FromSurface(a, b, c);
+
+        var xDir = pose.Rotation.Rotate(Vector3<double>.EX);
+        xDir.X.Should().BeApproximately(1, Tolerance);
+        xDir.Y.Should().BeApproximately(0, Tolerance);
+        xDir.Z.Should().BeApproximately(0, Tolerance);
+    }
+
+    [Fact]
+    public void FromSurface_ThreePoints_RightHandRule_ZPointsUp()
+    {
+        // Counter-clockwise in XY plane when viewed from above
+        var a = new Point3<double>(0, 0, 0);
+        var b = new Point3<double>(1, 0, 0);  // +X
+        var c = new Point3<double>(0, 1, 0);  // +Y
+        // Right-hand rule: X×Y = +Z
+
+        var pose = Pose3<double>.FromSurface(a, b, c);
+
+        var zDir = pose.Rotation.Rotate(Vector3<double>.EZ);
+        zDir.X.Should().BeApproximately(0, Tolerance);
+        zDir.Y.Should().BeApproximately(0, Tolerance);
+        zDir.Z.Should().BeApproximately(1, Tolerance);
+    }
+
+    [Fact]
+    public void FromSurface_ThreePoints_ReversedOrder_ZPointsDown()
+    {
+        // Reversed order: c, b, a (clockwise when viewed from above)
+        var a = new Point3<double>(0, 1, 0);  // was c
+        var b = new Point3<double>(1, 0, 0);  // same
+        var c = new Point3<double>(0, 0, 0);  // was a
+        // Right-hand rule with reversed winding: Z points down
+
+        var pose = Pose3<double>.FromSurface(a, b, c);
+
+        var zDir = pose.Rotation.Rotate(Vector3<double>.EZ);
+        zDir.Z.Should().BeLessThan(0);
+    }
+
+    [Fact]
+    public void FromSurface_ThreePoints_VerticalPlane()
+    {
+        // XZ plane (vertical wall)
+        var a = new Point3<double>(0, 0, 0);
+        var b = new Point3<double>(1, 0, 0);  // +X
+        var c = new Point3<double>(0, 0, 1);  // +Z
+        // Right-hand rule: X×Z = -Y
+
+        var pose = Pose3<double>.FromSurface(a, b, c);
+
+        var zDir = pose.Rotation.Rotate(Vector3<double>.EZ);
+        zDir.X.Should().BeApproximately(0, Tolerance);
+        zDir.Y.Should().BeApproximately(-1, Tolerance);
+        zDir.Z.Should().BeApproximately(0, Tolerance);
+    }
+
+    [Fact]
+    public void FromSurface_ThreePoints_ThrowsWhenCollinear()
+    {
+        var a = new Point3<double>(0, 0, 0);
+        var b = new Point3<double>(1, 0, 0);
+        var c = new Point3<double>(2, 0, 0);
+
+        var act = () => Pose3<double>.FromSurface(a, b, c);
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*collinear*");
+    }
+
+    [Fact]
+    public void FromSurface_ThreePoints_PointsOnSurface_HaveZeroLocalZ()
+    {
+        var a = new Point3<double>(10, 20, 5);
+        var b = new Point3<double>(15, 20, 5);
+        var c = new Point3<double>(10, 25, 5);
+
+        var pose = Pose3<double>.FromSurface(a, b, c);
+        var inverse = pose.Inverse();
+
+        // All three points should have Z=0 in local coordinates
+        inverse.TransformPoint(a).Z.Should().BeApproximately(0, 0.0001);
+        inverse.TransformPoint(b).Z.Should().BeApproximately(0, 0.0001);
+        inverse.TransformPoint(c).Z.Should().BeApproximately(0, 0.0001);
+    }
+
+    #endregion
 }

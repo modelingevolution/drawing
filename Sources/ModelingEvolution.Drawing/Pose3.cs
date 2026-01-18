@@ -216,6 +216,44 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     public static Pose3<T> From(Vector3<T> position, Rotation3<T> rotation) => new((Point3<T>)position, rotation);
 
     /// <summary>
+    /// Creates a pose from three points defining a surface plane using the right-hand rule.
+    /// Z direction is determined by (b-a) × (c-a). Reversing point order reverses Z direction.
+    /// </summary>
+    /// <param name="a">First point - becomes the origin, also defines X-axis direction with b.</param>
+    /// <param name="b">Second point - defines X-axis direction from a.</param>
+    /// <param name="c">Third point - completes the plane; a→b→c order determines Z via right-hand rule.</param>
+    /// <returns>A pose where origin is at a, X-axis along a→b, Z-axis per right-hand rule.</returns>
+    /// <exception cref="ArgumentException">Thrown when points a, b, c are collinear.</exception>
+    public static Pose3<T> FromSurface(Point3<T> a, Point3<T> b, Point3<T> c)
+    {
+        var epsilon = T.CreateTruncating(1e-9);
+
+        // Edge vectors
+        var ab = b - a;
+        var ac = c - a;
+
+        // Plane normal via right-hand rule: Z = (b-a) × (c-a)
+        var zAxis = Vector3<T>.Cross(ab, ac);
+        var normalLength = zAxis.Length;
+
+        if (normalLength < epsilon)
+            throw new ArgumentException("Points a, b, c are collinear and do not define a plane.");
+
+        zAxis = zAxis / normalLength; // Normalize
+
+        // X-axis along edge a→b, normalized
+        var xAxis = ab.Normalize();
+
+        // Y-axis completes right-hand system: Y = Z × X
+        var yAxis = Vector3<T>.Cross(zAxis, xAxis);
+
+        // Convert orthonormal basis to Euler angles (ZYX convention)
+        var rotation = RotationFromAxes(xAxis, yAxis, zAxis);
+
+        return new Pose3<T>(a, rotation);
+    }
+
+    /// <summary>
     /// Creates a pose from three points defining a surface plane and a hint point indicating the Z direction.
     /// </summary>
     /// <param name="a">First point on the surface (also defines X-axis origin direction with b).</param>

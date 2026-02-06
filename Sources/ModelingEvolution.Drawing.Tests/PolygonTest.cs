@@ -1,5 +1,5 @@
-﻿using System;
-
+using System;
+using System.Buffers;
 using System.Drawing;
 using System.Linq;
 using System.Reflection;
@@ -7,75 +7,56 @@ using FluentAssertions;
 using ModelingEvolution.Drawing;
 using Xunit;
 
-
 using Polygon = ModelingEvolution.Drawing.Polygon<float>;
 using PointF = ModelingEvolution.Drawing.Point<float>;
-using Xunit;
-using FluentAssertions;
-
 
 public class PolygonTest
 {
-
     [Fact]
     public void Union_WithHoleFilling_ShouldProduceSinglePolygon()
     {
-        // Arrange
-        // Create a C-shaped polygon
         var cShape = new Polygon<float>(new List<Point<float>>
         {
-            new(0, 0),   // Top-left
-            new(100, 0), // Top-right
-            new(100, 100), // Bottom-right
-            new(80, 100),  // Inner bottom-right
-            new(80, 20),   // Inner top-right
-            new(20, 20),   // Inner top-left
-            new(20, 100),  // Inner bottom-left
-            new(0, 100),   // Bottom-left
+            new(0, 0), new(100, 0), new(100, 100), new(80, 100),
+            new(80, 20), new(20, 20), new(20, 100), new(0, 100),
         });
 
-        // Create a rectangle that bridges the gap
         var bridge = new Polygon<float>(new List<Point<float>>
         {
-            new(10, 40),
-            new(90, 40),
-            new(90, 60),
-            new(10, 60),
+            new(10, 40), new(90, 40), new(90, 60), new(10, 60),
         });
 
-        // Act
-        // Try union without hole filling
-        var resultWithHoles = Polygon<float>.Union([cShape,bridge]);
+        var resultWithHoles = Polygon<float>.Union([cShape, bridge]);
         var isOberlapping = cShape.IsOverlapping(bridge);
-        // Try union with hole filling
         var withoutHoles = Polygon<float>.Union([cShape, bridge], true);
 
-        // Assert
-        // Without hole filling, we expect multiple polygons
-        Assert.True(resultWithHoles.Count > 1,
-            "Union without hole filling should produce multiple polygons");
+        Assert.True(resultWithHoles.Count > 1);
         Assert.True(isOberlapping);
-        // With hole filling, we expect a single polygon
-        Assert.True(withoutHoles.Count == 1,
-            "Union with hole filling should produce a single polygon");
+        Assert.True(withoutHoles.Count == 1);
 
-        // Optional: Verify the area is larger with hole filling
         float areaWithoutHoles = resultWithHoles[0].Area() - resultWithHoles[1].Area();
         float areaWithHoles = withoutHoles[0].Area();
-        Assert.True(areaWithHoles > areaWithoutHoles,
-            "Area with hole filling should be larger than without");
+        Assert.True(areaWithHoles > areaWithoutHoles);
     }
 
-
     [Fact]
-    public void Indexer()
+    public void Indexer_ReturnsCorrectPoint()
     {
         var points = new float[] { 0, 0, 4, 0, 4, 3 };
         var polygon = new Polygon(points);
-        var polygon2 = polygon;
-        polygon2[0] = new Point<float>(1, 1);
+        polygon[0].Should().Be(new PointF(0, 0));
+        polygon[1].Should().Be(new PointF(4, 0));
+        polygon[2].Should().Be(new PointF(4, 3));
+    }
 
-        polygon[0].Should().Be(polygon2[0]);
+    [Fact]
+    public void Polygon_IsImmutable_CopyDoesNotShareState()
+    {
+        var polygon = new Polygon(new PointF(0, 0), new PointF(4, 0), new PointF(4, 3));
+        var polygon2 = polygon.Add(new PointF(1, 1));
+
+        polygon.Count.Should().Be(3);
+        polygon2.Count.Should().Be(4);
     }
 
     [Fact]
@@ -117,6 +98,7 @@ public class PolygonTest
         Assert.Equal(new Point<float>(2, 0), scaledPolygon[1]);
         Assert.Equal(new Point<float>(2, 1.5f), scaledPolygon[2]);
     }
+
     [Fact]
     public void Intersect_NoIntersection_ReturnsEmptyPolygon()
     {
@@ -125,6 +107,7 @@ public class PolygonTest
         var rect = new Rectangle<float>(5, 5, 2, 2);
         polygon.Intersect(rect).Should().BeEmpty();
     }
+
     [Fact]
     public void Intersect_RectangleFullyInsidePolygon_ReturnsRectangleAsPolygon()
     {
@@ -138,6 +121,7 @@ public class PolygonTest
         Assert.Contains(new Point<float>(4, 4), intersectedPolygon.Points);
         Assert.Contains(new Point<float>(2, 4), intersectedPolygon.Points);
     }
+
     [Fact]
     public void Intersect_PolygonFullyInsideRectangle_ReturnsOriginalPolygon()
     {
@@ -151,6 +135,7 @@ public class PolygonTest
         Assert.Contains(new Point<float>(4, 4), intersectedPolygon.Points);
         Assert.Contains(new Point<float>(2, 4), intersectedPolygon.Points);
     }
+
     [Fact]
     public void Intersect_RectangleTouchesPolygonEdge_ReturnsCorrectIntersection()
     {
@@ -223,10 +208,7 @@ public class PolygonTest
         var enumerator = polygon.Points.GetEnumerator();
         int count = 0;
         while (enumerator.MoveNext())
-        {
             count++;
-        }
-
         Assert.Equal(3, count);
     }
 
@@ -237,12 +219,13 @@ public class PolygonTest
         var polygon = new Polygon(points);
         var d = new Vector<float>(1, 1);
         polygon += d;
-        
+
         Assert.Equal(3, polygon.Count);
-        Assert.Equal(new Point<float>(1,1), polygon.Points[0]);
+        Assert.Equal(new Point<float>(1, 1), polygon.Points[0]);
         Assert.Equal(new Point<float>(5, 1), polygon.Points[1]);
         Assert.Equal(new Point<float>(5, 4), polygon.Points[2]);
     }
+
     [Fact]
     public void Add_Point()
     {
@@ -257,145 +240,386 @@ public class PolygonTest
     [Fact]
     public void Union_TouchingPolygons_ReturnsSinglePolygon()
     {
-        // Arrange
         var polygon1 = new Polygon<float>(new List<Point<float>>
         {
-            new Point<float>(0, 0),
-            new Point<float>(1, 0),
-            new Point<float>(1, 1),
-            new Point<float>(0, 1)
+            new(0, 0), new(1, 0), new(1, 1), new(0, 1)
         });
-
         var polygon2 = new Polygon<float>(new List<Point<float>>
         {
-            new Point<float>(1, 0),
-            new Point<float>(2, 0),
-            new Point<float>(2, 1),
-            new Point<float>(1, 1)
+            new(1, 0), new(2, 0), new(2, 1), new(1, 1)
         });
 
-        // Act
         var result = polygon1 | polygon2;
 
-        // Assert
-        Assert.Equal(4, result.Points.Count); // Should be a single rectangle
-        Assert.Equal(2.0f, result.Area(), 0.0001f); // Area should be 2 units
+        Assert.Equal(4, result.Points.Count);
+        Assert.Equal(2.0f, result.Area(), 0.0001f);
     }
+
     [Fact]
     public void Union_DisconnectedPolygons_ThrowsInvalidOperationException()
     {
-        // Arrange
         var polygon1 = new Polygon<float>(new List<Point<float>>
         {
-            new Point<float>(0, 0),
-            new Point<float>(1, 0),
-            new Point<float>(1, 1),
-            new Point<float>(0, 1)
+            new(0, 0), new(1, 0), new(1, 1), new(0, 1)
         });
-
         var polygon2 = new Polygon<float>(new List<Point<float>>
         {
-            new Point<float>(3, 3),
-            new Point<float>(4, 3),
-            new Point<float>(4, 4),
-            new Point<float>(3, 4)
+            new(3, 3), new(4, 3), new(4, 4), new(3, 4)
         });
 
-        // Act & Assert
         Assert.Throws<InvalidOperationException>(() => polygon1 | polygon2);
     }
+
     [Fact]
     public void Intersection_TwoOverlappingSquares_ReturnsSinglePolygon()
     {
-        // Arrange
         var polygon1 = new Polygon<float>(new List<Point<float>>
         {
-            new Point<float>(0, 0),
-            new Point<float>(2, 0),
-            new Point<float>(2, 2),
-            new Point<float>(0, 2)
+            new(0, 0), new(2, 0), new(2, 2), new(0, 2)
         });
-
         var polygon2 = new Polygon<float>(new List<Point<float>>
         {
-            new Point<float>(1, 1),
-            new Point<float>(3, 1),
-            new Point<float>(3, 3),
-            new Point<float>(1, 3)
+            new(1, 1), new(3, 1), new(3, 3), new(1, 3)
         });
 
-        // Act
         var result = polygon1 & polygon2;
 
-        // Assert
-        Assert.Equal(4, result.Points.Count); // Union of overlapping squares should have 8 vertices
+        Assert.Equal(4, result.Points.Count);
         var exPoints = new PointF[]
         {
-            new PointF(2, 2),
-            new PointF(1, 2),
-            new PointF(1, 1),
-            new PointF(2, 1)
+            new(2, 2), new(1, 2), new(1, 1), new(2, 1)
         };
         for (int i = 0; i < result.Points.Count; i++)
-        {
-            var expectedPoint = exPoints[i];
-            Assert.True(result.Points[i].Equals(expectedPoint));
-        }
+            Assert.True(result.Points[i].Equals(exPoints[i]));
         Assert.True(polygon1.IsOverlapping(polygon2));
     }
 
     [Fact]
     public void Union_TwoOverlappingSquares_ReturnsSinglePolygon()
     {
-        // Arrange
         var polygon1 = new Polygon<float>(new List<Point<float>>
         {
-            new Point<float>(0, 0),
-            new Point<float>(2, 0),
-            new Point<float>(2, 2),
-            new Point<float>(0, 2)
+            new(0, 0), new(2, 0), new(2, 2), new(0, 2)
         });
-
         var polygon2 = new Polygon<float>(new List<Point<float>>
         {
-            new Point<float>(1, 1),
-            new Point<float>(3, 1),
-            new Point<float>(3, 3),
-            new Point<float>(1, 3)
+            new(1, 1), new(3, 1), new(3, 3), new(1, 3)
         });
 
-        // Act
         var result = polygon1 | polygon2;
 
-        // Assert
-        Assert.Equal(8, result.Points.Count); // Union of overlapping squares should have 8 vertices
-        Assert.True(result.Area() > polygon1.Area()); // Union should be larger than either input
+        Assert.Equal(8, result.Points.Count);
+        Assert.True(result.Area() > polygon1.Area());
         Assert.True(result.Area() > polygon2.Area());
     }
 
     [Fact]
     public void Intersection_PartiallyOverlappingTriangles_ReturnsSinglePolygon()
     {
-        // Arrange
         var polygon1 = new Polygon<float>(new List<Point<float>>
         {
-            new Point<float>(0, 0),
-            new Point<float>(2, 0),
-            new Point<float>(1, 2)
+            new(0, 0), new(2, 0), new(1, 2)
         });
-
         var polygon2 = new Polygon<float>(new List<Point<float>>
         {
-            new Point<float>(1, 0),
-            new Point<float>(3, 0),
-            new Point<float>(2, 2)
+            new(1, 0), new(3, 0), new(2, 2)
         });
 
-        // Act
         var result = polygon1 & polygon2;
 
-        // Assert
-        Assert.True(result.Points.Count > 2); // Should be a polygon
-        Assert.True(result.Area() > 0); // Should have positive area
+        Assert.True(result.Points.Count > 2);
+        Assert.True(result.Area() > 0);
     }
+
+    #region ReadOnlyMemory construction
+
+    [Fact]
+    public void ConstructFromReadOnlyMemory_PreservesPoints()
+    {
+        var array = new Point<float>[] { new(1, 2), new(3, 4), new(5, 6) };
+        ReadOnlyMemory<Point<float>> memory = array;
+
+        var polygon = new Polygon<float>(memory);
+
+        polygon.Count.Should().Be(3);
+        polygon[0].Should().Be(new Point<float>(1, 2));
+        polygon[1].Should().Be(new Point<float>(3, 4));
+        polygon[2].Should().Be(new Point<float>(5, 6));
+    }
+
+    [Fact]
+    public void ConstructFromReadOnlyMemory_ArrayBacked_PreservesData()
+    {
+        var array = new Point<float>[] { new(1, 2), new(3, 4) };
+        ReadOnlyMemory<Point<float>> memory = array;
+
+        var polygon = new Polygon<float>(memory);
+
+        polygon.Count.Should().Be(2);
+        polygon[0].Should().Be(new Point<float>(1, 2));
+        polygon[1].Should().Be(new Point<float>(3, 4));
+    }
+
+    [Fact]
+    public void ConstructFromEmptyMemory_CreatesEmptyPolygon()
+    {
+        var polygon = new Polygon<float>(ReadOnlyMemory<Point<float>>.Empty);
+        polygon.Count.Should().Be(0);
+        polygon.Span.Length.Should().Be(0);
+    }
+
+    [Fact]
+    public void Span_ReturnsCorrectData()
+    {
+        var polygon = new Polygon<float>(new Point<float>(1, 2), new Point<float>(3, 4));
+        var span = polygon.Span;
+
+        span.Length.Should().Be(2);
+        span[0].Should().Be(new Point<float>(1, 2));
+        span[1].Should().Be(new Point<float>(3, 4));
+    }
+
+    [Fact]
+    public void Memory_ReturnsCorrectData()
+    {
+        var polygon = new Polygon<float>(new Point<float>(1, 2), new Point<float>(3, 4));
+        var memory = polygon.Memory;
+
+        memory.Length.Should().Be(2);
+        memory.Span[0].Should().Be(new Point<float>(1, 2));
+    }
+
+    #endregion
+
+    #region Immutable Add / InsertAt / RemoveAt
+
+    [Fact]
+    public void Add_ReturnsNewPolygonWithAppendedPoint()
+    {
+        var polygon = new Polygon<float>(new Point<float>(0, 0), new Point<float>(1, 0));
+        var result = polygon.Add(new Point<float>(1, 1));
+
+        result.Count.Should().Be(3);
+        result[2].Should().Be(new Point<float>(1, 1));
+        polygon.Count.Should().Be(2, "original polygon should be unchanged");
+    }
+
+    [Fact]
+    public void InsertAt_ReturnsNewPolygonWithInsertedPoint()
+    {
+        var polygon = new Polygon<float>(new Point<float>(0, 0), new Point<float>(2, 0), new Point<float>(2, 2));
+        var result = polygon.InsertAt(1, new Point<float>(1, 0));
+
+        result.Count.Should().Be(4);
+        result[0].Should().Be(new Point<float>(0, 0));
+        result[1].Should().Be(new Point<float>(1, 0));
+        result[2].Should().Be(new Point<float>(2, 0));
+        result[3].Should().Be(new Point<float>(2, 2));
+        polygon.Count.Should().Be(3, "original polygon should be unchanged");
+    }
+
+    [Fact]
+    public void RemoveAt_ReturnsNewPolygonWithPointRemoved()
+    {
+        var polygon = new Polygon<float>(
+            new Point<float>(0, 0), new Point<float>(1, 0),
+            new Point<float>(2, 0), new Point<float>(2, 2));
+
+        var result = polygon.RemoveAt(1);
+
+        result.Count.Should().Be(3);
+        result[0].Should().Be(new Point<float>(0, 0));
+        result[1].Should().Be(new Point<float>(2, 0));
+        result[2].Should().Be(new Point<float>(2, 2));
+        polygon.Count.Should().Be(4, "original polygon should be unchanged");
+    }
+
+    #endregion
+
+    #region MemoryPool overloads
+
+    [Fact]
+    public void Add_WithPool_ReturnsNewPolygonAndOwner()
+    {
+        var polygon = new Polygon<float>(new Point<float>(0, 0), new Point<float>(1, 0));
+        var pool = MemoryPool<Point<float>>.Shared;
+
+        var result = polygon.Add(new Point<float>(1, 1), pool, out var owner);
+        using (owner)
+        {
+            result.Count.Should().Be(3);
+            result[2].Should().Be(new Point<float>(1, 1));
+            polygon.Count.Should().Be(2);
+        }
+    }
+
+    [Fact]
+    public void InsertAt_WithPool_ReturnsNewPolygonAndOwner()
+    {
+        var polygon = new Polygon<float>(new Point<float>(0, 0), new Point<float>(2, 0));
+        var pool = MemoryPool<Point<float>>.Shared;
+
+        var result = polygon.InsertAt(1, new Point<float>(1, 0), pool, out var owner);
+        using (owner)
+        {
+            result.Count.Should().Be(3);
+            result[1].Should().Be(new Point<float>(1, 0));
+        }
+    }
+
+    [Fact]
+    public void RemoveAt_WithPool_ReturnsNewPolygonAndOwner()
+    {
+        var polygon = new Polygon<float>(
+            new Point<float>(0, 0), new Point<float>(1, 0), new Point<float>(2, 0));
+        var pool = MemoryPool<Point<float>>.Shared;
+
+        var result = polygon.RemoveAt(1, pool, out var owner);
+        using (owner)
+        {
+            result.Count.Should().Be(2);
+            result[0].Should().Be(new Point<float>(0, 0));
+            result[1].Should().Be(new Point<float>(2, 0));
+        }
+    }
+
+    [Fact]
+    public void MemoryPool_MultipleRents_AllProduceValidPolygons()
+    {
+        var pool = MemoryPool<Point<float>>.Shared;
+        var owners = new List<IMemoryOwner<Point<float>>>();
+        var polygons = new List<Polygon<float>>();
+
+        try
+        {
+            // Rent multiple buffers of different sizes to stress the pool
+            for (int i = 0; i < 10; i++)
+            {
+                int len = 3 + i * 2;
+                var owner = pool.Rent(len);
+                owners.Add(owner);
+
+                var mem = owner.Memory.Slice(0, len);
+                var span = mem.Span;
+                for (int j = 0; j < len; j++)
+                    span[j] = new Point<float>(j, j * 10);
+
+                var polygon = new Polygon<float>(mem);
+                polygons.Add(polygon);
+
+                polygon.Count.Should().Be(len, $"rent #{i} with len={len}");
+                polygon[0].Should().Be(new Point<float>(0, 0));
+                polygon[len - 1].Should().Be(new Point<float>(len - 1, (len - 1) * 10));
+            }
+        }
+        finally
+        {
+            foreach (var o in owners) o.Dispose();
+        }
+    }
+
+    [Fact]
+    public void MemoryPool_RentReturnRent_StillWorks()
+    {
+        var pool = MemoryPool<Point<float>>.Shared;
+
+        // Rent-return-rent cycle to force pool reuse
+        for (int cycle = 0; cycle < 5; cycle++)
+        {
+            var owner = pool.Rent(10);
+            var mem = owner.Memory.Slice(0, 4);
+            var span = mem.Span;
+            span[0] = new Point<float>(1, 2);
+            span[1] = new Point<float>(3, 4);
+            span[2] = new Point<float>(5, 6);
+            span[3] = new Point<float>(7, 8);
+
+            var polygon = new Polygon<float>(mem);
+            polygon.Count.Should().Be(4, $"cycle #{cycle}");
+            polygon[0].Should().Be(new Point<float>(1, 2));
+            polygon[3].Should().Be(new Point<float>(7, 8));
+
+            owner.Dispose();
+        }
+    }
+
+    [Fact]
+    public void MemoryPool_SequentialAddOperations_AllValid()
+    {
+        var pool = MemoryPool<Point<float>>.Shared;
+        var polygon = new Polygon<float>(new Point<float>(0, 0), new Point<float>(1, 0));
+        var owners = new List<IMemoryOwner<Point<float>>>();
+
+        try
+        {
+            // Chain multiple pool-backed Add operations
+            for (int i = 0; i < 8; i++)
+            {
+                polygon = polygon.Add(new Point<float>(i + 2, i), pool, out var owner);
+                owners.Add(owner);
+                polygon.Count.Should().Be(3 + i, $"after add #{i}");
+            }
+
+            polygon.Count.Should().Be(10);
+            polygon[0].Should().Be(new Point<float>(0, 0));
+            polygon[9].Should().Be(new Point<float>(9, 7));
+        }
+        finally
+        {
+            foreach (var o in owners) o.Dispose();
+        }
+    }
+
+    #endregion
+
+    #region Equality
+
+    [Fact]
+    public void Equals_SamePoints_ReturnsTrue()
+    {
+        var a = new Polygon<float>(new Point<float>(0, 0), new Point<float>(1, 1));
+        var b = new Polygon<float>(new Point<float>(0, 0), new Point<float>(1, 1));
+
+        a.Equals(b).Should().BeTrue();
+        (a == b).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Equals_DifferentPoints_ReturnsFalse()
+    {
+        var a = new Polygon<float>(new Point<float>(0, 0), new Point<float>(1, 1));
+        var b = new Polygon<float>(new Point<float>(0, 0), new Point<float>(2, 2));
+
+        a.Equals(b).Should().BeFalse();
+    }
+
+    [Fact]
+    public void GetHashCode_SamePoints_ReturnsSameHash()
+    {
+        var a = new Polygon<float>(new Point<float>(0, 0), new Point<float>(1, 1));
+        var b = new Polygon<float>(new Point<float>(0, 0), new Point<float>(1, 1));
+
+        a.GetHashCode().Should().Be(b.GetHashCode());
+    }
+
+    #endregion
+
+    #region Default / empty
+
+    [Fact]
+    public void DefaultStruct_HasZeroCount()
+    {
+        Polygon<float> polygon = default;
+        polygon.Count.Should().Be(0);
+        polygon.Span.Length.Should().Be(0);
+    }
+
+    [Fact]
+    public void EmptyConstructor_HasZeroCount()
+    {
+        var polygon = new Polygon<float>();
+        polygon.Count.Should().Be(0);
+    }
+
+    #endregion
 }

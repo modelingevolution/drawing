@@ -82,6 +82,13 @@ public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree
     /// <param name="a">The first degree value.</param>
     /// <param name="b">The second degree value to subtract.</param>
     /// <returns>The difference between the two degree values.</returns>
+    /// <summary>
+    /// Negates a degree value.
+    /// </summary>
+    /// <param name="a">The degree value to negate.</param>
+    /// <returns>The negated degree value.</returns>
+    public static Degree<T> operator -(Degree<T> a) => new Degree<T>(-a._val);
+
     public static Degree<T> operator -(Degree<T> a, Degree<T> b)
     {
         return new Degree<T>(a._val - b._val);
@@ -96,6 +103,40 @@ public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree
     {
         return new Degree<T>(a._val + b._val);
     }
+
+    /// <summary>
+    /// Multiplies a degree value by a scalar.
+    /// </summary>
+    public static Degree<T> operator *(Degree<T> a, T scalar) => new Degree<T>(a._val * scalar);
+
+    /// <summary>
+    /// Multiplies a degree value by a scalar.
+    /// </summary>
+    public static Degree<T> operator *(T scalar, Degree<T> a) => new Degree<T>(scalar * a._val);
+
+    /// <summary>
+    /// Divides a degree value by a scalar.
+    /// </summary>
+    public static Degree<T> operator /(Degree<T> a, T scalar) => new Degree<T>(a._val / scalar);
+
+    /// <summary>
+    /// Returns the absolute value of this degree.
+    /// </summary>
+    public Degree<T> Abs() => new Degree<T>(T.Abs(_val));
+
+    /// <summary>
+    /// Normalizes this angle to the range (-180, 180].
+    /// </summary>
+    public Degree<T> Normalize()
+    {
+        var half = T.CreateTruncating(180);
+        var full = T.CreateTruncating(360);
+        var v = _val % full;
+        if (v > half) v -= full;
+        if (v <= -half) v += full;
+        return new Degree<T>(v);
+    }
+
     /// <summary>
     /// Determines whether the first degree value is less than or equal to the second.
     /// </summary>

@@ -73,6 +73,11 @@ public static class CollectionExtensions
         return sum / c;
     }
 
+    /// <summary>
+    /// Computes the average of a collection of float vectors, excluding the two vectors with the largest magnitude.
+    /// </summary>
+    /// <param name="items">The collection of vectors to average.</param>
+    /// <returns>The average of the remaining vectors as a double vector, or zero if no vectors remain.</returns>
     public static Vector<double> AvgSkipTwoMax(this IEnumerable<Vector<float>> items)
     {
         int maxFirstVecToSkip = GetIndexOfMaxVector(items);
@@ -100,6 +105,11 @@ public static class CollectionExtensions
             return Vector<double>.Zero;
         }
     }
+    /// <summary>
+    /// Computes the average of a collection of float vectors, excluding the vector with the largest magnitude.
+    /// </summary>
+    /// <param name="items">The collection of vectors to average.</param>
+    /// <returns>The average of the remaining vectors as a double vector.</returns>
     public static Vector<double> AvgSkipMax(this IEnumerable<Vector<float>> items)
     {
         int maxVecToSkip = GetIndexOfMaxVector(items);
@@ -122,6 +132,12 @@ public static class CollectionExtensions
 
         return sum / c;
     }
+    /// <summary>
+    /// Returns the index of the vector with the largest magnitude, excluding a specific index.
+    /// </summary>
+    /// <param name="items">The collection of vectors to search.</param>
+    /// <param name="indexToSkip">The index to exclude from the search.</param>
+    /// <returns>The index of the vector with the largest magnitude.</returns>
     public static int GetIndexOfMaxVector(this IEnumerable<Vector<double>> items, int indexToSkip)
     {
         int indexOfMaxVector = 0;
@@ -141,6 +157,11 @@ public static class CollectionExtensions
         }
         return indexOfMaxVector;
     }
+    /// <summary>
+    /// Returns the index of the double vector with the largest magnitude.
+    /// </summary>
+    /// <param name="items">The collection of vectors to search.</param>
+    /// <returns>The index of the vector with the largest magnitude.</returns>
     public static int GetIndexOfMaxVector(this IEnumerable<Vector<double>> items)
     {
         int indexOfMaxVector = 0;
@@ -159,6 +180,12 @@ public static class CollectionExtensions
         }
         return indexOfMaxVector;
     }
+    /// <summary>
+    /// Returns the index of the float vector with the largest magnitude, excluding a specific index.
+    /// </summary>
+    /// <param name="items">The collection of vectors to search.</param>
+    /// <param name="indexToSkip">The index to exclude from the search.</param>
+    /// <returns>The index of the vector with the largest magnitude.</returns>
     public static int GetIndexOfMaxVector(this IEnumerable<Vector<float>> items, int indexToSkip)
     {
         int indexOfMaxVector = 0;
@@ -177,6 +204,11 @@ public static class CollectionExtensions
         }
         return indexOfMaxVector;
     }
+    /// <summary>
+    /// Returns the index of the float vector with the largest magnitude.
+    /// </summary>
+    /// <param name="items">The collection of vectors to search.</param>
+    /// <returns>The index of the vector with the largest magnitude.</returns>
     public static int GetIndexOfMaxVector(this IEnumerable<Vector<float>> items)
     {
         int indexOfMaxVector = 0;
@@ -195,6 +227,11 @@ public static class CollectionExtensions
         }
         return indexOfMaxVector;
     }
+    /// <summary>
+    /// Computes the average of a collection of double vectors.
+    /// </summary>
+    /// <param name="items">The collection of vectors to average.</param>
+    /// <returns>The average of all vectors in the collection.</returns>
     public static Vector<double> Avg(this IEnumerable<Vector<double>> items)
     {
         Vector<double> sum = Vector<double>.Zero;
@@ -210,6 +247,11 @@ public static class CollectionExtensions
 
         return sum / c;
     }
+    /// <summary>
+    /// Computes the average of a collection of double vectors, excluding the two vectors with the largest magnitude.
+    /// </summary>
+    /// <param name="items">The collection of vectors to average.</param>
+    /// <returns>The average of the remaining vectors, or zero if no vectors remain.</returns>
     public static Vector<double> AvgSkipTwoMax(this IEnumerable<Vector<double>> items)
     {
         Vector<double> sum = Vector<double>.Zero;
@@ -237,6 +279,11 @@ public static class CollectionExtensions
             return Vector<double>.Zero;
         }
     }
+    /// <summary>
+    /// Computes the average of a collection of double vectors, excluding the vector with the largest magnitude.
+    /// </summary>
+    /// <param name="items">The collection of vectors to average.</param>
+    /// <returns>The average of the remaining vectors.</returns>
     public static Vector<double> AvgSkipMax(this IEnumerable<Vector<double>> items)
     {
         Vector<double> sum = Vector<double>.Zero;
@@ -269,8 +316,23 @@ internal static class WebUnitsExtensions
     /// <param name="val">The integer value to convert.</param>
     /// <returns>A string representing the value with "px" suffix.</returns>
     public static string ToPx(this int val) => $"{val}px";
+    /// <summary>
+    /// Converts a nullable integer value to a CSS pixel string, or returns an empty string if null.
+    /// </summary>
+    /// <param name="val">The nullable integer value to convert.</param>
+    /// <returns>A string representing the value with "px" suffix, or empty if null.</returns>
     public static string ToPx(this int? val) => val != null ? val.Value.ToPx() : string.Empty;
+    /// <summary>
+    /// Converts a long value to a CSS pixel string.
+    /// </summary>
+    /// <param name="val">The long value to convert.</param>
+    /// <returns>A string representing the value with "px" suffix.</returns>
     public static string ToPx(this long val) => $"{val}px";
+    /// <summary>
+    /// Converts a nullable long value to a CSS pixel string, or returns an empty string if null.
+    /// </summary>
+    /// <param name="val">The nullable long value to convert.</param>
+    /// <returns>A string representing the value with "px" suffix, or empty if null.</returns>
     public static string ToPx(this long? val) => val != null ? val.Value.ToPx() : string.Empty;
     /// <summary>
     /// Converts a double value to a CSS pixel string with up to 2 decimal places.
@@ -278,7 +340,17 @@ internal static class WebUnitsExtensions
     /// <param name="val">The double value to convert.</param>
     /// <returns>A string representing the value with "px" suffix.</returns>
     public static string ToPx(this double val) => $"{val.ToString("0.##", CultureInfo.InvariantCulture)}px";
+    /// <summary>
+    /// Converts a nullable double value to a CSS pixel string, or returns an empty string if null.
+    /// </summary>
+    /// <param name="val">The nullable double value to convert.</param>
+    /// <returns>A string representing the value with "px" suffix, or empty if null.</returns>
     public static string ToPx(this double? val) => val != null ? val.Value.ToPx() : string.Empty;
+    /// <summary>
+    /// Converts a float value to a CSS pixel string with up to 2 decimal places.
+    /// </summary>
+    /// <param name="val">The float value to convert.</param>
+    /// <returns>A string representing the value with "px" suffix.</returns>
     public static string ToPx(this float val) => $"{val.ToString("0.##", CultureInfo.InvariantCulture)}px";
     /// <summary>
     /// Converts a generic floating-point value to a CSS pixel string with up to 2 decimal places.
@@ -287,5 +359,10 @@ internal static class WebUnitsExtensions
     /// <param name="val">The value to convert.</param>
     /// <returns>A string representing the value with "px" suffix.</returns>
     public static string ToPx<T>(this T val) where T:IFloatingPointIeee754<T> => $"{val.ToString("0.##", CultureInfo.InvariantCulture)}px";
+    /// <summary>
+    /// Converts a nullable float value to a CSS pixel string, or returns an empty string if null.
+    /// </summary>
+    /// <param name="val">The nullable float value to convert.</param>
+    /// <returns>A string representing the value with "px" suffix, or empty if null.</returns>
     public static string ToPx(this float? val) => val != null ? val.Value.ToPx() : string.Empty;
 }

@@ -127,6 +127,44 @@ public readonly record struct Radian<T>: IComparisonOperators<Radian<T>, Radian<
     }
 
     /// <summary>
+    /// Negates this radian value.
+    /// </summary>
+    public static Radian<T> operator -(Radian<T> a) => new Radian<T>(-a._val);
+
+    /// <summary>
+    /// Multiplies a radian value by a scalar.
+    /// </summary>
+    public static Radian<T> operator *(Radian<T> a, T scalar) => new Radian<T>(a._val * scalar);
+
+    /// <summary>
+    /// Multiplies a radian value by a scalar.
+    /// </summary>
+    public static Radian<T> operator *(T scalar, Radian<T> a) => new Radian<T>(scalar * a._val);
+
+    /// <summary>
+    /// Divides a radian value by a scalar.
+    /// </summary>
+    public static Radian<T> operator /(Radian<T> a, T scalar) => new Radian<T>(a._val / scalar);
+
+    /// <summary>
+    /// Returns the absolute value of this radian.
+    /// </summary>
+    public Radian<T> Abs() => new Radian<T>(T.Abs(_val));
+
+    /// <summary>
+    /// Normalizes this angle to the range (-π, π].
+    /// </summary>
+    public Radian<T> Normalize()
+    {
+        var pi = T.Pi;
+        var twoPi = pi + pi;
+        var v = _val % twoPi;
+        if (v > pi) v -= twoPi;
+        if (v <= -pi) v += twoPi;
+        return new Radian<T>(v);
+    }
+
+    /// <summary>
     /// Explicitly converts a radian value to its underlying numeric type.
     /// </summary>
     /// <param name="src">The radian value to convert.</param>

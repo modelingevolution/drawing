@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using FluentAssertions;
 
 namespace ModelingEvolution.Drawing.Tests
 {
@@ -122,6 +123,42 @@ namespace ModelingEvolution.Drawing.Tests
             Assert.Equal(50, intersection.Width); // Full width of the tiles
             Assert.Equal(50, intersection.Height); // 50% of tile height (60 * 0.5)
 
+        }
+
+        [Fact]
+        public void Rotate_90Degrees_ReturnsPolygonWithCorrectVertices()
+        {
+            var rect = new Rectangle<double>(0, 0, 10, 5);
+            var rotated = rect.Rotate(Degree<double>.Create(90));
+
+            rotated.Count.Should().Be(4);
+            // TL (0,0) → (0,0), TR (10,0) → (0,10), BR (10,5) → (-5,10), BL (0,5) → (-5,0)
+            rotated[0].X.Should().BeApproximately(0, 1e-9);
+            rotated[0].Y.Should().BeApproximately(0, 1e-9);
+            rotated[1].X.Should().BeApproximately(0, 1e-9);
+            rotated[1].Y.Should().BeApproximately(10, 1e-9);
+            rotated[2].X.Should().BeApproximately(-5, 1e-9);
+            rotated[2].Y.Should().BeApproximately(10, 1e-9);
+            rotated[3].X.Should().BeApproximately(-5, 1e-9);
+            rotated[3].Y.Should().BeApproximately(0, 1e-9);
+        }
+
+        [Fact]
+        public void Rotate_PreservesArea()
+        {
+            var rect = new Rectangle<double>(0, 0, 10, 5);
+            var rotated = rect.Rotate(Degree<double>.Create(37));
+            rotated.Area().Should().BeApproximately(50, 1e-8);
+        }
+
+        [Fact]
+        public void Rotate_AroundCenter()
+        {
+            var rect = new Rectangle<double>(0, 0, 10, 10);
+            var center = rect.Centroid();
+            var rotated = rect.Rotate(Degree<double>.Create(45), center);
+            // Area should be preserved
+            rotated.Area().Should().BeApproximately(100, 1e-8);
         }
     }
 }

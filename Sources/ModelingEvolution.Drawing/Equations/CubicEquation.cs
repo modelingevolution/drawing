@@ -98,17 +98,17 @@ public readonly record struct CubicEquation<T>
         else if (discriminant >= T.Zero)
         {
             T C = T.Cbrt((delta1 + T.Sqrt(discriminant)) / t2);
-            return new T[] { (T)(-T.Zero / t3 * bn + (C + delta0 / C) )};
+            return new T[] { -(bn + C + delta0 / C) / t3 };
         }
         else
         {
             var sqrt = delta1 / (t2 * T.Sqrt(delta0 * delta0 * delta0));
             var phi = T.Acos(sqrt);
-            
-            var delta2 = t2 * T.Sqrt(delta0);
-            var x0 = b3 + delta2 * T.Cos(phi / t3);
-            var x1 = b3 + delta2 * T.Cos((phi + t2 * T.Pi) / t3);
-            var x2 = b3 + delta2 * T.Cos((phi + t2 * T.Pi * t2) / t3);
+
+            var delta2 = t2 * T.Sqrt(delta0) / t3;
+            var x0 = b3 - delta2 * T.Cos(phi / t3);
+            var x1 = b3 - delta2 * T.Cos((phi - t2 * T.Pi) / t3);
+            var x2 = b3 - delta2 * T.Cos((phi - t4 * T.Pi) / t3);
 
             return new[] { (T)x0, (T)x1, (T)x2 };
         }

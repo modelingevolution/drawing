@@ -24,14 +24,14 @@ public class CircleTests
     public void Area_ReturnsCorrectValue()
     {
         var c = new Circle<float>(new Point<float>(0, 0), 1f);
-        c.Area.Should().BeApproximately(MathF.PI, 1e-5f);
+        c.Area().Should().BeApproximately(MathF.PI, 1e-5f);
     }
 
     [Fact]
     public void Circumference_ReturnsCorrectValue()
     {
         var c = new Circle<float>(new Point<float>(0, 0), 1f);
-        c.Circumference.Should().BeApproximately(2f * MathF.PI, 1e-5f);
+        c.Perimeter().Should().BeApproximately(2f * MathF.PI, 1e-5f);
     }
 
     [Fact]

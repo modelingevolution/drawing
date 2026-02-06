@@ -432,6 +432,125 @@ public readonly record struct Path<T> : IParsable<Path<T>>
     }
 
     /// <summary>
+    /// Rotates the path around the specified origin by the given angle.
+    /// </summary>
+    public Path<T> Rotate(Degree<T> angle, Point<T> origin = default)
+    {
+        if (IsEmpty) return this;
+        var segments = Segments.Select(s => new BezierCurve<T>(
+            s.Start.Rotate(angle, origin),
+            s.C0.Rotate(angle, origin),
+            s.C1.Rotate(angle, origin),
+            s.End.Rotate(angle, origin)));
+        return new Path<T>(segments);
+    }
+
+    /// <summary>
+    /// Computes the approximate total length of the path by sampling.
+    /// </summary>
+    public T Length(int samplesPerSegment = Constants.DefaultSamplesPerSegment)
+    {
+        if (IsEmpty) return T.Zero;
+        var points = SamplePoints(samplesPerSegment);
+        T total = T.Zero;
+        for (int i = 1; i < points.Count; i++)
+        {
+            var dx = points[i].X - points[i - 1].X;
+            var dy = points[i].Y - points[i - 1].Y;
+            total += T.Sqrt(dx * dx + dy * dy);
+        }
+        return total;
+    }
+
+    /// <summary>
+    /// Returns the point at normalized position t along the path, where t is in [0, 1].
+    /// Uses arc-length parameterization via sampling.
+    /// </summary>
+    public Point<T> PointAt(T t, int samplesPerSegment = Constants.DefaultSamplesPerSegment)
+    {
+        if (IsEmpty) return Point<T>.Zero;
+        var points = SamplePoints(samplesPerSegment);
+        if (points.Count == 0) return Point<T>.Zero;
+        if (points.Count == 1) return points[0];
+
+        var distances = new T[points.Count];
+        distances[0] = T.Zero;
+        for (int i = 1; i < points.Count; i++)
+        {
+            var dx = points[i].X - points[i - 1].X;
+            var dy = points[i].Y - points[i - 1].Y;
+            distances[i] = distances[i - 1] + T.Sqrt(dx * dx + dy * dy);
+        }
+
+        var totalLength = distances[^1];
+        if (totalLength == T.Zero) return points[0];
+
+        var targetDist = T.Max(T.Zero, T.Min(totalLength, t * totalLength));
+
+        for (int i = 1; i < points.Count; i++)
+        {
+            if (distances[i] >= targetDist)
+            {
+                var segLen = distances[i] - distances[i - 1];
+                if (segLen == T.Zero) return points[i];
+                var localT = (targetDist - distances[i - 1]) / segLen;
+                return new Point<T>(
+                    points[i - 1].X + (points[i].X - points[i - 1].X) * localT,
+                    points[i - 1].Y + (points[i].Y - points[i - 1].Y) * localT);
+            }
+        }
+
+        return points[^1];
+    }
+
+    /// <summary>
+    /// Returns the portions of this path that lie inside the rectangle.
+    /// Computes exact intersections of Bezier segments with rectangle edges,
+    /// splits curves at those points, and returns inside portions as sub-paths.
+    /// </summary>
+    public IEnumerable<Path<T>> Intersect(Rectangle<T> rect)
+    {
+        if (IsEmpty) yield break;
+
+        var eps = T.CreateTruncating(1e-9);
+        var half = T.CreateTruncating(0.5);
+        var currentSegments = new List<BezierCurve<T>>();
+
+        foreach (var segment in Segments)
+        {
+            var crossings = segment.FindEdgeCrossings(rect);
+
+            // Build intervals: [0, t1], [t1, t2], ..., [tn, 1]
+            var boundaries = new List<T>(crossings.Length + 2) { T.Zero };
+            boundaries.AddRange(crossings);
+            boundaries.Add(T.One);
+
+            for (int i = 0; i < boundaries.Count - 1; i++)
+            {
+                var t0 = boundaries[i];
+                var t1 = boundaries[i + 1];
+                if (t1 - t0 < eps) continue;
+
+                var sub = segment.SubCurve(t0, t1);
+                var mid = sub.Evaluate(half);
+
+                if (rect.Contains(mid))
+                {
+                    currentSegments.Add(sub);
+                }
+                else if (currentSegments.Count > 0)
+                {
+                    yield return new Path<T>(currentSegments);
+                    currentSegments = new List<BezierCurve<T>>();
+                }
+            }
+        }
+
+        if (currentSegments.Count > 0)
+            yield return new Path<T>(currentSegments);
+    }
+
+    /// <summary>
     /// Converts the path to an SVG path data string.
     /// </summary>
     /// <returns>A string that can be used as the 'd' attribute of an SVG path element.</returns>

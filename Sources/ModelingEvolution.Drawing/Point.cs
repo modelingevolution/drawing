@@ -364,8 +364,48 @@ public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
     public override readonly int GetHashCode() => HashCode.Combine(X.GetHashCode(), Y.GetHashCode());
 
     /// <summary>
+    /// Rotates this point around the specified origin by the given angle.
+    /// </summary>
+    /// <param name="angle">The rotation angle.</param>
+    /// <param name="origin">The center of rotation. Defaults to the origin (0, 0).</param>
+    /// <returns>The rotated point.</returns>
+    public readonly Point<T> Rotate(Degree<T> angle, Point<T> origin = default)
+    {
+        var rad = (Radian<T>)angle;
+        var cos = T.Cos((T)rad);
+        var sin = T.Sin((T)rad);
+        var dx = x - origin.X;
+        var dy = y - origin.Y;
+        return new Point<T>(
+            cos * dx - sin * dy + origin.X,
+            sin * dx + cos * dy + origin.Y);
+    }
+
+    /// <summary>
     /// Returns a string representation of this point.
     /// </summary>
     /// <returns>A string representation of the point in the format {X=value, Y=value}.</returns>
+    /// <summary>
+    /// Computes the Euclidean distance from this point to another.
+    /// </summary>
+    public readonly T DistanceTo(Point<T> other)
+    {
+        var dx = other.x - x;
+        var dy = other.y - y;
+        return T.Sqrt(dx * dx + dy * dy);
+    }
+
+    /// <summary>
+    /// Linearly interpolates between this point and another.
+    /// </summary>
+    public readonly Point<T> Lerp(Point<T> other, T t) =>
+        new Point<T>(x + (other.x - x) * t, y + (other.y - y) * t);
+
+    /// <summary>
+    /// Reflects this point across the specified center point.
+    /// </summary>
+    public readonly Point<T> Reflect(Point<T> center) =>
+        new Point<T>(center.x + center.x - x, center.y + center.y - y);
+
     public override readonly string ToString() => $"{{X={x}, Y={y}}}";
 }

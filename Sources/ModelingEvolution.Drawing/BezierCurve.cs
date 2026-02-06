@@ -227,6 +227,116 @@ public readonly record struct BezierCurve<T> : IEnumerable<Point<T>>
     }
 
     /// <summary>
+    /// Splits the curve at parameter t into two curves using De Casteljau's algorithm.
+    /// </summary>
+    /// <param name="t">The parameter value at which to split (0 to 1).</param>
+    /// <returns>A tuple of (Left, Right) curves.</returns>
+    public (BezierCurve<T> Left, BezierCurve<T> Right) Split(T t)
+    {
+        var q0 = LerpPoint(Start, C0, t);
+        var q1 = LerpPoint(C0, C1, t);
+        var q2 = LerpPoint(C1, End, t);
+        var r0 = LerpPoint(q0, q1, t);
+        var r1 = LerpPoint(q1, q2, t);
+        var s = LerpPoint(r0, r1, t);
+        return (new BezierCurve<T>(Start, q0, r0, s), new BezierCurve<T>(s, r1, q2, End));
+    }
+
+    /// <summary>
+    /// Returns the sub-curve between parameters t0 and t1.
+    /// </summary>
+    /// <param name="t0">The start parameter (0 to 1).</param>
+    /// <param name="t1">The end parameter (t0 to 1).</param>
+    /// <returns>The sub-curve between t0 and t1.</returns>
+    public BezierCurve<T> SubCurve(T t0, T t1)
+    {
+        if (t0 == T.Zero && t1 == T.One) return this;
+        if (t0 == T.Zero) return Split(t1).Left;
+        var (_, right) = Split(t0);
+        if (t1 == T.One) return right;
+        var remapped = (t1 - t0) / (T.One - t0);
+        return right.Split(remapped).Left;
+    }
+
+    /// <summary>
+    /// Finds all parameter values in (0,1) where this curve crosses the edges of a rectangle.
+    /// </summary>
+    internal T[] FindEdgeCrossings(Rectangle<T> rect)
+    {
+        var eps = T.CreateTruncating(1e-9);
+        var results = new List<T>();
+
+        // Left edge: x = rect.X
+        AddAxisCrossings(Start.X, C0.X, C1.X, End.X, rect.X,
+            Start.Y, C0.Y, C1.Y, End.Y, rect.Y, rect.Bottom, results, eps);
+        // Right edge: x = rect.Right
+        AddAxisCrossings(Start.X, C0.X, C1.X, End.X, rect.Right,
+            Start.Y, C0.Y, C1.Y, End.Y, rect.Y, rect.Bottom, results, eps);
+        // Top edge: y = rect.Y
+        AddAxisCrossings(Start.Y, C0.Y, C1.Y, End.Y, rect.Y,
+            Start.X, C0.X, C1.X, End.X, rect.X, rect.Right, results, eps);
+        // Bottom edge: y = rect.Bottom
+        AddAxisCrossings(Start.Y, C0.Y, C1.Y, End.Y, rect.Bottom,
+            Start.X, C0.X, C1.X, End.X, rect.X, rect.Right, results, eps);
+
+        results.Sort();
+        // Deduplicate within epsilon
+        for (int i = results.Count - 1; i > 0; i--)
+            if (results[i] - results[i - 1] < eps)
+                results.RemoveAt(i);
+
+        return results.ToArray();
+    }
+
+    /// <summary>
+    /// Finds t-values where the Bezier polynomial in one axis equals a constant,
+    /// and the other axis is within the edge bounds.
+    /// </summary>
+    private static void AddAxisCrossings(
+        T p0, T p1, T p2, T p3, T k,
+        T q0, T q1, T q2, T q3, T lo, T hi,
+        List<T> results, T eps)
+    {
+        // Cubic coefficients: B(t) = at³ + bt² + ct + d, solve B(t) = k
+        var a = -p0 + tree * p1 - tree * p2 + p3;
+        var b = tree * p0 - six * p1 + tree * p2;
+        var c = -tree * p0 + tree * p1;
+        var d = p0 - k;
+
+        // If all coefficients are ~zero, the component is constant → no crossings
+        if (T.Abs(a) < eps && T.Abs(b) < eps && T.Abs(c) < eps)
+            return;
+
+        T[] roots;
+        try { roots = new CubicEquation<T>(a, b, c, d).ZeroPoints(); }
+        catch { return; }
+
+        foreach (var t in roots)
+        {
+            if (t > -eps && t < T.One + eps)
+            {
+                var clamped = T.Max(T.Zero, T.Min(T.One, t));
+                // Check the other axis is within edge bounds
+                var other = EvalComponent(q0, q1, q2, q3, clamped);
+                if (other >= lo - eps && other <= hi + eps)
+                    results.Add(clamped);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Evaluates one component of a cubic Bezier at parameter t.
+    /// </summary>
+    private static T EvalComponent(T p0, T p1, T p2, T p3, T t)
+    {
+        T u = T.One - t;
+        return u * u * u * p0 + tree * u * u * t * p1 + tree * u * t * t * p2 + t * t * t * p3;
+    }
+
+    private static Point<T> LerpPoint(Point<T> a, Point<T> b, T t) =>
+        new(a.X + (b.X - a.X) * t, a.Y + (b.Y - a.Y) * t);
+
+    /// <summary>
     /// Returns an enumerator that iterates through the control points of the curve.
     /// </summary>
     /// <returns>An enumerator for the control points.</returns>

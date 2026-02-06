@@ -16,7 +16,7 @@ namespace ModelingEvolution.Drawing;
 [RectangleJsonConverterAttribute]
 [ProtoContract]
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
-public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
+public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>, IArea<T>, IPerimeter<T>, ICentroid<T>, IBoundingBox<T>, IScalable<T, Rectangle<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {
     /// <summary>
@@ -474,10 +474,10 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
         return new Rectangle<T>(x1, y1, x2 - x1, y2 - y1);
     }
     /// <summary>
-    /// Gets the center point of this rectangle.
+    /// Gets the centroid (center point) of this rectangle.
     /// </summary>
     /// <returns>The center point of the rectangle.</returns>
-    public  Point<T> Center() 
+    public Point<T> Centroid()
     {
         var t2 = T.One + T.One;
         var centerX = (Left + Right) / t2;
@@ -565,6 +565,62 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>
         result = Empty;
         return false;
     }
+
+    /// <summary>
+    /// Rotates the rectangle around the specified origin by the given angle.
+    /// Returns a Polygon because a rotated rectangle is no longer axis-aligned.
+    /// </summary>
+    /// <param name="angle">The rotation angle.</param>
+    /// <param name="origin">The center of rotation. Defaults to the origin (0, 0).</param>
+    /// <returns>A polygon representing the rotated rectangle.</returns>
+    public readonly Polygon<T> Rotate(Degree<T> angle, Point<T> origin = default)
+    {
+        var tl = new Point<T>(X, Y).Rotate(angle, origin);
+        var tr = new Point<T>(Right, Y).Rotate(angle, origin);
+        var br = new Point<T>(Right, Bottom).Rotate(angle, origin);
+        var bl = new Point<T>(X, Bottom).Rotate(angle, origin);
+        return new Polygon<T>(tl, tr, br, bl);
+    }
+
+    /// <summary>
+    /// Gets the area of the rectangle.
+    /// </summary>
+    public readonly T Area() => width * height;
+
+    /// <summary>
+    /// Gets the perimeter of the rectangle.
+    /// </summary>
+    public readonly T Perimeter()
+    {
+        var two = T.One + T.One;
+        return two * (width + height);
+    }
+
+    /// <summary>
+    /// Gets the length of the diagonal.
+    /// </summary>
+    public readonly T Diagonal => T.Sqrt(width * width + height * height);
+
+    /// <summary>
+    /// Computes the shortest distance from a point to the rectangle boundary.
+    /// Returns 0 if the point is on or inside the rectangle.
+    /// </summary>
+    public readonly T DistanceTo(Point<T> point)
+    {
+        var dx = T.Max(T.Max(X - point.X, T.Zero), point.X - Right);
+        var dy = T.Max(T.Max(Y - point.Y, T.Zero), point.Y - Bottom);
+        return T.Sqrt(dx * dx + dy * dy);
+    }
+
+    /// <summary>
+    /// Returns this rectangle as its own bounding box.
+    /// </summary>
+    public readonly Rectangle<T> BoundingBox() => this;
+
+    /// <summary>
+    /// Returns a new rectangle with width and height scaled by the given factor.
+    /// </summary>
+    public readonly Rectangle<T> Scale(T factor) => new Rectangle<T>(x, y, width * factor, height * factor);
 
     /// <summary>
     /// Creates a rectangle with random position and size.

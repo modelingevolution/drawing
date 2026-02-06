@@ -464,39 +464,87 @@ public struct Vector<T> : IFormattable, IEquatable<Vector<T>>
         return Equals(vector1, vector2);
     }
 
+    /// <summary>
+    /// Computes the dot product of two vectors.
+    /// </summary>
+    /// <param name="vector1">The first vector.</param>
+    /// <param name="vector2">The second vector.</param>
+    /// <returns>The dot product of the two vectors.</returns>
     public static T operator *(Vector<T> vector1, Vector<T> vector2)
     {
         return Multiply(vector1, vector2);
     }
 
+    /// <summary>
+    /// Transforms a vector by a matrix.
+    /// </summary>
+    /// <param name="vector">The vector to transform.</param>
+    /// <param name="matrix">The transformation matrix.</param>
+    /// <returns>The transformed vector.</returns>
     public static Vector<T> operator *(Vector<T> vector, Matrix<T> matrix)
     {
         return Multiply(vector, matrix);
     }
 
+    /// <summary>
+    /// Multiplies a scalar by a vector.
+    /// </summary>
+    /// <param name="scalar">The scalar value.</param>
+    /// <param name="vector">The vector to scale.</param>
+    /// <returns>The scaled vector.</returns>
     public static Vector<T> operator *(T scalar, Vector<T> vector)
     {
         return Multiply(scalar, vector);
     }
 
+    /// <summary>
+    /// Multiplies a vector by a scalar.
+    /// </summary>
+    /// <param name="vector">The vector to scale.</param>
+    /// <param name="scalar">The scalar value.</param>
+    /// <returns>The scaled vector.</returns>
     public static Vector<T> operator *(Vector<T> vector, T scalar)
     {
         return Multiply(vector, scalar);
     }
+    /// <summary>
+    /// Scales a vector by the width component of a size.
+    /// </summary>
+    /// <param name="vector">The vector to scale.</param>
+    /// <param name="ratio">The size whose width is used as the scaling factor.</param>
+    /// <returns>The scaled vector.</returns>
     public static Vector<T> operator *(Vector<T> vector, Size<T> ratio)
     {
         return new Vector<T>(vector.X * ratio.Width, vector.Y * ratio.Width);
     }
+    /// <summary>
+    /// Divides a vector by the width component of a size.
+    /// </summary>
+    /// <param name="vector">The vector to divide.</param>
+    /// <param name="ratio">The size whose width is used as the divisor.</param>
+    /// <returns>The divided vector.</returns>
     public static Vector<T> operator /(Vector<T> vector, Size<T> ratio)
     {
         return new Vector<T>(vector.X / ratio.Width, vector.Y / ratio.Width);
     }
 
+    /// <summary>
+    /// Divides a vector by a scalar value.
+    /// </summary>
+    /// <param name="vector">The vector to divide.</param>
+    /// <param name="scalar">The scalar divisor.</param>
+    /// <returns>The divided vector.</returns>
     public static Vector<T> operator /(Vector<T> vector, T scalar)
     {
         return Divide(vector, scalar);
     }
 
+    /// <summary>
+    /// Adds a vector to a point, producing a translated point.
+    /// </summary>
+    /// <param name="vector">The vector to add.</param>
+    /// <param name="point">The point to translate.</param>
+    /// <returns>The translated point.</returns>
     public static Point<T> operator +(Vector<T> vector, Point<T> point)
     {
         return Add(vector, point);
@@ -547,6 +595,69 @@ public struct Vector<T> : IFormattable, IEquatable<Vector<T>>
             return new Vector3<T>(T.Zero, _x, _y);
         }
     }
+
+    /// <summary>
+    /// Computes the signed angle from this vector to another vector.
+    /// The result is in the range (-π, π].
+    /// Positive means counter-clockwise rotation.
+    /// </summary>
+    /// <param name="other">The other vector.</param>
+    /// <returns>The signed angle between the vectors in radians.</returns>
+    public Radian<T> AngleBetween(in Vector<T> other)
+    {
+        var t1 = T.Atan2(_y, _x);
+        var t2 = T.Atan2(other._y, other._x);
+        var diff = t2 - t1;
+
+        // Normalize to (-π, π]
+        var pi = T.Pi;
+        if (diff > pi) diff -= pi + pi;
+        if (diff <= -pi) diff += pi + pi;
+
+        return Radian<T>.FromRadian(diff);
+    }
+
+    /// <summary>
+    /// Rotates this vector by the given angle.
+    /// </summary>
+    public Vector<T> Rotate(Degree<T> angle)
+    {
+        var rad = (Radian<T>)angle;
+        var cos = T.Cos((T)rad);
+        var sin = T.Sin((T)rad);
+        return new Vector<T>(cos * _x - sin * _y, sin * _x + cos * _y);
+    }
+
+    /// <summary>
+    /// Returns the perpendicular vector rotated 90 degrees clockwise.
+    /// </summary>
+    public Vector<T> PerpendicularCW => new Vector<T>(_y, -_x);
+
+    /// <summary>
+    /// Returns the perpendicular vector rotated 90 degrees counter-clockwise.
+    /// </summary>
+    public Vector<T> PerpendicularCCW => new Vector<T>(-_y, _x);
+
+    /// <summary>
+    /// Returns this vector reflected across the given normal.
+    /// </summary>
+    public Vector<T> Reflect(Vector<T> normal)
+    {
+        var d = _x * normal._x + _y * normal._y;
+        var two = T.CreateTruncating(2);
+        return new Vector<T>(_x - two * d * normal._x, _y - two * d * normal._y);
+    }
+
+    /// <summary>
+    /// Computes the dot product of this vector with another.
+    /// </summary>
+    public T Dot(in Vector<T> other) => _x * other._x + _y * other._y;
+
+    /// <summary>
+    /// Linearly interpolates between this vector and another.
+    /// </summary>
+    public Vector<T> Lerp(in Vector<T> other, T t) =>
+        new Vector<T>(_x + (other._x - _x) * t, _y + (other._y - _y) * t);
 
     /// <summary>
     /// Represents the unit vector in the X direction (1, 0).

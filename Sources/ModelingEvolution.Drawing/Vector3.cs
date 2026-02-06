@@ -262,27 +262,69 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
 
     #region Operators
 
+    /// <summary>
+    /// Adds two 3D vectors together.
+    /// </summary>
     public static Vector3<T> operator +(Vector3<T> a, Vector3<T> b) => new(a._x + b._x, a._y + b._y, a._z + b._z);
+    /// <summary>
+    /// Subtracts one 3D vector from another.
+    /// </summary>
     public static Vector3<T> operator -(Vector3<T> a, Vector3<T> b) => new(a._x - b._x, a._y - b._y, a._z - b._z);
+    /// <summary>
+    /// Negates a 3D vector (reverses its direction).
+    /// </summary>
     public static Vector3<T> operator -(Vector3<T> v) => new(-v._x, -v._y, -v._z);
+    /// <summary>
+    /// Multiplies a 3D vector by a scalar.
+    /// </summary>
     public static Vector3<T> operator *(Vector3<T> v, T scalar) => new(v._x * scalar, v._y * scalar, v._z * scalar);
+    /// <summary>
+    /// Multiplies a scalar by a 3D vector.
+    /// </summary>
     public static Vector3<T> operator *(T scalar, Vector3<T> v) => new(v._x * scalar, v._y * scalar, v._z * scalar);
+    /// <summary>
+    /// Divides a 3D vector by a scalar.
+    /// </summary>
     public static Vector3<T> operator /(Vector3<T> v, T scalar) => new(v._x / scalar, v._y / scalar, v._z / scalar);
+    /// <summary>
+    /// Computes the dot product of two 3D vectors.
+    /// </summary>
     public static T operator *(Vector3<T> a, Vector3<T> b) => Dot(a, b);
+    /// <summary>
+    /// Combines a 3D vector (as position) with a rotation to create a pose.
+    /// </summary>
     public static Pose3<T> operator +(Vector3<T> v, Rotation3<T> r) => new((Point3<T>)v, r);
+    /// <summary>
+    /// Determines whether two 3D vectors are equal.
+    /// </summary>
     public static bool operator ==(Vector3<T> a, Vector3<T> b) => a._x == b._x && a._y == b._y && a._z == b._z;
+    /// <summary>
+    /// Determines whether two 3D vectors are not equal.
+    /// </summary>
     public static bool operator !=(Vector3<T> a, Vector3<T> b) => !(a == b);
 
     #endregion
 
     #region Conversions
 
+    /// <summary>
+    /// Implicitly converts a tuple to a Vector3.
+    /// </summary>
     public static implicit operator Vector3<T>((T x, T y, T z) tuple) => new(tuple.x, tuple.y, tuple.z);
+    /// <summary>
+    /// Implicitly converts a Vector3 to a tuple.
+    /// </summary>
     public static implicit operator (T x, T y, T z)(Vector3<T> v) => (v._x, v._y, v._z);
 
+    /// <summary>
+    /// Explicitly converts a generic Vector3 to a System.Numerics.Vector3 (float precision).
+    /// </summary>
     public static explicit operator System.Numerics.Vector3(Vector3<T> v) =>
         new(float.CreateTruncating(v._x), float.CreateTruncating(v._y), float.CreateTruncating(v._z));
 
+    /// <summary>
+    /// Explicitly converts a System.Numerics.Vector3 to a generic Vector3.
+    /// </summary>
     public static explicit operator Vector3<T>(System.Numerics.Vector3 v) =>
         new(T.CreateTruncating(v.X), T.CreateTruncating(v.Y), T.CreateTruncating(v.Z));
 
@@ -327,12 +369,27 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
 
     #region Equality & Formatting
 
+    /// <summary>
+    /// Determines whether the specified vector is equal to this vector.
+    /// </summary>
     public bool Equals(Vector3<T> other) => this == other;
+    /// <summary>
+    /// Determines whether the specified object is equal to this vector.
+    /// </summary>
     public override bool Equals(object? obj) => obj is Vector3<T> v && Equals(v);
+    /// <summary>
+    /// Returns the hash code for this vector.
+    /// </summary>
     public override int GetHashCode() => HashCode.Combine(_x, _y, _z);
 
+    /// <summary>
+    /// Returns a string representation of this vector.
+    /// </summary>
     public override string ToString() => ToString(null, null);
 
+    /// <summary>
+    /// Returns a string representation of this vector using the specified format and format provider.
+    /// </summary>
     public string ToString(string? format, IFormatProvider? formatProvider)
     {
         formatProvider ??= CultureInfo.CurrentCulture;
@@ -345,6 +402,14 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
 
     #region Parsing
 
+    /// <summary>
+    /// Parses a string representation of a 3D vector.
+    /// </summary>
+    /// <param name="source">The string to parse.</param>
+    /// <param name="provider">An optional format provider for parsing.</param>
+    /// <returns>The parsed 3D vector.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when source is null.</exception>
+    /// <exception cref="FormatException">Thrown when the string is not in a valid format.</exception>
     public static Vector3<T> Parse(string source, IFormatProvider? provider = null)
     {
         ArgumentNullException.ThrowIfNull(source);
@@ -361,6 +426,13 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
         return new Vector3<T>(x, y, z);
     }
 
+    /// <summary>
+    /// Tries to parse a string representation of a 3D vector.
+    /// </summary>
+    /// <param name="source">The string to parse.</param>
+    /// <param name="provider">An optional format provider for parsing.</param>
+    /// <param name="result">When this method returns, contains the parsed vector if successful.</param>
+    /// <returns>true if the string was parsed successfully; otherwise, false.</returns>
     public static bool TryParse(string? source, IFormatProvider? provider, out Vector3<T> result)
     {
         result = Zero;

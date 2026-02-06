@@ -17,7 +17,7 @@ namespace ModelingEvolution.Drawing;
 /// Mutation methods (Add, InsertAt, RemoveAt) return new polygon instances.
 /// </summary>
 /// <typeparam name="T">The numeric type used for coordinates.</typeparam>
-public readonly record struct Polygon<T>
+public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
     IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {
@@ -292,9 +292,9 @@ public readonly record struct Polygon<T>
     }
 
     /// <summary>
-    /// Determines whether the polygon contains the specified point in its vertex collection.
+    /// Determines whether the polygon has the specified point in its vertex collection.
     /// </summary>
-    public bool Contains(in Point<T> item)
+    public bool HasVertex(in Point<T> item)
     {
         var span = Span;
         for (int i = 0; i < span.Length; i++)
@@ -337,6 +337,181 @@ public readonly record struct Polygon<T>
     /// </summary>
     public Segment<T>? FirstIntersection(Line<T> line) => Drawing.Intersections.FirstOf(line, this);
 
+    /// <summary>
+    /// Determines whether the specified point lies inside this polygon using the ray casting algorithm.
+    /// </summary>
+    public bool Contains(Point<T> point)
+    {
+        var span = Span;
+        int n = span.Length;
+        if (n < 3) return false;
+
+        bool inside = false;
+        for (int i = 0, j = n - 1; i < n; j = i++)
+        {
+            if ((span[i].Y > point.Y) != (span[j].Y > point.Y) &&
+                point.X < (span[j].X - span[i].X) * (point.Y - span[i].Y) / (span[j].Y - span[i].Y) + span[i].X)
+            {
+                inside = !inside;
+            }
+        }
+        return inside;
+    }
+
+    /// <summary>
+    /// Computes the perimeter of this polygon.
+    /// </summary>
+    public T Perimeter()
+    {
+        var span = Span;
+        int n = span.Length;
+        if (n < 2) return T.Zero;
+
+        T perimeter = T.Zero;
+        for (int i = 0; i < n; i++)
+        {
+            var next = span[(i + 1) % n];
+            var dx = next.X - span[i].X;
+            var dy = next.Y - span[i].Y;
+            perimeter += T.Sqrt(dx * dx + dy * dy);
+        }
+        return perimeter;
+    }
+
+    /// <summary>
+    /// Computes the centroid (center of mass) of this polygon.
+    /// </summary>
+    public Point<T> Centroid()
+    {
+        var span = Span;
+        int n = span.Length;
+        if (n == 0) return Point<T>.Zero;
+
+        T cx = T.Zero, cy = T.Zero, signedArea = T.Zero;
+        var six = T.CreateTruncating(6);
+
+        for (int i = 0; i < n; i++)
+        {
+            var current = span[i];
+            var next = span[(i + 1) % n];
+            var a = current.X * next.Y - next.X * current.Y;
+            signedArea += a;
+            cx += (current.X + next.X) * a;
+            cy += (current.Y + next.Y) * a;
+        }
+
+        signedArea /= (T.One + T.One);
+        cx /= (six * signedArea);
+        cy /= (six * signedArea);
+
+        return new Point<T>(cx, cy);
+    }
+
+    /// <summary>
+    /// Determines whether this polygon is convex.
+    /// </summary>
+    public bool IsConvex()
+    {
+        var span = Span;
+        int n = span.Length;
+        if (n < 3) return false;
+
+        bool? positive = null;
+        for (int i = 0; i < n; i++)
+        {
+            var a = span[i];
+            var b = span[(i + 1) % n];
+            var c = span[(i + 2) % n];
+            var cross = (b.X - a.X) * (c.Y - b.Y) - (b.Y - a.Y) * (c.X - b.X);
+            if (cross != T.Zero)
+            {
+                if (positive == null)
+                    positive = cross > T.Zero;
+                else if ((cross > T.Zero) != positive)
+                    return false;
+            }
+        }
+        return true;
+    }
+
+    /// <summary>
+    /// Returns the edges of this polygon as segments.
+    /// </summary>
+    public Segment<T>[] Edges()
+    {
+        var span = Span;
+        int n = span.Length;
+        if (n < 2) return Array.Empty<Segment<T>>();
+
+        var edges = new Segment<T>[n];
+        for (int i = 0; i < n; i++)
+            edges[i] = new Segment<T>(span[i], span[(i + 1) % n]);
+        return edges;
+    }
+
+    /// <summary>
+    /// Returns a new polygon scaled uniformly around its centroid.
+    /// </summary>
+    public Polygon<T> Scale(T factor)
+    {
+        var c = Centroid();
+        var span = Span;
+        var points = new Point<T>[span.Length];
+        for (int i = 0; i < span.Length; i++)
+            points[i] = new Point<T>(c.X + (span[i].X - c.X) * factor, c.Y + (span[i].Y - c.Y) * factor);
+        return new Polygon<T>(points);
+    }
+
+    /// <summary>
+    /// Computes the convex hull of this polygon's vertices using the Graham scan algorithm.
+    /// </summary>
+    public Polygon<T> ConvexHull()
+    {
+        var span = Span;
+        int n = span.Length;
+        if (n < 3) return this;
+
+        var points = span.ToArray();
+
+        int lowest = 0;
+        for (int i = 1; i < n; i++)
+        {
+            if (points[i].Y < points[lowest].Y ||
+                (points[i].Y == points[lowest].Y && points[i].X < points[lowest].X))
+                lowest = i;
+        }
+        (points[0], points[lowest]) = (points[lowest], points[0]);
+        var pivot = points[0];
+
+        Array.Sort(points, 1, n - 1, Comparer<Point<T>>.Create((a, b) =>
+        {
+            var cross = (a.X - pivot.X) * (b.Y - pivot.Y) - (a.Y - pivot.Y) * (b.X - pivot.X);
+            if (cross != T.Zero) return cross > T.Zero ? -1 : 1;
+            var da = (a.X - pivot.X) * (a.X - pivot.X) + (a.Y - pivot.Y) * (a.Y - pivot.Y);
+            var db = (b.X - pivot.X) * (b.X - pivot.X) + (b.Y - pivot.Y) * (b.Y - pivot.Y);
+            return da.CompareTo(db);
+        }));
+
+        var hull = new List<Point<T>> { points[0], points[1] };
+        for (int i = 2; i < n; i++)
+        {
+            while (hull.Count > 1)
+            {
+                var top = hull[^1];
+                var second = hull[^2];
+                var cross = (top.X - second.X) * (points[i].Y - second.Y) -
+                            (top.Y - second.Y) * (points[i].X - second.X);
+                if (cross <= T.Zero)
+                    hull.RemoveAt(hull.Count - 1);
+                else
+                    break;
+            }
+            hull.Add(points[i]);
+        }
+
+        return new Polygon<T>(hull.ToArray());
+    }
+
     #endregion
 
     #region Conversions
@@ -348,7 +523,16 @@ public readonly record struct Polygon<T>
 
     public static implicit operator Polygon<T>(Rectangle<T> t)
     {
-        return new Polygon<T>(t.Points().ToArray());
+        return new Polygon<T>(
+            new Point<T>(t.X, t.Y),
+            new Point<T>(t.Right, t.Y),
+            new Point<T>(t.Right, t.Bottom),
+            new Point<T>(t.X, t.Bottom));
+    }
+
+    public static explicit operator Polygon<T>(Triangle<T> t)
+    {
+        return new Polygon<T>(t.A, t.B, t.C);
     }
 
     #endregion
@@ -372,6 +556,33 @@ public readonly record struct Polygon<T>
             points[i] = span[i] / f;
         return new Polygon<T>(points);
     }
+
+    /// <summary>
+    /// Rotates the polygon around the specified origin by the given angle.
+    /// </summary>
+    /// <param name="angle">The rotation angle.</param>
+    /// <param name="origin">The center of rotation. Defaults to the origin (0, 0).</param>
+    /// <returns>The rotated polygon.</returns>
+    public Polygon<T> Rotate(Degree<T> angle, Point<T> origin = default)
+    {
+        var span = Span;
+        var points = new Point<T>[span.Length];
+        for (int i = 0; i < span.Length; i++)
+            points[i] = span[i].Rotate(angle, origin);
+        return new Polygon<T>(points);
+    }
+
+    /// <summary>
+    /// Rotates the polygon around the origin by the given angle.
+    /// </summary>
+    public static Polygon<T> operator +(in Polygon<T> a, Degree<T> angle) =>
+        a.Rotate(angle);
+
+    /// <summary>
+    /// Rotates the polygon around the origin by the negation of the given angle.
+    /// </summary>
+    public static Polygon<T> operator -(in Polygon<T> a, Degree<T> angle) =>
+        a.Rotate(-angle);
 
     public static Polygon<T> operator -(in Polygon<T> a, in Vector<T> f)
     {

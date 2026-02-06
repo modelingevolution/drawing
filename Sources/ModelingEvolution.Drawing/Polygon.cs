@@ -28,6 +28,10 @@ public readonly record struct Polygon<T>
     [ProtoMember(2)]
     internal readonly int _length;
 
+    // Offset into _points for pool-backed slices; 0 for owned arrays and deserialization compat
+    [ProtoMember(3)]
+    internal readonly int _offset;
+
     /// <summary>
     /// Gets the number of vertices in this polygon.
     /// </summary>
@@ -40,14 +44,14 @@ public readonly record struct Polygon<T>
     /// Gets a read-only span over the polygon's vertices. This is the preferred high-performance access path.
     /// </summary>
     public ReadOnlySpan<Point<T>> Span => _points != null
-        ? (_length > 0 ? _points.AsSpan(0, _length) : _points.AsSpan())
+        ? (_length > 0 ? _points.AsSpan(_offset, _length) : _points.AsSpan())
         : ReadOnlySpan<Point<T>>.Empty;
 
     /// <summary>
     /// Gets a ReadOnlyMemory over the polygon's vertices.
     /// </summary>
     public ReadOnlyMemory<Point<T>> Memory => _points != null
-        ? (_length > 0 ? new ReadOnlyMemory<Point<T>>(_points, 0, _length) : _points.AsMemory())
+        ? (_length > 0 ? new ReadOnlyMemory<Point<T>>(_points, _offset, _length) : _points.AsMemory())
         : ReadOnlyMemory<Point<T>>.Empty;
 
     /// <summary>
@@ -63,8 +67,8 @@ public readonly record struct Polygon<T>
         get
         {
             if (_points == null) return Array.Empty<Point<T>>();
-            if (_length == 0 || _length == _points.Length) return _points;
-            // Pool-backed: copy only the valid portion
+            if (_offset == 0 && (_length == 0 || _length == _points.Length)) return _points;
+            // Pool-backed or offset slice: copy only the valid portion
             return Span.ToArray();
         }
     }
@@ -80,28 +84,32 @@ public readonly record struct Polygon<T>
     public Polygon()
     {
         _points = Array.Empty<Point<T>>();
+        _offset = 0;
         _length = 0;
     }
 
     /// <summary>
-    /// Initializes a new polygon wrapping a ReadOnlyMemory of points. Zero-copy — requires array-backed memory at offset 0.
+    /// Initializes a new polygon wrapping a ReadOnlyMemory of points. Zero-copy — requires array-backed memory.
+    /// Supports non-zero offsets for pooled buffer slices (e.g., multiple polygons sharing one ArrayPool buffer).
     /// </summary>
-    /// <exception cref="ArgumentException">Thrown when the memory is not backed by an array at offset 0.</exception>
+    /// <exception cref="ArgumentException">Thrown when the memory is not backed by an array.</exception>
     public Polygon(ReadOnlyMemory<Point<T>> memory)
     {
         if (memory.Length == 0)
         {
             _points = Array.Empty<Point<T>>();
+            _offset = 0;
             _length = 0;
             return;
         }
 
-        if (!MemoryMarshal.TryGetArray(memory, out ArraySegment<Point<T>> segment) || segment.Offset != 0)
+        if (!MemoryMarshal.TryGetArray(memory, out ArraySegment<Point<T>> segment))
             throw new ArgumentException(
-                "Memory must be backed by an array at offset 0. " +
+                "Memory must be backed by an array. " +
                 "Use MemoryPool<T>.Shared or pass a Point<T>[] directly.", nameof(memory));
 
         _points = segment.Array!;
+        _offset = segment.Offset;
         _length = segment.Count;
     }
 
@@ -111,6 +119,7 @@ public readonly record struct Polygon<T>
     public Polygon(params Point<T>[] points)
     {
         _points = points;
+        _offset = 0;
         _length = points.Length;
     }
 
@@ -119,6 +128,7 @@ public readonly record struct Polygon<T>
     /// </summary>
     public Polygon(IList<Point<T>> points)
     {
+        _offset = 0;
         if (points is Point<T>[] arr)
         {
             _points = arr;
@@ -138,6 +148,7 @@ public readonly record struct Polygon<T>
     public Polygon(IReadOnlyList<T> coords)
     {
         _points = new Point<T>[coords.Count / 2];
+        _offset = 0;
         for (int i = 0; i < coords.Count; i += 2)
             _points[i / 2] = new Point<T>(coords[i], coords[i + 1]);
         _length = _points.Length;
@@ -767,7 +778,7 @@ public readonly record struct Polygon<T>
     internal Point<T>[] AsArray()
     {
         if (_points == null) return Array.Empty<Point<T>>();
-        if (_length == 0 || _length == _points.Length) return _points;
+        if (_offset == 0 && (_length == 0 || _length == _points.Length)) return _points;
         return Span.ToArray();
     }
 }

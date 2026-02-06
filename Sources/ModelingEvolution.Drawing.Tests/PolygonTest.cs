@@ -389,6 +389,96 @@ public class PolygonTest
         memory.Span[0].Should().Be(new Point<float>(1, 2));
     }
 
+    [Fact]
+    public void ConstructFromReadOnlyMemory_NonZeroOffset_ZeroCopy()
+    {
+        // Simulate pooled buffer with multiple polygons sharing one array
+        var buffer = new Point<float>[]
+        {
+            new(1, 2), new(3, 4), new(5, 6),  // polygon A: offset 0, count 3
+            new(10, 20), new(30, 40),           // polygon B: offset 3, count 2
+            new(100, 200)                        // polygon C: offset 5, count 1
+        };
+
+        ReadOnlyMemory<Point<float>> sliceA = buffer.AsMemory(0, 3);
+        ReadOnlyMemory<Point<float>> sliceB = buffer.AsMemory(3, 2);
+        ReadOnlyMemory<Point<float>> sliceC = buffer.AsMemory(5, 1);
+
+        var polyA = new Polygon<float>(sliceA);
+        var polyB = new Polygon<float>(sliceB);
+        var polyC = new Polygon<float>(sliceC);
+
+        polyA.Count.Should().Be(3);
+        polyA[0].Should().Be(new Point<float>(1, 2));
+        polyA[2].Should().Be(new Point<float>(5, 6));
+
+        polyB.Count.Should().Be(2);
+        polyB[0].Should().Be(new Point<float>(10, 20));
+        polyB[1].Should().Be(new Point<float>(30, 40));
+
+        polyC.Count.Should().Be(1);
+        polyC[0].Should().Be(new Point<float>(100, 200));
+    }
+
+    [Fact]
+    public void ConstructFromReadOnlyMemory_NonZeroOffset_SpanAndMemoryConsistent()
+    {
+        var buffer = new Point<float>[]
+        {
+            new(0, 0), new(1, 1), new(2, 2), new(3, 3), new(4, 4)
+        };
+        var polygon = new Polygon<float>(buffer.AsMemory(2, 3));
+
+        polygon.Span.Length.Should().Be(3);
+        polygon.Span[0].Should().Be(new Point<float>(2, 2));
+        polygon.Span[2].Should().Be(new Point<float>(4, 4));
+
+        polygon.Memory.Length.Should().Be(3);
+        polygon.Memory.Span[0].Should().Be(new Point<float>(2, 2));
+    }
+
+    [Fact]
+    public void ConstructFromReadOnlyMemory_PooledBuffer_MultipleSlices()
+    {
+        // Simulate the exact pattern used by SegmentationFrameHandle:
+        // one ArrayPool buffer, multiple instances slice into it
+        var pool = System.Buffers.ArrayPool<Point<float>>.Shared;
+        var buffer = pool.Rent(20);
+
+        try
+        {
+            // Fill like a decoder would
+            buffer[0] = new Point<float>(0, 0);
+            buffer[1] = new Point<float>(10, 0);
+            buffer[2] = new Point<float>(10, 10);
+            buffer[3] = new Point<float>(0, 10);
+            // instance 1: offset 0, count 4
+
+            buffer[4] = new Point<float>(20, 20);
+            buffer[5] = new Point<float>(30, 20);
+            buffer[6] = new Point<float>(25, 30);
+            // instance 2: offset 4, count 3
+
+            var poly1 = new Polygon<float>(buffer.AsMemory(0, 4));
+            var poly2 = new Polygon<float>(buffer.AsMemory(4, 3));
+
+            poly1.Count.Should().Be(4);
+            poly1[0].Should().Be(new Point<float>(0, 0));
+            poly1[3].Should().Be(new Point<float>(0, 10));
+
+            poly2.Count.Should().Be(3);
+            poly2[0].Should().Be(new Point<float>(20, 20));
+            poly2[2].Should().Be(new Point<float>(25, 30));
+
+            // Verify geometric operations work on offset-backed polygons
+            poly1.Area().Should().BeApproximately(100f, 0.01f);
+        }
+        finally
+        {
+            pool.Return(buffer);
+        }
+    }
+
     #endregion
 
     #region Immutable Add / InsertAt / RemoveAt

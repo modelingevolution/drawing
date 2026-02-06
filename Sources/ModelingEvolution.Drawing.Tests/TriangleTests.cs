@@ -519,4 +519,191 @@ public class TriangleTests
     }
 
     #endregion
+
+    #region Enhancement Tests
+
+    private static Triangle<double> Right345 => new(
+        new Point<double>(0, 0),
+        new Point<double>(3, 0),
+        new Point<double>(0, 4));
+
+    private static Triangle<double> Equilateral => new(
+        new Point<double>(0, 0),
+        new Point<double>(1, 0),
+        new Point<double>(0.5, Math.Sqrt(3) / 2));
+
+    [Fact]
+    public void Orthocenter_RightTriangle_AtRightAngleVertex()
+    {
+        var t = Right345;
+        var h = t.Orthocenter;
+        h.X.Should().BeApproximately(0, 1e-6);
+        h.Y.Should().BeApproximately(0, 1e-6);
+    }
+
+    [Fact]
+    public void Orthocenter_Equilateral_EqualsCentroid()
+    {
+        var t = Equilateral;
+        var h = t.Orthocenter;
+        var c = t.Centroid();
+        h.X.Should().BeApproximately(c.X, 1e-6);
+        h.Y.Should().BeApproximately(c.Y, 1e-6);
+    }
+
+    [Fact]
+    public void Edges_Returns_ThreeSegments()
+    {
+        var t = Right345;
+        var (ab, bc, ca) = t.Edges;
+        ab.Length.Should().BeApproximately(3, 1e-9);
+        bc.Length.Should().BeApproximately(5, 1e-9);
+        ca.Length.Should().BeApproximately(4, 1e-9);
+    }
+
+    [Fact]
+    public void Angles_RightTriangle_HasHalfPi()
+    {
+        var t = Right345;
+        var (atA, atB, atC) = t.Angles;
+        ((double)atA).Should().BeApproximately(Math.PI / 2, 1e-9);
+    }
+
+    [Fact]
+    public void Angles_Equilateral_AllSixtyDegrees()
+    {
+        var t = Equilateral;
+        var (atA, atB, atC) = t.Angles;
+        ((double)atA).Should().BeApproximately(Math.PI / 3, 1e-9);
+        ((double)atB).Should().BeApproximately(Math.PI / 3, 1e-9);
+        ((double)atC).Should().BeApproximately(Math.PI / 3, 1e-9);
+    }
+
+    [Fact]
+    public void Angles_SumToPi()
+    {
+        var t = new Triangle<double>(
+            new Point<double>(0, 0),
+            new Point<double>(5, 0),
+            new Point<double>(2, 3));
+        var (a, b, c) = t.Angles;
+        ((double)a + (double)b + (double)c).Should().BeApproximately(Math.PI, 1e-9);
+    }
+
+    [Fact]
+    public void IsRight_345_ReturnsTrue()
+    {
+        Right345.IsRight().Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsRight_Equilateral_ReturnsFalse()
+    {
+        Equilateral.IsRight().Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsAcute_Equilateral_ReturnsTrue()
+    {
+        Equilateral.IsAcute().Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsAcute_RightTriangle_ReturnsFalse()
+    {
+        Right345.IsAcute().Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsObtuse_ObtuseTriangle_ReturnsTrue()
+    {
+        var t = new Triangle<double>(
+            new Point<double>(0, 0),
+            new Point<double>(10, 0),
+            new Point<double>(1, 0.1));
+        t.IsObtuse().Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsEquilateral_EquilateralTriangle_ReturnsTrue()
+    {
+        Equilateral.IsEquilateral().Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsEquilateral_RightTriangle_ReturnsFalse()
+    {
+        Right345.IsEquilateral().Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsIsosceles_EquilateralIsAlsoIsosceles()
+    {
+        Equilateral.IsIsosceles().Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsIsosceles_TwoEqualSides()
+    {
+        var t = new Triangle<double>(
+            new Point<double>(0, 0),
+            new Point<double>(2, 0),
+            new Point<double>(1, 2));
+        t.IsIsosceles().Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsScalene_345_ReturnsTrue()
+    {
+        Right345.IsScalene().Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsScalene_Equilateral_ReturnsFalse()
+    {
+        Equilateral.IsScalene().Should().BeFalse();
+    }
+
+    #endregion
+
+    #region Intersect Rectangle Tests
+
+    private static readonly Rectangle<double> Roi = new(0, 0, 10, 10);
+
+    [Fact]
+    public void Triangle_FullyInside_ReturnsTriangleAsPolygon()
+    {
+        var t = new Triangle<double>(
+            new Point<double>(2, 2),
+            new Point<double>(8, 2),
+            new Point<double>(5, 8));
+        var clipped = t.Intersect(Roi);
+        clipped.Count.Should().Be(3);
+        clipped.Area().Should().BeApproximately(t.Area(), 1e-6);
+    }
+
+    [Fact]
+    public void Triangle_PartiallyInside_ClipsCorrectly()
+    {
+        var t = new Triangle<double>(
+            new Point<double>(-5, 5),
+            new Point<double>(15, 5),
+            new Point<double>(5, -5));
+        var clipped = t.Intersect(Roi);
+        clipped.Count.Should().BeGreaterThan(0);
+        clipped.Area().Should().BeLessThan(t.Area());
+    }
+
+    [Fact]
+    public void Triangle_FullyOutside_ReturnsEmpty()
+    {
+        var t = new Triangle<double>(
+            new Point<double>(20, 20),
+            new Point<double>(30, 20),
+            new Point<double>(25, 30));
+        var clipped = t.Intersect(Roi);
+        clipped.Count.Should().Be(0);
+    }
+
+    #endregion
 }

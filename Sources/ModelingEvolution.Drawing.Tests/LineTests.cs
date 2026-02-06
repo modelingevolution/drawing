@@ -392,4 +392,165 @@ public class LineTests
         var a2 = (double)line2.AngleBetween(line1);
         a1.Should().BeApproximately(-a2, 1e-9);
     }
+
+    [Fact]
+    public void IsParallelTo_ParallelLines_ReturnsTrue()
+    {
+        var l1 = Line<double>.From(new Point<double>(0, 0), new Point<double>(1, 1));
+        var l2 = Line<double>.From(new Point<double>(0, 1), new Point<double>(1, 2));
+        l1.IsParallelTo(l2).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsParallelTo_NonParallel_ReturnsFalse()
+    {
+        var l1 = Line<double>.From(new Point<double>(0, 0), new Point<double>(1, 1));
+        var l2 = Line<double>.From(new Point<double>(0, 0), new Point<double>(1, 0));
+        l1.IsParallelTo(l2).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsParallelTo_BothVertical_ReturnsTrue()
+    {
+        var l1 = Line<double>.Vertical(1);
+        var l2 = Line<double>.Vertical(5);
+        l1.IsParallelTo(l2).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsPerpendicularTo_HorizontalAndVertical()
+    {
+        var h = Line<double>.Horizontal(0);
+        var v = Line<double>.Vertical(0);
+        h.IsPerpendicularTo(v).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsPerpendicularTo_45_And_Neg45()
+    {
+        var l1 = Line<double>.From(new Point<double>(0, 0), new Point<double>(1, 1));
+        var l2 = Line<double>.From(new Point<double>(0, 0), new Point<double>(1, -1));
+        l1.IsPerpendicularTo(l2).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsPerpendicularTo_Parallel_ReturnsFalse()
+    {
+        var l1 = Line<double>.From(new Point<double>(0, 0), new Point<double>(1, 1));
+        var l2 = Line<double>.From(new Point<double>(0, 1), new Point<double>(1, 2));
+        l1.IsPerpendicularTo(l2).Should().BeFalse();
+    }
+
+    [Fact]
+    public void PerpendicularAt_Horizontal()
+    {
+        var line = Line<double>.Horizontal(5);
+        var perp = line.PerpendicularAt(new Point<double>(3, 5));
+        perp.IsVertical.Should().BeTrue();
+        perp.VerticalX.Should().BeApproximately(3, 1e-9);
+    }
+
+    [Fact]
+    public void PerpendicularAt_Vertical()
+    {
+        var line = Line<double>.Vertical(5);
+        var perp = line.PerpendicularAt(new Point<double>(5, 3));
+        perp.IsVertical.Should().BeFalse();
+        perp.Compute(0).Should().BeApproximately(3, 1e-9);
+        perp.Compute(10).Should().BeApproximately(3, 1e-9);
+    }
+
+    [Fact]
+    public void ProjectPoint_OnHorizontal()
+    {
+        var line = Line<double>.Horizontal(0);
+        var proj = line.ProjectPoint(new Point<double>(5, 10));
+        proj.X.Should().BeApproximately(5, 1e-9);
+        proj.Y.Should().BeApproximately(0, 1e-9);
+    }
+
+    [Fact]
+    public void ProjectPoint_OnVertical()
+    {
+        var line = Line<double>.Vertical(3);
+        var proj = line.ProjectPoint(new Point<double>(10, 7));
+        proj.X.Should().BeApproximately(3, 1e-9);
+        proj.Y.Should().BeApproximately(7, 1e-9);
+    }
+
+    [Fact]
+    public void ProjectPoint_On45DegreeLine()
+    {
+        var line = Line<double>.From(new Point<double>(0, 0), new Point<double>(1, 1));
+        var proj = line.ProjectPoint(new Point<double>(2, 0));
+        proj.X.Should().BeApproximately(1, 1e-9);
+        proj.Y.Should().BeApproximately(1, 1e-9);
+    }
+
+    [Fact]
+    public void Reflect_AcrossHorizontal()
+    {
+        var line = Line<double>.Horizontal(0);
+        var result = line.Reflect(new Point<double>(3, 5));
+        result.X.Should().BeApproximately(3, 1e-9);
+        result.Y.Should().BeApproximately(-5, 1e-9);
+    }
+
+    [Fact]
+    public void Reflect_AcrossVertical()
+    {
+        var line = Line<double>.Vertical(0);
+        var result = line.Reflect(new Point<double>(5, 3));
+        result.X.Should().BeApproximately(-5, 1e-9);
+        result.Y.Should().BeApproximately(3, 1e-9);
+    }
+
+    private static readonly Rectangle<double> Roi = new(0, 0, 10, 10);
+
+    [Fact]
+    public void Line_Horizontal_ClipsToRect()
+    {
+        var line = Line<double>.Horizontal(5);
+        var clipped = line.Intersect(Roi);
+        clipped.Should().NotBeNull();
+        clipped!.Value.Start.X.Should().BeApproximately(0, 1e-9);
+        clipped.Value.End.X.Should().BeApproximately(10, 1e-9);
+        clipped.Value.Start.Y.Should().BeApproximately(5, 1e-9);
+    }
+
+    [Fact]
+    public void Line_Vertical_ClipsToRect()
+    {
+        var line = Line<double>.Vertical(5);
+        var clipped = line.Intersect(Roi);
+        clipped.Should().NotBeNull();
+        clipped!.Value.Start.Y.Should().BeApproximately(0, 1e-9);
+        clipped.Value.End.Y.Should().BeApproximately(10, 1e-9);
+    }
+
+    [Fact]
+    public void Line_Outside_ReturnsNull()
+    {
+        var line = Line<double>.Horizontal(20);
+        line.Intersect(Roi).Should().BeNull();
+    }
+
+    [Fact]
+    public void Line_Vertical_Outside_ReturnsNull()
+    {
+        var line = Line<double>.Vertical(20);
+        line.Intersect(Roi).Should().BeNull();
+    }
+
+    [Fact]
+    public void Line_ProjectSegmentOntoLine()
+    {
+        var line = Line<double>.Horizontal(0);
+        var seg = Segment<double>.From(new Point<double>(3, 5), new Point<double>(7, 5));
+        var proj = line.Project(seg);
+        proj.Start.X.Should().BeApproximately(3, 1e-9);
+        proj.Start.Y.Should().BeApproximately(0, 1e-9);
+        proj.End.X.Should().BeApproximately(7, 1e-9);
+        proj.End.Y.Should().BeApproximately(0, 1e-9);
+    }
 }

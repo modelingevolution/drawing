@@ -300,4 +300,150 @@ public class SegmentTests
         var angle = (double)s1.AngleBetween(s2);
         angle.Should().BeApproximately(3 * Math.PI / 4, 1e-9);
     }
+
+    [Fact]
+    public void ProjectPoint_OnSegment()
+    {
+        var s = Segment<double>.From(new Point<double>(0, 0), new Point<double>(10, 0));
+        var proj = s.ProjectPoint(new Point<double>(5, 5));
+        proj.X.Should().BeApproximately(5, 1e-9);
+        proj.Y.Should().BeApproximately(0, 1e-9);
+    }
+
+    [Fact]
+    public void ProjectPoint_BeyondEnd_ClampsToEnd()
+    {
+        var s = Segment<double>.From(new Point<double>(0, 0), new Point<double>(10, 0));
+        var proj = s.ProjectPoint(new Point<double>(20, 5));
+        proj.X.Should().BeApproximately(10, 1e-9);
+        proj.Y.Should().BeApproximately(0, 1e-9);
+    }
+
+    [Fact]
+    public void ProjectPoint_BeforeStart_ClampsToStart()
+    {
+        var s = Segment<double>.From(new Point<double>(0, 0), new Point<double>(10, 0));
+        var proj = s.ProjectPoint(new Point<double>(-5, 5));
+        proj.X.Should().BeApproximately(0, 1e-9);
+        proj.Y.Should().BeApproximately(0, 1e-9);
+    }
+
+    [Fact]
+    public void Lerp_AtZero_ReturnsStart()
+    {
+        var s = Segment<double>.From(new Point<double>(0, 0), new Point<double>(10, 20));
+        var p = s.Lerp(0);
+        p.X.Should().BeApproximately(0, 1e-9);
+        p.Y.Should().BeApproximately(0, 1e-9);
+    }
+
+    [Fact]
+    public void Lerp_AtOne_ReturnsEnd()
+    {
+        var s = Segment<double>.From(new Point<double>(0, 0), new Point<double>(10, 20));
+        var p = s.Lerp(1);
+        p.X.Should().BeApproximately(10, 1e-9);
+        p.Y.Should().BeApproximately(20, 1e-9);
+    }
+
+    [Fact]
+    public void Lerp_AtHalf_ReturnsMidpoint()
+    {
+        var s = Segment<double>.From(new Point<double>(0, 0), new Point<double>(10, 20));
+        var p = s.Lerp(0.5);
+        p.X.Should().BeApproximately(5, 1e-9);
+        p.Y.Should().BeApproximately(10, 1e-9);
+    }
+
+    [Fact]
+    public void Split_AtHalf()
+    {
+        var s = Segment<double>.From(new Point<double>(0, 0), new Point<double>(10, 0));
+        var (left, right) = s.Split(0.5);
+        left.Start.X.Should().BeApproximately(0, 1e-9);
+        left.End.X.Should().BeApproximately(5, 1e-9);
+        right.Start.X.Should().BeApproximately(5, 1e-9);
+        right.End.X.Should().BeApproximately(10, 1e-9);
+    }
+
+    [Fact]
+    public void IsParallelTo_ParallelSegments()
+    {
+        var s1 = Segment<double>.From(new Point<double>(0, 0), new Point<double>(10, 0));
+        var s2 = Segment<double>.From(new Point<double>(0, 5), new Point<double>(10, 5));
+        s1.IsParallelTo(s2).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsParallelTo_NonParallelSegments()
+    {
+        var s1 = Segment<double>.From(new Point<double>(0, 0), new Point<double>(10, 0));
+        var s2 = Segment<double>.From(new Point<double>(0, 0), new Point<double>(10, 10));
+        s1.IsParallelTo(s2).Should().BeFalse();
+    }
+
+    [Fact]
+    public void Reverse_SwapsStartEnd()
+    {
+        var s = Segment<double>.From(new Point<double>(1, 2), new Point<double>(3, 4));
+        var r = s.Reverse();
+        r.Start.X.Should().BeApproximately(3, 1e-9);
+        r.Start.Y.Should().BeApproximately(4, 1e-9);
+        r.End.X.Should().BeApproximately(1, 1e-9);
+        r.End.Y.Should().BeApproximately(2, 1e-9);
+    }
+
+    private static readonly Rectangle<double> Roi = new(0, 0, 10, 10);
+
+    [Fact]
+    public void Segment_FullyInside_ReturnsSame()
+    {
+        var s = Segment<double>.From(new Point<double>(2, 2), new Point<double>(8, 8));
+        var clipped = s.Intersect(Roi);
+        clipped.Should().NotBeNull();
+        clipped!.Value.Start.X.Should().BeApproximately(2, 1e-9);
+        clipped.Value.End.X.Should().BeApproximately(8, 1e-9);
+    }
+
+    [Fact]
+    public void Segment_FullyOutside_ReturnsNull()
+    {
+        var s = Segment<double>.From(new Point<double>(20, 20), new Point<double>(30, 30));
+        s.Intersect(Roi).Should().BeNull();
+    }
+
+    [Fact]
+    public void Segment_PartiallyInside_ClipsCorrectly()
+    {
+        var s = Segment<double>.From(new Point<double>(-5, 5), new Point<double>(15, 5));
+        var clipped = s.Intersect(Roi);
+        clipped.Should().NotBeNull();
+        clipped!.Value.Start.X.Should().BeApproximately(0, 1e-9);
+        clipped.Value.End.X.Should().BeApproximately(10, 1e-9);
+        clipped.Value.Start.Y.Should().BeApproximately(5, 1e-9);
+    }
+
+    [Fact]
+    public void Segment_Diagonal_ClipsBothEnds()
+    {
+        var s = Segment<double>.From(new Point<double>(-5, -5), new Point<double>(15, 15));
+        var clipped = s.Intersect(Roi);
+        clipped.Should().NotBeNull();
+        clipped!.Value.Start.X.Should().BeApproximately(0, 1e-9);
+        clipped.Value.Start.Y.Should().BeApproximately(0, 1e-9);
+        clipped.Value.End.X.Should().BeApproximately(10, 1e-9);
+        clipped.Value.End.Y.Should().BeApproximately(10, 1e-9);
+    }
+
+    [Fact]
+    public void Segment_ProjectOntoLine()
+    {
+        var line = Line<double>.From(new Point<double>(0, 0), new Point<double>(1, 1));
+        var seg = Segment<double>.From(new Point<double>(2, 0), new Point<double>(0, 2));
+        var proj = seg.ProjectOnto(line);
+        proj.Start.X.Should().BeApproximately(1, 1e-9);
+        proj.Start.Y.Should().BeApproximately(1, 1e-9);
+        proj.End.X.Should().BeApproximately(1, 1e-9);
+        proj.End.Y.Should().BeApproximately(1, 1e-9);
+    }
 }

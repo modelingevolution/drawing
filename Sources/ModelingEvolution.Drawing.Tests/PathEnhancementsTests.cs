@@ -327,4 +327,119 @@ public class PathEnhancementsTests
         boundingBox.Right.Should().BeGreaterThanOrEqualTo(120);
         boundingBox.Bottom.Should().BeGreaterThanOrEqualTo(100);
     }
+
+    [Fact]
+    public void Rotate_NonEmpty_TransformsPoints()
+    {
+        var path = Path<double>.FromPoints(
+            new Point<double>(0, 0),
+            new Point<double>(10, 0),
+            new Point<double>(10, 10));
+        var rotated = path.Rotate(Degree<double>.Create(90));
+        rotated.IsEmpty.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Length_StraightLine()
+    {
+        // A straight line from (0,0) to (10,0) as a path
+        var curve = new BezierCurve<double>(
+            new Point<double>(0, 0),
+            new Point<double>(3.33, 0),
+            new Point<double>(6.67, 0),
+            new Point<double>(10, 0));
+        var path = Path<double>.FromSegments(curve);
+        path.Length().Should().BeApproximately(10, 0.1);
+    }
+
+    [Fact]
+    public void PointAt_Zero_ReturnsStart()
+    {
+        var curve = new BezierCurve<double>(
+            new Point<double>(0, 0),
+            new Point<double>(3.33, 0),
+            new Point<double>(6.67, 0),
+            new Point<double>(10, 0));
+        var path = Path<double>.FromSegments(curve);
+        var start = path.PointAt(0.0);
+        start.X.Should().BeApproximately(0, 0.5);
+        start.Y.Should().BeApproximately(0, 0.5);
+    }
+
+    [Fact]
+    public void PointAt_One_ReturnsEnd()
+    {
+        var curve = new BezierCurve<double>(
+            new Point<double>(0, 0),
+            new Point<double>(3.33, 0),
+            new Point<double>(6.67, 0),
+            new Point<double>(10, 0));
+        var path = Path<double>.FromSegments(curve);
+        var end = path.PointAt(1.0);
+        end.X.Should().BeApproximately(10, 0.5);
+        end.Y.Should().BeApproximately(0, 0.5);
+    }
+
+    [Fact]
+    public void Length_EmptyPath_ReturnsZero()
+    {
+        var path = new Path<double>();
+        path.Length().Should().BeApproximately(0, 1e-9);
+    }
+
+    [Fact]
+    public void Path_Intersect_FullyInside_ReturnsSinglePath()
+    {
+        // Path fully inside a large rectangle
+        var path = Path<double>.FromPoints(
+            new Point<double>(2, 2),
+            new Point<double>(4, 8),
+            new Point<double>(8, 5));
+        var roi = new Rectangle<double>(0, 0, 10, 10);
+
+        var results = path.Intersect(roi).ToList();
+        results.Should().HaveCount(1);
+        results[0].Count.Should().Be(path.Count);
+    }
+
+    [Fact]
+    public void Path_Intersect_FullyOutside_ReturnsEmpty()
+    {
+        var path = Path<double>.FromPoints(
+            new Point<double>(20, 20),
+            new Point<double>(25, 28),
+            new Point<double>(30, 22));
+        var roi = new Rectangle<double>(0, 0, 10, 10);
+
+        var results = path.Intersect(roi).ToList();
+        results.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Path_Intersect_CrossingRect_ProducesClippedSubPaths()
+    {
+        // Straight-line path that crosses through the rectangle
+        var path = Path<double>.FromSegments(
+            new BezierCurve<double>(
+                new Point<double>(-5, 5), new Point<double>(-2, 5),
+                new Point<double>(12, 5), new Point<double>(15, 5)));
+        var roi = new Rectangle<double>(0, 0, 10, 10);
+
+        var results = path.Intersect(roi).ToList();
+        results.Should().HaveCount(1);
+
+        // The clipped path's start should be near x=0, end near x=10
+        var clipped = results[0];
+        clipped.Segments[0].Start.X.Should().BeApproximately(0, 0.5);
+        clipped.Segments[^1].End.X.Should().BeApproximately(10, 0.5);
+    }
+
+    [Fact]
+    public void Path_Intersect_EmptyPath_ReturnsEmpty()
+    {
+        var path = new Path<double>();
+        var roi = new Rectangle<double>(0, 0, 10, 10);
+
+        path.Intersect(roi).Should().BeEmpty();
+    }
 }

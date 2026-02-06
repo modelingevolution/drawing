@@ -160,5 +160,63 @@ namespace ModelingEvolution.Drawing.Tests
             // Area should be preserved
             rotated.Area().Should().BeApproximately(100, 1e-8);
         }
+
+        [Fact]
+        public void Area_ReturnsCorrectValue()
+        {
+            var r = new Rectangle<double>(0, 0, 10, 5);
+            r.Area().Should().BeApproximately(50, 1e-9);
+        }
+
+        [Fact]
+        public void Perimeter_ReturnsCorrectValue()
+        {
+            var r = new Rectangle<double>(0, 0, 10, 5);
+            r.Perimeter().Should().BeApproximately(30, 1e-9);
+        }
+
+        [Fact]
+        public void Diagonal_ReturnsCorrectValue()
+        {
+            var r = new Rectangle<double>(0, 0, 3, 4);
+            r.Diagonal.Should().BeApproximately(5, 1e-9);
+        }
+
+        [Fact]
+        public void DistanceTo_PointInside_ReturnsZero()
+        {
+            var r = new Rectangle<double>(0, 0, 10, 10);
+            r.DistanceTo(new Point<double>(5, 5)).Should().BeApproximately(0, 1e-9);
+        }
+
+        [Fact]
+        public void DistanceTo_PointOutside()
+        {
+            var r = new Rectangle<double>(0, 0, 10, 10);
+            r.DistanceTo(new Point<double>(13, 14)).Should().BeApproximately(5, 1e-9);
+        }
+
+        [Fact]
+        public void DistanceTo_PointAlongEdge()
+        {
+            var r = new Rectangle<double>(0, 0, 10, 10);
+            r.DistanceTo(new Point<double>(5, 15)).Should().BeApproximately(5, 1e-9);
+        }
+
+        [Fact]
+        public void ImplicitToPolygon_HasFourVertices()
+        {
+            var r = new Rectangle<double>(0, 0, 10, 5);
+            Polygon<double> poly = r;
+            poly.Count.Should().Be(4);
+        }
+
+        [Fact]
+        public void ImplicitToPolygon_AreaMatchesRectangle()
+        {
+            var r = new Rectangle<double>(0, 0, 10, 5);
+            Polygon<double> poly = r;
+            poly.Area().Should().BeApproximately(50, 1e-9);
+        }
     }
 }

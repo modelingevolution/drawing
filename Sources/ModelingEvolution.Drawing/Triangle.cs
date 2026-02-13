@@ -6,6 +6,7 @@ namespace ModelingEvolution.Drawing;
 /// Represents a triangle in 2D space defined by three vertices.
 /// </summary>
 /// <typeparam name="T">The numeric type used for coordinates.</typeparam>
+[Svg.SvgExporter(typeof(TriangleSvgExporterFactory))]
 public readonly struct Triangle<T> : IEquatable<Triangle<T>>, IShape<T, Triangle<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {

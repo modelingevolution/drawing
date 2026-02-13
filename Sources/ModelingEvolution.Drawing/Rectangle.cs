@@ -16,6 +16,7 @@ namespace ModelingEvolution.Drawing;
 [RectangleJsonConverterAttribute]
 [ProtoContract]
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
+[Svg.SvgExporter(typeof(RectangleSvgExporterFactory))]
 public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>, IArea<T>, IPerimeter<T>, ICentroid<T>, IBoundingBox<T>, IScalable<T, Rectangle<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {

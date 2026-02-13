@@ -8,6 +8,7 @@ namespace ModelingEvolution.Drawing;
 /// Represents a cubic Bezier curve defined by four control points.
 /// </summary>
 /// <typeparam name="T">The numeric type for the coordinates.</typeparam>
+[Svg.SvgExporter(typeof(BezierCurveSvgExporterFactory))]
 public readonly record struct BezierCurve<T> : IEnumerable<Point<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {

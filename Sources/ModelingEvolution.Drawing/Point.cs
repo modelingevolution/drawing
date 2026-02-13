@@ -13,6 +13,7 @@ namespace ModelingEvolution.Drawing;
 /// <typeparam name="T">The numeric type used for coordinates.</typeparam>
 [ProtoContract]
 [PointJsonConverter()]
+[Svg.SvgExporter(typeof(PointSvgExporterFactory))]
 public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {

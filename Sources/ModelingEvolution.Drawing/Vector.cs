@@ -11,6 +11,7 @@ namespace ModelingEvolution.Drawing;
 /// <typeparam name="T">The numeric type used for vector components.</typeparam>
 [ProtoContract]
 [VectorJsonConverterAttribute]
+[Svg.SvgExporter(typeof(VectorSvgExporterFactory))]
 public struct Vector<T> : IFormattable, IEquatable<Vector<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {

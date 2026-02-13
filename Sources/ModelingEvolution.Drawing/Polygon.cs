@@ -8,15 +8,15 @@ using ProtoBuf;
 
 namespace ModelingEvolution.Drawing;
 
-[SvgExporterAttribute(typeof(PolygonSvgExporterFactory))]
-[JsonConverter(typeof(PolygonJsonConverterFactory))]
-[ProtoContract]
 /// <summary>
 /// Represents an immutable polygon defined by a collection of points backed by ReadOnlyMemory.
 /// Supports geometric operations including area calculation, boolean operations, and transformations.
 /// Mutation methods (Add, InsertAt, RemoveAt) return new polygon instances.
 /// </summary>
 /// <typeparam name="T">The numeric type used for coordinates.</typeparam>
+[SvgExporterAttribute(typeof(PolygonSvgExporterFactory))]
+[JsonConverter(typeof(PolygonJsonConverterFactory))]
+[ProtoContract]
 public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
     IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -512,15 +512,36 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
         return new Polygon<T>(hull.ToArray());
     }
 
+    /// <summary>
+    /// Computes the skeleton (medial axis approximation) of this polygon using the specified algorithm.
+    /// </summary>
+    /// <param name="algo">The skeleton algorithm to use. Defaults to StraightSkeleton.</param>
+    public Skeleton<T> Skeleton(SkeletonAlgo algo = SkeletonAlgo.StraightSkeleton)
+    {
+        return algo switch
+        {
+            SkeletonAlgo.StraightSkeleton => StraightSkeletonAlgorithm.Compute(this),
+            SkeletonAlgo.ChordalAxis => ChordalAxisAlgorithm.Compute(this),
+            SkeletonAlgo.Voronoi => VoronoiSkeletonAlgorithm.Compute(this),
+            _ => throw new ArgumentOutOfRangeException(nameof(algo))
+        };
+    }
+
     #endregion
 
     #region Conversions
 
+    /// <summary>
+    /// Explicitly converts a polygon to its bounding rectangle.
+    /// </summary>
     public static explicit operator Rectangle<T>(Polygon<T> t)
     {
         return t.BoundingBox();
     }
 
+    /// <summary>
+    /// Implicitly converts a rectangle to a 4-vertex polygon.
+    /// </summary>
     public static implicit operator Polygon<T>(Rectangle<T> t)
     {
         return new Polygon<T>(
@@ -530,6 +551,9 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
             new Point<T>(t.X, t.Bottom));
     }
 
+    /// <summary>
+    /// Explicitly converts a triangle to a 3-vertex polygon.
+    /// </summary>
     public static explicit operator Polygon<T>(Triangle<T> t)
     {
         return new Polygon<T>(t.A, t.B, t.C);
@@ -539,6 +563,9 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
 
     #region Operators
 
+    /// <summary>
+    /// Scales all points by the given size factor (component-wise multiplication).
+    /// </summary>
     public static Polygon<T> operator *(in Polygon<T> a, in Size<T> f)
     {
         var span = a.Span;
@@ -548,6 +575,9 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
         return new Polygon<T>(points);
     }
 
+    /// <summary>
+    /// Scales all points by the inverse of the given size factor (component-wise division).
+    /// </summary>
     public static Polygon<T> operator /(in Polygon<T> a, in Size<T> f)
     {
         var span = a.Span;
@@ -584,6 +614,9 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     public static Polygon<T> operator -(in Polygon<T> a, Degree<T> angle) =>
         a.Rotate(-angle);
 
+    /// <summary>
+    /// Translates all points by subtracting the given vector.
+    /// </summary>
     public static Polygon<T> operator -(in Polygon<T> a, in Vector<T> f)
     {
         var span = a.Span;
@@ -593,6 +626,9 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
         return new Polygon<T>(points);
     }
 
+    /// <summary>
+    /// Translates all points by adding the given vector.
+    /// </summary>
     public static Polygon<T> operator +(in Polygon<T> a, in Vector<T> f)
     {
         var span = a.Span;

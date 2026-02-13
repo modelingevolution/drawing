@@ -16,9 +16,9 @@ public static class Intersections
     private static readonly double TangentEpsilon = 1e-14;
     private static readonly double DuplicateEpsilon = 1e-7;
 
-    // ────────────────────────────────────────────────
-    // #1  Line × Line → Point?
-    // ────────────────────────────────────────────────
+    /// <summary>
+    /// Returns the intersection point of two infinite lines, or null if they are parallel.
+    /// </summary>
     public static Point<T>? Of<T>(in Line<T> a, in Line<T> b)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>
@@ -35,9 +35,9 @@ public static class Intersections
         return a.Equation.Intersect(b.Equation);
     }
 
-    // ────────────────────────────────────────────────
-    // #2  Line × Segment → Point?
-    // ────────────────────────────────────────────────
+    /// <summary>
+    /// Returns the intersection point of a line and a segment, or null if they do not intersect.
+    /// </summary>
     public static Point<T>? Of<T>(in Line<T> line, in Segment<T> segment)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>
@@ -95,9 +95,9 @@ public static class Intersections
         return pts.Length == 1 ? pts[0] : null;
     }
 
-    // ────────────────────────────────────────────────
-    // #4  Line × Triangle → Segment?
-    // ────────────────────────────────────────────────
+    /// <summary>
+    /// Returns the chord where the line passes through the triangle interior, or null if it misses.
+    /// </summary>
     public static Segment<T>? Of<T>(in Line<T> line, in Triangle<T> triangle)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>
@@ -107,9 +107,9 @@ public static class Intersections
         return segments.Count > 0 ? segments[0] : null;
     }
 
-    // ────────────────────────────────────────────────
-    // #5  Line × Rectangle → Segment?
-    // ────────────────────────────────────────────────
+    /// <summary>
+    /// Returns the chord where the line passes through the rectangle interior, or null if it misses.
+    /// </summary>
     public static Segment<T>? Of<T>(in Line<T> line, in Rectangle<T> rect)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -118,9 +118,10 @@ public static class Intersections
         return segments.Count > 0 ? segments[0] : null;
     }
 
-    // ────────────────────────────────────────────────
-    // #6  Line × Polygon → IReadOnlyList<Segment>
-    // ────────────────────────────────────────────────
+    /// <summary>
+    /// Returns all intersection segments where the line passes through the polygon.
+    /// For convex polygons yields 0 or 1 segment; for concave polygons, multiple segments.
+    /// </summary>
     public static IReadOnlyList<Segment<T>> Of<T>(in Line<T> line, in Polygon<T> polygon)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -128,9 +129,9 @@ public static class Intersections
         return LineThroughEdges(line, polygon.Span);
     }
 
-    // ────────────────────────────────────────────────
-    // #7  Segment × Segment → Point?
-    // ────────────────────────────────────────────────
+    /// <summary>
+    /// Returns the intersection point of two segments, or null if they do not intersect.
+    /// </summary>
     public static Point<T>? Of<T>(in Segment<T> a, in Segment<T> b)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>
@@ -180,9 +181,9 @@ public static class Intersections
         return pts.Length == 1 ? pts[0] : null;
     }
 
-    // ────────────────────────────────────────────────
-    // #9  Segment × Triangle → Point[]
-    // ────────────────────────────────────────────────
+    /// <summary>
+    /// Returns all crossing points where the segment intersects the triangle's edges.
+    /// </summary>
     public static Point<T>[] Of<T>(in Segment<T> segment, in Triangle<T> triangle)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>
@@ -191,9 +192,9 @@ public static class Intersections
         return SegmentVsEdges(segment, vertices);
     }
 
-    // ────────────────────────────────────────────────
-    // #10  Segment × Rectangle → Point[]
-    // ────────────────────────────────────────────────
+    /// <summary>
+    /// Returns all crossing points where the segment intersects the rectangle's edges.
+    /// </summary>
     public static Point<T>[] Of<T>(in Segment<T> segment, in Rectangle<T> rect)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -201,9 +202,9 @@ public static class Intersections
         return SegmentVsEdges(segment, RectVerticesCw(rect));
     }
 
-    // ────────────────────────────────────────────────
-    // #11  Segment × Polygon → Point[]
-    // ────────────────────────────────────────────────
+    /// <summary>
+    /// Returns all crossing points where the segment intersects the polygon's edges.
+    /// </summary>
     public static Point<T>[] Of<T>(in Segment<T> segment, in Polygon<T> polygon)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -238,9 +239,9 @@ public static class Intersections
         return pts.Length == 1 ? pts[0] : null;
     }
 
-    // ────────────────────────────────────────────────
-    // #13  Circle × Triangle → Point[]
-    // ────────────────────────────────────────────────
+    /// <summary>
+    /// Returns all crossing points where the circle intersects the triangle's edges.
+    /// </summary>
     public static Point<T>[] Of<T>(in Circle<T> circle, in Triangle<T> triangle)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>
@@ -249,9 +250,9 @@ public static class Intersections
         return CircleVsEdges(circle, vertices);
     }
 
-    // ────────────────────────────────────────────────
-    // #14  Circle × Rectangle → Point[]
-    // ────────────────────────────────────────────────
+    /// <summary>
+    /// Returns all crossing points where the circle intersects the rectangle's edges.
+    /// </summary>
     public static Point<T>[] Of<T>(in Circle<T> circle, in Rectangle<T> rect)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -259,9 +260,9 @@ public static class Intersections
         return CircleVsEdges(circle, RectVerticesCw(rect));
     }
 
-    // ────────────────────────────────────────────────
-    // #15  Circle × Polygon → Point[]
-    // ────────────────────────────────────────────────
+    /// <summary>
+    /// Returns all crossing points where the circle intersects the polygon's edges.
+    /// </summary>
     public static Point<T>[] Of<T>(in Circle<T> circle, in Polygon<T> polygon)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -269,9 +270,9 @@ public static class Intersections
         return CircleVsEdges(circle, polygon.Span);
     }
 
-    // ────────────────────────────────────────────────
-    // #16  Triangle × Triangle → Point[]
-    // ────────────────────────────────────────────────
+    /// <summary>
+    /// Returns all crossing points where the edges of two triangles intersect.
+    /// </summary>
     public static Point<T>[] Of<T>(in Triangle<T> a, in Triangle<T> b)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>
@@ -281,9 +282,9 @@ public static class Intersections
         return EdgesVsEdges(v1, v2);
     }
 
-    // ────────────────────────────────────────────────
-    // #17  Triangle × Rectangle → Point[]
-    // ────────────────────────────────────────────────
+    /// <summary>
+    /// Returns all crossing points where the triangle's edges intersect the rectangle's edges.
+    /// </summary>
     public static Point<T>[] Of<T>(in Triangle<T> triangle, in Rectangle<T> rect)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -292,9 +293,9 @@ public static class Intersections
         return EdgesVsEdges(v1, RectVerticesCw(rect));
     }
 
-    // ────────────────────────────────────────────────
-    // #18  Triangle × Polygon → Point[]
-    // ────────────────────────────────────────────────
+    /// <summary>
+    /// Returns all crossing points where the triangle's edges intersect the polygon's edges.
+    /// </summary>
     public static Point<T>[] Of<T>(in Triangle<T> triangle, in Polygon<T> polygon)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -303,9 +304,9 @@ public static class Intersections
         return EdgesVsEdges(v1, polygon.Span);
     }
 
-    // ────────────────────────────────────────────────
-    // #19  Rectangle × Rectangle → Point[]
-    // ────────────────────────────────────────────────
+    /// <summary>
+    /// Returns all crossing points where the edges of two rectangles intersect.
+    /// </summary>
     public static Point<T>[] Of<T>(in Rectangle<T> a, in Rectangle<T> b)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -313,9 +314,9 @@ public static class Intersections
         return EdgesVsEdges(RectVerticesCw(a), RectVerticesCw(b));
     }
 
-    // ────────────────────────────────────────────────
-    // #20  Rectangle × Polygon → Point[]
-    // ────────────────────────────────────────────────
+    /// <summary>
+    /// Returns all crossing points where the rectangle's edges intersect the polygon's edges.
+    /// </summary>
     public static Point<T>[] Of<T>(in Rectangle<T> rect, in Polygon<T> polygon)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -323,9 +324,9 @@ public static class Intersections
         return EdgesVsEdges(RectVerticesCw(rect), polygon.Span);
     }
 
-    // ────────────────────────────────────────────────
-    // #21  Polygon × Polygon → Point[]
-    // ────────────────────────────────────────────────
+    /// <summary>
+    /// Returns all crossing points where the edges of two polygons intersect.
+    /// </summary>
     public static Point<T>[] Of<T>(in Polygon<T> a, in Polygon<T> b)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -612,7 +613,10 @@ public static class Intersections
     //  FirstOf — zero-alloc first-hit variants
     // ════════════════════════════════════════════════
 
-    // #6'  Line × Polygon → first Segment?
+    /// <summary>
+    /// Returns the first intersection segment where the line passes through the polygon.
+    /// Zero heap allocation.
+    /// </summary>
     public static Segment<T>? FirstOf<T>(in Line<T> line, in Polygon<T> polygon)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -620,7 +624,10 @@ public static class Intersections
         return FirstLineThroughEdges(line, polygon.Span);
     }
 
-    // #4'  Line × Triangle → first Segment? (already at most 1, but zero-alloc)
+    /// <summary>
+    /// Returns the first intersection segment where the line passes through the triangle.
+    /// Zero heap allocation.
+    /// </summary>
     public static Segment<T>? FirstOf<T>(in Line<T> line, in Triangle<T> triangle)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>
@@ -629,7 +636,10 @@ public static class Intersections
         return FirstLineThroughEdges(line, vertices);
     }
 
-    // #5'  Line × Rectangle → first Segment?
+    /// <summary>
+    /// Returns the first intersection segment where the line passes through the rectangle.
+    /// Zero heap allocation.
+    /// </summary>
     public static Segment<T>? FirstOf<T>(in Line<T> line, in Rectangle<T> rect)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -637,7 +647,10 @@ public static class Intersections
         return FirstLineThroughEdges(line, RectVerticesCw(rect));
     }
 
-    // #9'  Segment × Triangle → first Point?
+    /// <summary>
+    /// Returns the first crossing point where the segment intersects the triangle's edges.
+    /// Zero heap allocation.
+    /// </summary>
     public static Point<T>? FirstOf<T>(in Segment<T> segment, in Triangle<T> triangle)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>
@@ -646,7 +659,10 @@ public static class Intersections
         return FirstSegmentVsEdges(segment, vertices);
     }
 
-    // #10' Segment × Rectangle → first Point?
+    /// <summary>
+    /// Returns the first crossing point where the segment intersects the rectangle's edges.
+    /// Zero heap allocation.
+    /// </summary>
     public static Point<T>? FirstOf<T>(in Segment<T> segment, in Rectangle<T> rect)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -654,7 +670,10 @@ public static class Intersections
         return FirstSegmentVsEdges(segment, RectVerticesCw(rect));
     }
 
-    // #11' Segment × Polygon → first Point?
+    /// <summary>
+    /// Returns the first crossing point where the segment intersects the polygon's edges.
+    /// Zero heap allocation.
+    /// </summary>
     public static Point<T>? FirstOf<T>(in Segment<T> segment, in Polygon<T> polygon)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -662,7 +681,10 @@ public static class Intersections
         return FirstSegmentVsEdges(segment, polygon.Span);
     }
 
-    // #13' Circle × Triangle → first Point?
+    /// <summary>
+    /// Returns the first crossing point where the circle intersects the triangle's edges.
+    /// Zero heap allocation.
+    /// </summary>
     public static Point<T>? FirstOf<T>(in Circle<T> circle, in Triangle<T> triangle)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>
@@ -671,7 +693,10 @@ public static class Intersections
         return FirstCircleVsEdges(circle, vertices);
     }
 
-    // #14' Circle × Rectangle → first Point?
+    /// <summary>
+    /// Returns the first crossing point where the circle intersects the rectangle's edges.
+    /// Zero heap allocation.
+    /// </summary>
     public static Point<T>? FirstOf<T>(in Circle<T> circle, in Rectangle<T> rect)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -679,7 +704,10 @@ public static class Intersections
         return FirstCircleVsEdges(circle, RectVerticesCw(rect));
     }
 
-    // #15' Circle × Polygon → first Point?
+    /// <summary>
+    /// Returns the first crossing point where the circle intersects the polygon's edges.
+    /// Zero heap allocation.
+    /// </summary>
     public static Point<T>? FirstOf<T>(in Circle<T> circle, in Polygon<T> polygon)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -687,7 +715,10 @@ public static class Intersections
         return FirstCircleVsEdges(circle, polygon.Span);
     }
 
-    // #16' Triangle × Triangle → first Point?
+    /// <summary>
+    /// Returns the first crossing point where the edges of two triangles intersect.
+    /// Zero heap allocation.
+    /// </summary>
     public static Point<T>? FirstOf<T>(in Triangle<T> a, in Triangle<T> b)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>
@@ -697,7 +728,10 @@ public static class Intersections
         return FirstEdgesVsEdges(v1, v2);
     }
 
-    // #17' Triangle × Rectangle → first Point?
+    /// <summary>
+    /// Returns the first crossing point where the triangle's edges intersect the rectangle's edges.
+    /// Zero heap allocation.
+    /// </summary>
     public static Point<T>? FirstOf<T>(in Triangle<T> triangle, in Rectangle<T> rect)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -706,7 +740,10 @@ public static class Intersections
         return FirstEdgesVsEdges(v1, RectVerticesCw(rect));
     }
 
-    // #18' Triangle × Polygon → first Point?
+    /// <summary>
+    /// Returns the first crossing point where the triangle's edges intersect the polygon's edges.
+    /// Zero heap allocation.
+    /// </summary>
     public static Point<T>? FirstOf<T>(in Triangle<T> triangle, in Polygon<T> polygon)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -715,7 +752,10 @@ public static class Intersections
         return FirstEdgesVsEdges(v1, polygon.Span);
     }
 
-    // #19' Rectangle × Rectangle → first Point?
+    /// <summary>
+    /// Returns the first crossing point where the edges of two rectangles intersect.
+    /// Zero heap allocation.
+    /// </summary>
     public static Point<T>? FirstOf<T>(in Rectangle<T> a, in Rectangle<T> b)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -723,7 +763,10 @@ public static class Intersections
         return FirstEdgesVsEdges(RectVerticesCw(a), RectVerticesCw(b));
     }
 
-    // #20' Rectangle × Polygon → first Point?
+    /// <summary>
+    /// Returns the first crossing point where the rectangle's edges intersect the polygon's edges.
+    /// Zero heap allocation.
+    /// </summary>
     public static Point<T>? FirstOf<T>(in Rectangle<T> rect, in Polygon<T> polygon)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -731,7 +774,10 @@ public static class Intersections
         return FirstEdgesVsEdges(RectVerticesCw(rect), polygon.Span);
     }
 
-    // #21' Polygon × Polygon → first Point?
+    /// <summary>
+    /// Returns the first crossing point where the edges of two polygons intersect.
+    /// Zero heap allocation.
+    /// </summary>
     public static Point<T>? FirstOf<T>(in Polygon<T> a, in Polygon<T> b)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
@@ -882,6 +928,450 @@ public static class Intersections
             for (int j = 0; j < n2; j++)
             {
                 var edge2 = new Segment<T>(v2[j], v2[(j + 1) % n2]);
+                var hit = Of(edge1, edge2);
+                if (hit != null) return hit;
+            }
+        }
+        return null;
+    }
+
+    // ════════════════════════════════════════════════
+    //  Polyline (open-edge) public methods
+    // ════════════════════════════════════════════════
+
+    /// <summary>
+    /// Returns all intersection segments where the line passes through the polyline's open edges.
+    /// </summary>
+    public static IReadOnlyList<Segment<T>> Of<T>(in Line<T> line, in Polyline<T> polyline)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
+    {
+        return LineThroughOpenEdges(line, polyline.Span);
+    }
+
+    /// <summary>
+    /// Returns all crossing points where the segment intersects the polyline's open edges.
+    /// </summary>
+    public static Point<T>[] Of<T>(in Segment<T> segment, in Polyline<T> polyline)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
+    {
+        return SegmentVsOpenEdges(segment, polyline.Span);
+    }
+
+    /// <summary>
+    /// Returns all crossing points where the circle intersects the polyline's open edges.
+    /// </summary>
+    public static Point<T>[] Of<T>(in Circle<T> circle, in Polyline<T> polyline)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
+    {
+        return CircleVsOpenEdges(circle, polyline.Span);
+    }
+
+    /// <summary>
+    /// Returns all crossing points where the triangle's edges intersect the polyline's open edges.
+    /// </summary>
+    public static Point<T>[] Of<T>(in Triangle<T> triangle, in Polyline<T> polyline)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
+    {
+        Point<T>[] v1 = [triangle.A, triangle.B, triangle.C];
+        return ClosedEdgesVsOpenEdges(v1, polyline.Span);
+    }
+
+    /// <summary>
+    /// Returns all crossing points where the rectangle's edges intersect the polyline's open edges.
+    /// </summary>
+    public static Point<T>[] Of<T>(in Rectangle<T> rect, in Polyline<T> polyline)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
+    {
+        return ClosedEdgesVsOpenEdges(RectVerticesCw(rect), polyline.Span);
+    }
+
+    /// <summary>
+    /// Returns all crossing points where the polygon's edges intersect the polyline's open edges.
+    /// </summary>
+    public static Point<T>[] Of<T>(in Polygon<T> polygon, in Polyline<T> polyline)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
+    {
+        return ClosedEdgesVsOpenEdges(polygon.Span, polyline.Span);
+    }
+
+    /// <summary>
+    /// Returns all crossing points where two polylines' open edges intersect.
+    /// </summary>
+    public static Point<T>[] Of<T>(in Polyline<T> a, in Polyline<T> b)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
+    {
+        return OpenEdgesVsOpenEdges(a.Span, b.Span);
+    }
+
+    // ════════════════════════════════════════════════
+    //  Polyline FirstOf variants
+    // ════════════════════════════════════════════════
+
+    /// <summary>
+    /// Returns the first intersection segment where the line passes through the polyline's open edges.
+    /// Zero heap allocation.
+    /// </summary>
+    public static Segment<T>? FirstOf<T>(in Line<T> line, in Polyline<T> polyline)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
+    {
+        return FirstLineThroughOpenEdges(line, polyline.Span);
+    }
+
+    /// <summary>
+    /// Returns the first crossing point where the segment intersects the polyline's open edges.
+    /// Zero heap allocation.
+    /// </summary>
+    public static Point<T>? FirstOf<T>(in Segment<T> segment, in Polyline<T> polyline)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
+    {
+        return FirstSegmentVsOpenEdges(segment, polyline.Span);
+    }
+
+    /// <summary>
+    /// Returns the first crossing point where the circle intersects the polyline's open edges.
+    /// Zero heap allocation.
+    /// </summary>
+    public static Point<T>? FirstOf<T>(in Circle<T> circle, in Polyline<T> polyline)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
+    {
+        return FirstCircleVsOpenEdges(circle, polyline.Span);
+    }
+
+    /// <summary>
+    /// Returns the first crossing point where the triangle's edges intersect the polyline's open edges.
+    /// Zero heap allocation.
+    /// </summary>
+    public static Point<T>? FirstOf<T>(in Triangle<T> triangle, in Polyline<T> polyline)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
+    {
+        Point<T>[] v1 = [triangle.A, triangle.B, triangle.C];
+        return FirstClosedEdgesVsOpenEdges(v1, polyline.Span);
+    }
+
+    /// <summary>
+    /// Returns the first crossing point where the rectangle's edges intersect the polyline's open edges.
+    /// Zero heap allocation.
+    /// </summary>
+    public static Point<T>? FirstOf<T>(in Rectangle<T> rect, in Polyline<T> polyline)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
+    {
+        return FirstClosedEdgesVsOpenEdges(RectVerticesCw(rect), polyline.Span);
+    }
+
+    /// <summary>
+    /// Returns the first crossing point where the polygon's edges intersect the polyline's open edges.
+    /// Zero heap allocation.
+    /// </summary>
+    public static Point<T>? FirstOf<T>(in Polygon<T> polygon, in Polyline<T> polyline)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
+    {
+        return FirstClosedEdgesVsOpenEdges(polygon.Span, polyline.Span);
+    }
+
+    /// <summary>
+    /// Returns the first crossing point where two polylines' open edges intersect.
+    /// Zero heap allocation.
+    /// </summary>
+    public static Point<T>? FirstOf<T>(in Polyline<T> a, in Polyline<T> b)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
+    {
+        return FirstOpenEdgesVsOpenEdges(a.Span, b.Span);
+    }
+
+    // ════════════════════════════════════════════════
+    //  Open-edge internal helpers (polyline: 0..n-2)
+    // ════════════════════════════════════════════════
+
+    internal static List<Segment<T>> LineThroughOpenEdges<T>(in Line<T> line, ReadOnlySpan<Point<T>> vertices)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>
+    {
+        int n = vertices.Length;
+        if (n < 2) return [];
+
+        var eps = T.CreateTruncating(Epsilon);
+        var dupEps = T.CreateTruncating(DuplicateEpsilon);
+        var hits = new List<(Point<T> point, T param)>();
+
+        for (int i = 0; i < n - 1; i++)
+        {
+            var edgeStart = vertices[i];
+            var edgeEnd = vertices[i + 1];
+            var edgeDir = edgeEnd - edgeStart;
+
+            Point<T>? hit;
+            if (line.IsVertical)
+            {
+                var vx = line.VerticalX;
+                if (T.Abs(edgeDir.X) < eps) continue;
+                var t = (vx - edgeStart.X) / edgeDir.X;
+                if (t < T.Zero || t > T.One) continue;
+                hit = new Point<T>(vx, edgeStart.Y + t * edgeDir.Y);
+            }
+            else
+            {
+                var eq = line.Equation;
+                var denom = edgeDir.Y - eq.A * edgeDir.X;
+                if (T.Abs(denom) < eps) continue;
+                var t = (eq.A * edgeStart.X + eq.B - edgeStart.Y) / denom;
+                if (t < T.Zero || t > T.One) continue;
+                var px = edgeStart.X + t * edgeDir.X;
+                hit = new Point<T>(px, eq.Compute(px));
+            }
+
+            T param = line.IsVertical ? hit.Value.Y : hit.Value.X;
+            if (!IsDuplicate(hits, hit.Value, dupEps))
+                hits.Add((hit.Value, param));
+        }
+
+        if (hits.Count < 2) return [];
+
+        hits.Sort((a, b) => a.param.CompareTo(b.param));
+
+        var result = new List<Segment<T>>(hits.Count / 2);
+        for (int i = 0; i + 1 < hits.Count; i += 2)
+            result.Add(new Segment<T>(hits[i].point, hits[i + 1].point));
+
+        return result;
+    }
+
+    internal static Point<T>[] SegmentVsOpenEdges<T>(in Segment<T> segment, ReadOnlySpan<Point<T>> vertices)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>
+    {
+        int n = vertices.Length;
+        if (n < 2) return [];
+
+        var dupEps = T.CreateTruncating(DuplicateEpsilon);
+        var result = new List<Point<T>>();
+
+        for (int i = 0; i < n - 1; i++)
+        {
+            var edge = new Segment<T>(vertices[i], vertices[i + 1]);
+            var hit = Of(segment, edge);
+            if (hit != null && !IsDuplicate(result, hit.Value, dupEps))
+                result.Add(hit.Value);
+        }
+
+        return result.ToArray();
+    }
+
+    internal static Point<T>[] CircleVsOpenEdges<T>(in Circle<T> circle, ReadOnlySpan<Point<T>> vertices)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>
+    {
+        int n = vertices.Length;
+        if (n < 2) return [];
+
+        var dupEps = T.CreateTruncating(DuplicateEpsilon);
+        var result = new List<Point<T>>();
+
+        for (int i = 0; i < n - 1; i++)
+        {
+            var edge = new Segment<T>(vertices[i], vertices[i + 1]);
+            var hits = SegmentCirclePoints(edge, circle);
+            foreach (var hit in hits)
+            {
+                if (!IsDuplicate(result, hit, dupEps))
+                    result.Add(hit);
+            }
+        }
+
+        return result.ToArray();
+    }
+
+    internal static Point<T>[] ClosedEdgesVsOpenEdges<T>(ReadOnlySpan<Point<T>> closedVerts, ReadOnlySpan<Point<T>> openVerts)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>
+    {
+        int n1 = closedVerts.Length;
+        int n2 = openVerts.Length;
+        if (n1 < 2 || n2 < 2) return [];
+
+        var dupEps = T.CreateTruncating(DuplicateEpsilon);
+        var result = new List<Point<T>>();
+
+        for (int i = 0; i < n1; i++)
+        {
+            var edge1 = new Segment<T>(closedVerts[i], closedVerts[(i + 1) % n1]);
+            for (int j = 0; j < n2 - 1; j++)
+            {
+                var edge2 = new Segment<T>(openVerts[j], openVerts[j + 1]);
+                var hit = Of(edge1, edge2);
+                if (hit != null && !IsDuplicate(result, hit.Value, dupEps))
+                    result.Add(hit.Value);
+            }
+        }
+
+        return result.ToArray();
+    }
+
+    internal static Point<T>[] OpenEdgesVsOpenEdges<T>(ReadOnlySpan<Point<T>> v1, ReadOnlySpan<Point<T>> v2)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>
+    {
+        int n1 = v1.Length;
+        int n2 = v2.Length;
+        if (n1 < 2 || n2 < 2) return [];
+
+        var dupEps = T.CreateTruncating(DuplicateEpsilon);
+        var result = new List<Point<T>>();
+
+        for (int i = 0; i < n1 - 1; i++)
+        {
+            var edge1 = new Segment<T>(v1[i], v1[i + 1]);
+            for (int j = 0; j < n2 - 1; j++)
+            {
+                var edge2 = new Segment<T>(v2[j], v2[j + 1]);
+                var hit = Of(edge1, edge2);
+                if (hit != null && !IsDuplicate(result, hit.Value, dupEps))
+                    result.Add(hit.Value);
+            }
+        }
+
+        return result.ToArray();
+    }
+
+    // ════════════════════════════════════════════════
+    //  Open-edge zero-alloc first-hit helpers
+    // ════════════════════════════════════════════════
+
+    internal static Segment<T>? FirstLineThroughOpenEdges<T>(in Line<T> line, ReadOnlySpan<Point<T>> vertices)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>
+    {
+        int n = vertices.Length;
+        if (n < 2) return null;
+
+        var eps = T.CreateTruncating(Epsilon);
+        var dupEps = T.CreateTruncating(DuplicateEpsilon);
+
+        bool has1 = false, has2 = false;
+        Point<T> p1 = default, p2 = default;
+        T par1 = T.Zero, par2 = T.Zero;
+
+        for (int i = 0; i < n - 1; i++)
+        {
+            var edgeStart = vertices[i];
+            var edgeEnd = vertices[i + 1];
+            var edgeDir = edgeEnd - edgeStart;
+
+            Point<T> hit;
+            if (line.IsVertical)
+            {
+                var vx = line.VerticalX;
+                if (T.Abs(edgeDir.X) < eps) continue;
+                var t = (vx - edgeStart.X) / edgeDir.X;
+                if (t < T.Zero || t > T.One) continue;
+                hit = new Point<T>(vx, edgeStart.Y + t * edgeDir.Y);
+            }
+            else
+            {
+                var eq = line.Equation;
+                var denom = edgeDir.Y - eq.A * edgeDir.X;
+                if (T.Abs(denom) < eps) continue;
+                var t = (eq.A * edgeStart.X + eq.B - edgeStart.Y) / denom;
+                if (t < T.Zero || t > T.One) continue;
+                var px = edgeStart.X + t * edgeDir.X;
+                hit = new Point<T>(px, eq.Compute(px));
+            }
+
+            T param = line.IsVertical ? hit.Y : hit.X;
+
+            if (has1 && T.Abs(p1.X - hit.X) < dupEps && T.Abs(p1.Y - hit.Y) < dupEps) continue;
+            if (has2 && T.Abs(p2.X - hit.X) < dupEps && T.Abs(p2.Y - hit.Y) < dupEps) continue;
+
+            if (!has1) { p1 = hit; par1 = param; has1 = true; }
+            else if (!has2)
+            {
+                if (param < par1) { p2 = p1; par2 = par1; p1 = hit; par1 = param; }
+                else { p2 = hit; par2 = param; }
+                has2 = true;
+            }
+            else if (param < par2)
+            {
+                if (param < par1) { p2 = p1; par2 = par1; p1 = hit; par1 = param; }
+                else { p2 = hit; par2 = param; }
+            }
+        }
+
+        if (!has2) return null;
+        return new Segment<T>(p1, p2);
+    }
+
+    internal static Point<T>? FirstSegmentVsOpenEdges<T>(in Segment<T> segment, ReadOnlySpan<Point<T>> vertices)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>
+    {
+        int n = vertices.Length;
+        for (int i = 0; i < n - 1; i++)
+        {
+            var edge = new Segment<T>(vertices[i], vertices[i + 1]);
+            var hit = Of(segment, edge);
+            if (hit != null) return hit;
+        }
+        return null;
+    }
+
+    internal static Point<T>? FirstCircleVsOpenEdges<T>(in Circle<T> circle, ReadOnlySpan<Point<T>> vertices)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>
+    {
+        int n = vertices.Length;
+        for (int i = 0; i < n - 1; i++)
+        {
+            var edge = new Segment<T>(vertices[i], vertices[i + 1]);
+            var pts = SegmentCirclePoints(edge, circle);
+            if (pts.Length > 0) return pts[0];
+        }
+        return null;
+    }
+
+    internal static Point<T>? FirstClosedEdgesVsOpenEdges<T>(ReadOnlySpan<Point<T>> closedVerts, ReadOnlySpan<Point<T>> openVerts)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>
+    {
+        int n1 = closedVerts.Length;
+        int n2 = openVerts.Length;
+        for (int i = 0; i < n1; i++)
+        {
+            var edge1 = new Segment<T>(closedVerts[i], closedVerts[(i + 1) % n1]);
+            for (int j = 0; j < n2 - 1; j++)
+            {
+                var edge2 = new Segment<T>(openVerts[j], openVerts[j + 1]);
+                var hit = Of(edge1, edge2);
+                if (hit != null) return hit;
+            }
+        }
+        return null;
+    }
+
+    internal static Point<T>? FirstOpenEdgesVsOpenEdges<T>(ReadOnlySpan<Point<T>> v1, ReadOnlySpan<Point<T>> v2)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
+        IFloatingPointIeee754<T>, IMinMaxValue<T>
+    {
+        int n1 = v1.Length;
+        int n2 = v2.Length;
+        for (int i = 0; i < n1 - 1; i++)
+        {
+            var edge1 = new Segment<T>(v1[i], v1[i + 1]);
+            for (int j = 0; j < n2 - 1; j++)
+            {
+                var edge2 = new Segment<T>(v2[j], v2[j + 1]);
                 var hit = Of(edge1, edge2);
                 if (hit != null) return hit;
             }

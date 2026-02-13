@@ -8,6 +8,7 @@ namespace ModelingEvolution.Drawing;
 /// Handles both standard (y = Ax + B) and vertical (x = constant) lines.
 /// </summary>
 /// <typeparam name="T">The numeric type used for coordinates.</typeparam>
+[Svg.SvgExporter(typeof(LineSvgExporterFactory))]
 public readonly record struct Line<T>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
     IFloatingPointIeee754<T>, IMinMaxValue<T>

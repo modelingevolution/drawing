@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200.00" height="800.00" viewBox="-1.00 -1.00 122.00 82.00">
+<style>text { font-family: sans-serif; font-size: 3px; fill: #333; }</style>
+<rect x="-1" y="-1" width="122.00" height="82.00" fill="white"/>
+<g transform="translate(0.00, 0)">
+  <text x="20.00" y="45.00" text-anchor="middle">StraightSkeleton (4e, 5n)</text>
+  <polygon points="15.00,15.00 25.00,15.00 25.00,25.00 15.00,25.00" fill="#f0f4ff" stroke="#4466aa" stroke-width="0.3"/>
+  <line x1="15.00" y1="15.00" x2="20.00" y2="20.00" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="25.00" y1="15.00" x2="20.00" y2="20.00" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="25.00" y1="25.00" x2="20.00" y2="20.00" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="15.00" y1="25.00" x2="20.00" y2="20.00" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <circle cx="15.00" cy="15.00" r="0.4" fill="#dd3333"/>
+  <circle cx="20.00" cy="20.00" r="0.4" fill="#dd3333"/>
+  <circle cx="25.00" cy="15.00" r="0.4" fill="#dd3333"/>
+  <circle cx="25.00" cy="25.00" r="0.4" fill="#dd3333"/>
+  <circle cx="15.00" cy="25.00" r="0.4" fill="#dd3333"/>
+  <circle cx="15.00" cy="15.00" r="0.35" fill="#4466aa"/>
+  <circle cx="25.00" cy="15.00" r="0.35" fill="#4466aa"/>
+  <circle cx="25.00" cy="25.00" r="0.35" fill="#4466aa"/>
+  <circle cx="15.00" cy="25.00" r="0.35" fill="#4466aa"/>
+</g>
+<g transform="translate(40.00, 0)">
+  <text x="20.00" y="45.00" text-anchor="middle">ChordalAxis (2e, 3n)</text>
+  <polygon points="15.00,15.00 25.00,15.00 25.00,25.00 15.00,25.00" fill="#f0f4ff" stroke="#4466aa" stroke-width="0.3"/>
+  <line x1="20.00" y1="20.00" x2="25.00" y2="15.00" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="20.00" y1="20.00" x2="15.00" y2="25.00" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <circle cx="20.00" cy="20.00" r="0.4" fill="#dd3333"/>
+  <circle cx="25.00" cy="15.00" r="0.4" fill="#dd3333"/>
+  <circle cx="15.00" cy="25.00" r="0.4" fill="#dd3333"/>
+  <circle cx="15.00" cy="15.00" r="0.35" fill="#4466aa"/>
+  <circle cx="25.00" cy="15.00" r="0.35" fill="#4466aa"/>
+  <circle cx="25.00" cy="25.00" r="0.35" fill="#4466aa"/>
+  <circle cx="15.00" cy="25.00" r="0.35" fill="#4466aa"/>
+</g>
+<g transform="translate(80.00, 0)">
+  <text x="20.00" y="45.00" text-anchor="middle">Voronoi (20e, 21n)</text>
+  <polygon points="15.00,15.00 25.00,15.00 25.00,25.00 15.00,25.00" fill="#f0f4ff" stroke="#4466aa" stroke-width="0.3"/>
+  <line x1="23.50" y1="16.50" x2="24.50" y2="15.50" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="22.50" y1="17.50" x2="23.50" y2="16.50" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="21.50" y1="18.50" x2="22.50" y2="17.50" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="20.50" y1="19.50" x2="21.50" y2="18.50" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="23.50" y1="23.50" x2="24.50" y2="24.50" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="22.50" y1="22.50" x2="23.50" y2="23.50" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="21.50" y1="21.50" x2="22.50" y2="22.50" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="20.50" y1="20.50" x2="21.50" y2="21.50" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="20.50" y1="19.50" x2="20.00" y2="20.00" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="20.00" y1="20.00" x2="20.50" y2="20.50" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="16.50" y1="23.50" x2="15.50" y2="24.50" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="17.50" y1="22.50" x2="16.50" y2="23.50" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="18.50" y1="21.50" x2="17.50" y2="22.50" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="19.50" y1="20.50" x2="18.50" y2="21.50" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="19.50" y1="19.50" x2="20.00" y2="20.00" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="20.00" y1="20.00" x2="19.50" y2="20.50" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="18.50" y1="18.50" x2="19.50" y2="19.50" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="17.50" y1="17.50" x2="18.50" y2="18.50" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="16.50" y1="16.50" x2="17.50" y2="17.50" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <line x1="15.50" y1="15.50" x2="16.50" y2="16.50" stroke="#dd3333" stroke-width="0.25" stroke-linecap="round"/>
+  <circle cx="23.50" cy="16.50" r="0.4" fill="#dd3333"/>
+  <circle cx="24.50" cy="15.50" r="0.4" fill="#dd3333"/>
+  <circle cx="22.50" cy="17.50" r="0.4" fill="#dd3333"/>
+  <circle cx="21.50" cy="18.50" r="0.4" fill="#dd3333"/>
+  <circle cx="20.50" cy="19.50" r="0.4" fill="#dd3333"/>
+  <circle cx="23.50" cy="23.50" r="0.4" fill="#dd3333"/>
+  <circle cx="24.50" cy="24.50" r="0.4" fill="#dd3333"/>
+  <circle cx="22.50" cy="22.50" r="0.4" fill="#dd3333"/>
+  <circle cx="21.50" cy="21.50" r="0.4" fill="#dd3333"/>
+  <circle cx="20.50" cy="20.50" r="0.4" fill="#dd3333"/>
+  <circle cx="20.00" cy="20.00" r="0.4" fill="#dd3333"/>
+  <circle cx="16.50" cy="23.50" r="0.4" fill="#dd3333"/>
+  <circle cx="15.50" cy="24.50" r="0.4" fill="#dd3333"/>
+  <circle cx="17.50" cy="22.50" r="0.4" fill="#dd3333"/>
+  <circle cx="18.50" cy="21.50" r="0.4" fill="#dd3333"/>
+  <circle cx="19.50" cy="20.50" r="0.4" fill="#dd3333"/>
+  <circle cx="19.50" cy="19.50" r="0.4" fill="#dd3333"/>
+  <circle cx="18.50" cy="18.50" r="0.4" fill="#dd3333"/>
+  <circle cx="17.50" cy="17.50" r="0.4" fill="#dd3333"/>
+  <circle cx="16.50" cy="16.50" r="0.4" fill="#dd3333"/>
+  <circle cx="15.50" cy="15.50" r="0.4" fill="#dd3333"/>
+  <circle cx="15.00" cy="15.00" r="0.35" fill="#4466aa"/>
+  <circle cx="25.00" cy="15.00" r="0.35" fill="#4466aa"/>
+  <circle cx="25.00" cy="25.00" r="0.35" fill="#4466aa"/>
+  <circle cx="15.00" cy="25.00" r="0.35" fill="#4466aa"/>
+</g>
+</svg>

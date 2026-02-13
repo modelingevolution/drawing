@@ -9,6 +9,7 @@ namespace ModelingEvolution.Drawing;
 /// </summary>
 /// <typeparam name="T">The numeric type used for coordinates.</typeparam>
 [ProtoContract]
+[Svg.SvgExporter(typeof(CircleSvgExporterFactory))]
 public readonly record struct Circle<T> : IShape<T, Circle<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
     IFloatingPointIeee754<T>, IMinMaxValue<T>

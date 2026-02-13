@@ -7,6 +7,7 @@ namespace ModelingEvolution.Drawing;
 /// Represents a polygonal curve composed of connected line segments that can generate smooth Bezier curve segments.
 /// </summary>
 /// <typeparam name="T">The numeric type used for coordinates.</typeparam>
+[Svg.SvgExporter(typeof(PolygonalCurveSvgExporterFactory))]
 public class PolygonalCurve<T> : IEnumerable<Point<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {

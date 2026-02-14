@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 40 40">
+<rect width="40" height="40" fill="white"/>
+<polygon points="15.00,15.00 25.00,15.00 25.00,25.00 15.00,25.00" fill="#e8edff" stroke="#4466aa" stroke-width="0.3"/>
+<polygon points="15.00,15.00 25.00,25.00 25.00,15.00" fill="#fff3e0" fill-opacity="0.3" stroke="#e67e22" stroke-width="0.2" stroke-opacity="0.8"/>
+<polygon points="15.00,15.00 15.00,25.00 25.00,25.00" fill="#fff3e0" fill-opacity="0.3" stroke="#e67e22" stroke-width="0.2" stroke-opacity="0.8"/>
+<polygon points="15.00,15.00 25.00,15.00 25.00,25.00 15.00,25.00" fill="none" stroke="#4466aa" stroke-width="0.3"/>
+</svg>

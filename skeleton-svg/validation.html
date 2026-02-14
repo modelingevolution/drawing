@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<title>Skeleton Validation — ModelingEvolution.Drawing vs Delaunator</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; color: #1d1d1f; }
+
+.hero { background: linear-gradient(135deg, #0d1b2a 0%, #1b263b 50%, #415a77 100%); color: #fff; padding: 40px 32px 32px; }
+.hero h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+.hero p { color: #a0b4d0; font-size: 15px; }
+.hero .badges { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.hero .badge { padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+.badge-green { background: rgba(40,167,69,0.2); color: #6fdc8c; border: 1px solid rgba(40,167,69,0.3); }
+.badge-blue { background: rgba(50,100,200,0.2); color: #82b1ff; border: 1px solid rgba(50,100,200,0.3); }
+.badge-orange { background: rgba(230,126,34,0.2); color: #f0b27a; border: 1px solid rgba(230,126,34,0.3); }
+
+.container { max-width: 1600px; margin: 0 auto; padding: 24px; }
+
+.legend { display: flex; gap: 24px; margin-bottom: 24px; justify-content: center; flex-wrap: wrap; }
+.legend .item { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
+.legend .dot { width: 12px; height: 12px; border-radius: 50%; }
+
+.shape-section { margin-bottom: 36px; }
+.shape-title { font-size: 20px; font-weight: 700; margin-bottom: 12px; padding-left: 4px; color: #2c3e50; }
+
+.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.card { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08); transition: box-shadow 0.2s, transform 0.2s; }
+.card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.15); transform: translateY(-2px); }
+.card-header { padding: 10px 16px; font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0f0f0; }
+.card-header .algo-name { color: #333; }
+.card-header .meta { color: #999; font-weight: 400; font-size: 12px; }
+.card-header.ref { background: #fff8f0; }
+.card-body { padding: 16px; display: flex; align-items: center; justify-content: center; aspect-ratio: 1; background: #fafbfc; }
+.card-body img { width: 100%; height: 100%; object-fit: contain; }
+
+@media (max-width: 1100px) {
+    .cards { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+    .cards { grid-template-columns: 1fr; }
+}
+</style>
+</head><body>
+
+<div class="hero">
+    <h1>Skeleton Validation</h1>
+    <p>ModelingEvolution.Drawing &mdash; Our algorithms vs Delaunator reference (NuGet)</p>
+    <div class="badges">
+        <span class="badge badge-green">All tests passing</span>
+        <span class="badge badge-orange">Delaunator 1.0.11 &mdash; 92K downloads</span>
+        <span class="badge badge-blue">3 skeleton algorithms + reference</span>
+    </div>
+</div>
+
+<div class="container">
+    <div class="legend">
+        <div class="item"><div class="dot" style="background:#e67e22"></div> Delaunator triangulation (reference)</div>
+        <div class="item"><div class="dot" style="background:#e74c3c"></div> Our skeleton edges</div>
+        <div class="item"><div class="dot" style="background:#4466aa"></div> Polygon outline</div>
+    </div>
+    <div class="shape-section">
+        <div class="shape-title">Square (4 vertices)</div>
+        <div class="cards">
+            <div class="card">
+                <div class="card-header ref">
+                    <span class="algo-name">Delaunator (ref)</span>
+                    <span class="meta">2 triangles</span>
+                </div>
+                <div class="card-body"><img src="square_delaunator.svg" alt="Square - Delaunator (ref)"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="algo-name">Straight Skeleton</span>
+                    <span class="meta">4 edges</span>
+                </div>
+                <div class="card-body"><img src="square_straightskeleton.svg" alt="Square - Straight Skeleton"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="algo-name">Chordal Axis</span>
+                    <span class="meta">2 edges</span>
+                </div>
+                <div class="card-body"><img src="square_chordalaxis.svg" alt="Square - Chordal Axis"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="algo-name">Voronoi</span>
+                    <span class="meta">8 edges</span>
+                </div>
+                <div class="card-body"><img src="square_voronoi.svg" alt="Square - Voronoi"></div>
+            </div>
+        </div>
+    </div>
+    <div class="shape-section">
+        <div class="shape-title">Rectangle (4 vertices)</div>
+        <div class="cards">
+            <div class="card">
+                <div class="card-header ref">
+                    <span class="algo-name">Delaunator (ref)</span>
+                    <span class="meta">2 triangles</span>
+                </div>
+                <div class="card-body"><img src="rectangle_delaunator.svg" alt="Rectangle - Delaunator (ref)"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="algo-name">Straight Skeleton</span>
+                    <span class="meta">6 edges</span>
+                </div>
+                <div class="card-body"><img src="rectangle_straightskeleton.svg" alt="Rectangle - Straight Skeleton"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="algo-name">Chordal Axis</span>
+                    <span class="meta">2 edges</span>
+                </div>
+                <div class="card-body"><img src="rectangle_chordalaxis.svg" alt="Rectangle - Chordal Axis"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="algo-name">Voronoi</span>
+                    <span class="meta">4 edges</span>
+                </div>
+                <div class="card-body"><img src="rectangle_voronoi.svg" alt="Rectangle - Voronoi"></div>
+            </div>
+        </div>
+    </div>
+    <div class="shape-section">
+        <div class="shape-title">L-Shape (6 vertices)</div>
+        <div class="cards">
+            <div class="card">
+                <div class="card-header ref">
+                    <span class="algo-name">Delaunator (ref)</span>
+                    <span class="meta">5 triangles</span>
+                </div>
+                <div class="card-body"><img src="l-shape_delaunator.svg" alt="L-Shape - Delaunator (ref)"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="algo-name">Straight Skeleton</span>
+                    <span class="meta">10 edges</span>
+                </div>
+                <div class="card-body"><img src="l-shape_straightskeleton.svg" alt="L-Shape - Straight Skeleton"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="algo-name">Chordal Axis</span>
+                    <span class="meta">4 edges</span>
+                </div>
+                <div class="card-body"><img src="l-shape_chordalaxis.svg" alt="L-Shape - Chordal Axis"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="algo-name">Voronoi</span>
+                    <span class="meta">12 edges</span>
+                </div>
+                <div class="card-body"><img src="l-shape_voronoi.svg" alt="L-Shape - Voronoi"></div>
+            </div>
+        </div>
+    </div>
+    <div class="shape-section">
+        <div class="shape-title">T-Shape (8 vertices)</div>
+        <div class="cards">
+            <div class="card">
+                <div class="card-header ref">
+                    <span class="algo-name">Delaunator (ref)</span>
+                    <span class="meta">8 triangles</span>
+                </div>
+                <div class="card-body"><img src="t-shape_delaunator.svg" alt="T-Shape - Delaunator (ref)"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="algo-name">Straight Skeleton</span>
+                    <span class="meta">15 edges</span>
+                </div>
+                <div class="card-body"><img src="t-shape_straightskeleton.svg" alt="T-Shape - Straight Skeleton"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="algo-name">Chordal Axis</span>
+                    <span class="meta">8 edges</span>
+                </div>
+                <div class="card-body"><img src="t-shape_chordalaxis.svg" alt="T-Shape - Chordal Axis"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="algo-name">Voronoi</span>
+                    <span class="meta">22 edges</span>
+                </div>
+                <div class="card-body"><img src="t-shape_voronoi.svg" alt="T-Shape - Voronoi"></div>
+            </div>
+        </div>
+    </div>
+    <div class="shape-section">
+        <div class="shape-title">Arrow (7 vertices)</div>
+        <div class="cards">
+            <div class="card">
+                <div class="card-header ref">
+                    <span class="algo-name">Delaunator (ref)</span>
+                    <span class="meta">7 triangles</span>
+                </div>
+                <div class="card-body"><img src="arrow_delaunator.svg" alt="Arrow - Delaunator (ref)"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="algo-name">Straight Skeleton</span>
+                    <span class="meta">10 edges</span>
+                </div>
+                <div class="card-body"><img src="arrow_straightskeleton.svg" alt="Arrow - Straight Skeleton"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="algo-name">Chordal Axis</span>
+                    <span class="meta">7 edges</span>
+                </div>
+                <div class="card-body"><img src="arrow_chordalaxis.svg" alt="Arrow - Chordal Axis"></div>
+            </div>
+            <div class="card">
+                <div class="card-header">
+                    <span class="algo-name">Voronoi</span>
+                    <span class="meta">22 edges</span>
+                </div>
+                <div class="card-body"><img src="arrow_voronoi.svg" alt="Arrow - Voronoi"></div>
+            </div>
+        </div>
+    </div>
+</div>
+</body></html>

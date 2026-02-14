@@ -104,6 +104,19 @@ public readonly record struct Skeleton<T>
     }
 
     /// <summary>
+    /// Returns the spine of the skeleton — the core subgraph after removing all leaf branches.
+    /// A leaf branch is the path from a degree-1 node to the nearest junction (degree >= 3).
+    /// For shapes with no junctions (e.g. triangle), returns an empty skeleton.
+    /// For a rectangle skeleton (>-<), returns the central segment (-).
+    /// Chain with <see cref="LongestPath"/> to get the central polyline: <c>skeleton.Spine().LongestPath()</c>.
+    /// </summary>
+    public Skeleton<T> Spine()
+    {
+        var (core, _) = SplitLeafEdges();
+        return core;
+    }
+
+    /// <summary>
     /// Decomposes the skeleton into individual branches (paths between junction/leaf nodes).
     /// </summary>
     public IReadOnlyList<Polyline<T>> Branches()

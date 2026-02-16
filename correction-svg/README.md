@@ -4,6 +4,8 @@ PCA alignment + per-segment correction on a rounded rectangle 100x70 r=10.
 
 **Shared parameters:** noise=1.0, dropout=10%, rotation=12°, translation=(15, -10)
 
+**Legend:** blue dashed = template, green dashed = perturbed template, gray = measured polyline, red solid = corrected, orange = filter rect
+
 ## Results Summary
 
 | Test | Correction Accuracy | Max Point Disp. | Max Key Pt Disp. | Rotation |
@@ -19,25 +21,71 @@ PCA alignment + per-segment correction on a rounded rectangle 100x70 r=10.
 
 *Sorted by correction accuracy (lower = better). Bold = best per category.*
 
-## Test Descriptions
+---
 
-### Bezier+Polyline Template (8 segments)
+## Unmodified Template
 
-| Test | Source Template | Measured Data |
-|------|---------------|---------------|
-| Unmodified | Original | noise + dropout + rot/tx |
-| Perturbed | 2 corners ±5 | noise + dropout + rot/tx |
-| Polyline Shift — Unmodified | Edges shifted ±3, corners via κ | noise + dropout + rot/tx |
-| Polyline Shift — Perturbed | Edges shifted ±3, corners ±4 | noise + dropout + rot/tx |
-| Smoothed — Unmodified | Original | noise + dropout + rot/tx + **smoothed** |
-| Smoothed — Perturbed | 2 corners ±5 | noise + dropout + rot/tx + **smoothed** |
+noise=1.0 | dropout=10% | rot=12° | tx=15, ty=-10
 
-### Densified Polyline Template (single segment, unit=0.5)
+![Unmodified](unmodified.svg)
 
-| Test | Source Template | Measured Data |
-|------|---------------|---------------|
-| Densified — Unmodified | Original | noise + dropout + rot/tx + smoothed |
-| Densified — Perturbed | 2 corners ±5 | noise + dropout + rot/tx + smoothed |
+---
+
+## Perturbed Key Points
+
+2 corners perturbed ±5 | noise=1.0 | dropout=10% | rot=12°
+
+![Perturbed](perturbed.svg)
+
+---
+
+## Polyline Shift — Unmodified Corners
+
+Edges shifted ±3 | corners reconstructed via κ | noise=1.0 | rot=12°
+
+![Polyline Shift Unmodified](polyshift-unmodified.svg)
+
+---
+
+## Polyline Shift — Perturbed Corners
+
+Edges shifted ±3 | corners perturbed ±4 | noise=1.0 | rot=12°
+
+![Polyline Shift Perturbed](polyshift-perturbed.svg)
+
+---
+
+## Smoothed — Unmodified Template
+
+noise=1.0 | smoothed (window=3) | dropout=10% | rot=12° | tx=15, ty=-10
+
+![Smoothed Unmodified](smoothed-unmodified.svg)
+
+---
+
+## Smoothed — Perturbed Key Points
+
+2 corners perturbed ±5 | noise=1.0 | smoothed (window=3) | rot=12°
+
+![Smoothed Perturbed](smoothed-perturbed.svg)
+
+---
+
+## Densified Polyline — Unmodified
+
+Template densified (unit=0.5) as pure polyline | smoothed (window=3) | noise=1.0 | rot=12°
+
+![Densified Unmodified](densified-unmodified.svg)
+
+---
+
+## Densified Polyline — Perturbed Key Points
+
+Template densified (unit=0.5) as pure polyline | 2 corners perturbed ±5 | smoothed (window=3) | noise=1.0 | rot=12°
+
+![Densified Perturbed](densified-perturbed.svg)
+
+---
 
 ## Key Findings
 

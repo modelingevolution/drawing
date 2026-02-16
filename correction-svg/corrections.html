@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<title>ComputeCorrections() — ModelingEvolution.Drawing</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; color: #1d1d1f; }
+
+.hero { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%); color: #fff; padding: 40px 32px 32px; }
+.hero h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+.hero p { color: #a0b0d0; font-size: 15px; }
+
+.container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+.legend { display: flex; gap: 24px; margin-bottom: 24px; justify-content: center; flex-wrap: wrap; }
+.legend .item { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
+.legend .swatch { width: 24px; height: 3px; border-radius: 2px; }
+
+.cards { display: grid; grid-template-columns: 1fr; gap: 16px; }
+.card { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+.card-header { padding: 10px 16px; font-size: 14px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0f0f0; }
+.card-header .meta { color: #999; font-weight: 400; font-size: 12px; }
+.card-body { padding: 16px; display: flex; align-items: center; justify-content: center; background: #fafbfc; cursor: pointer; }
+.card-body img { width: 100%; max-width: 800px; height: auto; object-fit: contain; }
+.card-stats { padding: 16px; border-top: 1px solid #f0f0f0; font-size: 13px; overflow-x: auto; }
+.card-stats table { border-collapse: collapse; width: 100%; font-family: "SF Mono", "Consolas", monospace; font-size: 12px; }
+.card-stats th, .card-stats td { padding: 3px 8px; text-align: left; border-bottom: 1px solid #eee; white-space: nowrap; }
+.card-stats th { font-weight: 600; color: #555; }
+.card-stats tr:hover td { background: #f5f7fa; }
+
+.overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:1000; cursor:pointer; align-items:center; justify-content:center; }
+.overlay.active { display:flex; }
+.overlay img { width:90vw; height:90vh; object-fit:contain; background:#fff; border-radius:8px; padding:20px; }
+</style>
+</head><body>
+
+<div class="hero">
+    <h1>ComplexCurve&lt;T&gt;.ComputeCorrections()</h1>
+    <p>PCA alignment + per-segment correction — Rounded Rectangle 100x70 r=10</p>
+</div>
+
+<div class="overlay" id="overlay" onclick="this.classList.remove('active')"><img id="overlay-img"></div>
+
+<div class="container">
+    <div class="legend">
+        <div class="item"><div class="swatch" style="background:#4466aa"></div> Template (blue dashed)</div>
+        <div class="item"><div class="swatch" style="background:#33aa33"></div> Perturbed template (green dashed)</div>
+        <div class="item"><div class="swatch" style="background:#999999"></div> Measured polyline (gray)</div>
+        <div class="item"><div class="swatch" style="background:#dd3333"></div> Corrected (red solid)</div>
+        <div class="item"><div class="swatch" style="background:#ff8800;opacity:0.5"></div> Filter rect (orange)</div>
+    </div>
+    <div class="cards">
+        <div class="card">
+            <div class="card-header">
+                <span>Unmodified Template</span>
+                <span class="meta">noise=1.0 | dropout=10% | rot=12deg | tx=15,ty=-10</span>
+            </div>
+            <div class="card-body"><img src="unmodified.svg" alt="Unmodified"></div>
+            <div class="card-stats"><table>
+<tr><th colspan="7" style="text-align:left;padding:8px 0 4px">Alignment</th></tr>
+<tr><td colspan="3">Rotation</td><td colspan="4"><b>-167.39&deg;</b></td></tr>
+<tr><td colspan="3">Translation</td><td colspan="4"><b>(97.50, 80.12)</b></td></tr>
+<tr><td colspan="3">Residual (sum sq.)</td><td colspan="4"><b>22.6237</b></td></tr>
+<tr><th colspan="7" style="text-align:left;padding:12px 0 4px">Correction Vectors (template space)</th></tr>
+<tr><th>#</th><th>Segment</th><th>Point</th><th>Template</th><th>Corrected</th><th>dx, dy</th><th>|v|</th></tr>
+<tr><td>0</td><td>Seg0 Poly</td><td>P0</td><td>(10.0, 0.0)</td><td>(10.0, 0.6)</td><td>(-0.03, 0.61)</td><td>0.61</td></tr>
+<tr><td>1</td><td>Seg0 Poly</td><td>P1</td><td>(90.0, 0.0)</td><td>(90.1, 0.2)</td><td>(0.07, 0.20)</td><td>0.21</td></tr>
+<tr><td>2</td><td>Seg1 Bezier</td><td>Start</td><td>(90.0, 0.0)</td><td>(90.1, 0.2)</td><td>(0.07, 0.20)</td><td>0.21</td></tr>
+<tr><td>3</td><td>Seg1 Bezier</td><td>C0</td><td>(95.5, 0.0)</td><td>(94.7, 0.0)</td><td>(-0.85, 0.01)</td><td>0.85</td></tr>
+<tr><td>4</td><td>Seg1 Bezier</td><td>C1</td><td>(100.0, 4.5)</td><td>(99.7, 5.9)</td><td>(-0.26, 1.40)</td><td>1.42</td></tr>
+<tr><td>5</td><td>Seg1 Bezier</td><td>End</td><td>(100.0, 10.0)</td><td>(100.0, 9.9)</td><td>(-0.00, -0.06)</td><td>0.06</td></tr>
+<tr><td>6</td><td>Seg2 Poly</td><td>P0</td><td>(100.0, 10.0)</td><td>(100.0, 9.9)</td><td>(-0.00, -0.06)</td><td>0.06</td></tr>
+<tr><td>7</td><td>Seg2 Poly</td><td>P1</td><td>(100.0, 60.0)</td><td>(100.0, 59.9)</td><td>(0.00, -0.07)</td><td>0.07</td></tr>
+<tr><td>8</td><td>Seg3 Bezier</td><td>Start</td><td>(100.0, 60.0)</td><td>(100.0, 59.9)</td><td>(0.00, -0.07)</td><td>0.07</td></tr>
+<tr><td>9</td><td>Seg3 Bezier</td><td>C0</td><td>(100.0, 65.5)</td><td>(102.3, 62.5)</td><td>(2.26, -3.01)</td><td>3.76</td></tr>
+<tr><td>10</td><td>Seg3 Bezier</td><td>C1</td><td>(95.5, 70.0)</td><td>(93.2, 73.3)</td><td>(-2.28, 3.28)</td><td>3.99</td></tr>
+<tr><td>11</td><td>Seg3 Bezier</td><td>End</td><td>(90.0, 70.0)</td><td>(89.6, 69.5)</td><td>(-0.35, -0.47)</td><td>0.59</td></tr>
+<tr><td>12</td><td>Seg4 Poly</td><td>P0</td><td>(90.0, 70.0)</td><td>(89.6, 69.5)</td><td>(-0.35, -0.47)</td><td>0.59</td></tr>
+<tr><td>13</td><td>Seg4 Poly</td><td>P1</td><td>(10.0, 70.0)</td><td>(10.2, 70.5)</td><td>(0.18, 0.46)</td><td>0.49</td></tr>
+<tr><td>14</td><td>Seg5 Bezier</td><td>Start</td><td>(10.0, 70.0)</td><td>(10.2, 70.5)</td><td>(0.18, 0.46)</td><td>0.49</td></tr>
+<tr><td>15</td><td>Seg5 Bezier</td><td>C0</td><td>(4.5, 70.0)</td><td>(5.2, 70.6)</td><td>(0.69, 0.55)</td><td>0.88</td></tr>
+<tr><td>16</td><td>Seg5 Bezier</td><td>C1</td><td>(0.0, 65.5)</td><td>(-1.5, 66.7)</td><td>(-1.49, 1.22)</td><td>1.92</td></tr>
+<tr><td>17</td><td>Seg5 Bezier</td><td>End</td><td>(0.0, 60.0)</td><td>(-0.7, 60.3)</td><td>(-0.68, 0.33)</td><td>0.76</td></tr>
+<tr><td>18</td><td>Seg6 Poly</td><td>P0</td><td>(0.0, 60.0)</td><td>(-0.7, 60.3)</td><td>(-0.68, 0.33)</td><td>0.76</td></tr>
+<tr><td>19</td><td>Seg6 Poly</td><td>P1</td><td>(0.0, 10.0)</td><td>(-0.3, 9.4)</td><td>(-0.32, -0.59)</td><td>0.67</td></tr>
+<tr><td>20</td><td>Seg7 Bezier</td><td>Start</td><td>(0.0, 10.0)</td><td>(-0.3, 9.4)</td><td>(-0.32, -0.59)</td><td>0.67</td></tr>
+<tr><td>21</td><td>Seg7 Bezier</td><td>C0</td><td>(0.0, 4.5)</td><td>(-1.7, 6.9)</td><td>(-1.65, 2.42)</td><td>2.93</td></tr>
+<tr><td>22</td><td>Seg7 Bezier</td><td>C1</td><td>(4.5, 0.0)</td><td>(5.9, -1.3)</td><td>(1.42, -1.33)</td><td>1.95</td></tr>
+<tr><td>23</td><td>Seg7 Bezier</td><td>End</td><td>(10.0, 0.0)</td><td>(10.0, 0.6)</td><td>(-0.03, 0.61)</td><td>0.61</td></tr>
+<tr><th colspan="7" style="text-align:left;padding:12px 0 4px">Summary</th></tr>
+<tr><td colspan="3">Max key point displacement</td><td colspan="4"><b>3.99</b> at Seg3 Bezier C1</td></tr>
+<tr><td colspan="3">Max point displacement</td><td colspan="4"><b>1.04</b></td></tr>
+<tr><td colspan="3">Correction accuracy</td><td colspan="4"><b>1.04</b></td></tr>
+<tr><td colspan="3">Sum of correction lengths</td><td colspan="4"><b>24.64</b></td></tr>
+<tr><td colspan="3">Sum vector</td><td colspan="4"><b>(-4.43, 5.34)</b> |v| = <b>6.94</b></td></tr>
+</table>
+</div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span>Perturbed Key Points</span>
+                <span class="meta">2 corners perturbed +-5 | noise=1.0 | dropout=10% | rot=12deg</span>
+            </div>
+            <div class="card-body"><img src="perturbed.svg" alt="Perturbed"></div>
+            <div class="card-stats"><table>
+<tr><th colspan="7" style="text-align:left;padding:8px 0 4px">Alignment</th></tr>
+<tr><td colspan="3">Rotation</td><td colspan="4"><b>12.82&deg;</b></td></tr>
+<tr><td colspan="3">Translation</td><td colspan="4"><b>(15.85, -11.29)</b></td></tr>
+<tr><td colspan="3">Residual (sum sq.)</td><td colspan="4"><b>50.2687</b></td></tr>
+<tr><th colspan="7" style="text-align:left;padding:12px 0 4px">Correction Vectors (template space)</th></tr>
+<tr><th>#</th><th>Segment</th><th>Point</th><th>Template</th><th>Corrected</th><th>dx, dy</th><th>|v|</th></tr>
+<tr><td>0</td><td>Seg0 Poly</td><td>P0</td><td>(10.0, 0.0)</td><td>(9.4, 0.6)</td><td>(-0.58, 0.60)</td><td>0.83</td></tr>
+<tr><td>1</td><td>Seg0 Poly</td><td>P1</td><td>(90.0, 0.0)</td><td>(89.1, -2.9)</td><td>(-0.89, -2.90)</td><td>3.04</td></tr>
+<tr><td>2</td><td>Seg1 Bezier</td><td>Start</td><td>(90.0, 0.0)</td><td>(89.1, -2.9)</td><td>(-0.89, -2.90)</td><td>3.04</td></tr>
+<tr><td>3</td><td>Seg1 Bezier</td><td>C0</td><td>(95.5, 0.0)</td><td>(96.5, -4.9)</td><td>(1.00, -4.89)</td><td>5.00</td></tr>
+<tr><td>4</td><td>Seg1 Bezier</td><td>C1</td><td>(100.0, 4.5)</td><td>(96.7, 4.8)</td><td>(-3.30, 0.35)</td><td>3.32</td></tr>
+<tr><td>5</td><td>Seg1 Bezier</td><td>End</td><td>(100.0, 10.0)</td><td>(96.8, 10.3)</td><td>(-3.17, 0.28)</td><td>3.18</td></tr>
+<tr><td>6</td><td>Seg2 Poly</td><td>P0</td><td>(100.0, 10.0)</td><td>(96.8, 10.3)</td><td>(-3.17, 0.28)</td><td>3.18</td></tr>
+<tr><td>7</td><td>Seg2 Poly</td><td>P1</td><td>(100.0, 60.0)</td><td>(100.0, 60.1)</td><td>(0.00, 0.05)</td><td>0.05</td></tr>
+<tr><td>8</td><td>Seg3 Bezier</td><td>Start</td><td>(100.0, 60.0)</td><td>(100.0, 60.1)</td><td>(0.00, 0.05)</td><td>0.05</td></tr>
+<tr><td>9</td><td>Seg3 Bezier</td><td>C0</td><td>(100.0, 65.5)</td><td>(101.1, 64.1)</td><td>(1.06, -1.41)</td><td>1.76</td></tr>
+<tr><td>10</td><td>Seg3 Bezier</td><td>C1</td><td>(95.5, 70.0)</td><td>(96.1, 72.1)</td><td>(0.59, 2.12)</td><td>2.20</td></tr>
+<tr><td>11</td><td>Seg3 Bezier</td><td>End</td><td>(90.0, 70.0)</td><td>(90.4, 70.0)</td><td>(0.43, -0.00)</td><td>0.43</td></tr>
+<tr><td>12</td><td>Seg4 Poly</td><td>P0</td><td>(90.0, 70.0)</td><td>(90.4, 70.0)</td><td>(0.43, -0.00)</td><td>0.43</td></tr>
+<tr><td>13</td><td>Seg4 Poly</td><td>P1</td><td>(10.0, 70.0)</td><td>(9.5, 69.2)</td><td>(-0.52, -0.76)</td><td>0.92</td></tr>
+<tr><td>14</td><td>Seg5 Bezier</td><td>Start</td><td>(10.0, 70.0)</td><td>(9.5, 69.2)</td><td>(-0.52, -0.76)</td><td>0.92</td></tr>
+<tr><td>15</td><td>Seg5 Bezier</td><td>C0</td><td>(4.5, 70.0)</td><td>(1.9, 67.6)</td><td>(-2.59, -2.43)</td><td>3.55</td></tr>
+<tr><td>16</td><td>Seg5 Bezier</td><td>C1</td><td>(0.0, 65.5)</td><td>(2.4, 69.2)</td><td>(2.38, 3.70)</td><td>4.40</td></tr>
+<tr><td>17</td><td>Seg5 Bezier</td><td>End</td><td>(0.0, 60.0)</td><td>(1.8, 59.6)</td><td>(1.84, -0.39)</td><td>1.88</td></tr>
+<tr><td>18</td><td>Seg6 Poly</td><td>P0</td><td>(0.0, 60.0)</td><td>(1.8, 59.6)</td><td>(1.84, -0.39)</td><td>1.88</td></tr>
+<tr><td>19</td><td>Seg6 Poly</td><td>P1</td><td>(0.0, 10.0)</td><td>(-0.2, 9.8)</td><td>(-0.21, -0.21)</td><td>0.30</td></tr>
+<tr><td>20</td><td>Seg7 Bezier</td><td>Start</td><td>(0.0, 10.0)</td><td>(-0.2, 9.8)</td><td>(-0.21, -0.21)</td><td>0.30</td></tr>
+<tr><td>21</td><td>Seg7 Bezier</td><td>C0</td><td>(0.0, 4.5)</td><td>(0.9, 3.3)</td><td>(0.90, -1.18)</td><td>1.49</td></tr>
+<tr><td>22</td><td>Seg7 Bezier</td><td>C1</td><td>(4.5, 0.0)</td><td>(4.4, 2.9)</td><td>(-0.07, 2.88)</td><td>2.88</td></tr>
+<tr><td>23</td><td>Seg7 Bezier</td><td>End</td><td>(10.0, 0.0)</td><td>(9.4, 0.6)</td><td>(-0.58, 0.60)</td><td>0.83</td></tr>
+<tr><th colspan="7" style="text-align:left;padding:12px 0 4px">Summary</th></tr>
+<tr><td colspan="3">Max key point displacement</td><td colspan="4"><b>5.00</b> at Seg1 Bezier C0</td></tr>
+<tr><td colspan="3">Max point displacement</td><td colspan="4"><b>3.24</b></td></tr>
+<tr><td colspan="3">Correction accuracy</td><td colspan="4"><b>1.54</b></td></tr>
+<tr><td colspan="3">Sum of correction lengths</td><td colspan="4"><b>45.87</b></td></tr>
+<tr><td colspan="3">Sum vector</td><td colspan="4"><b>(-6.21, -7.52)</b> |v| = <b>9.75</b></td></tr>
+</table>
+</div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span>Polyline Shift — Unmodified Corners</span>
+                <span class="meta">edges shifted +-3 | corners reconstructed via κ | noise=1.0 | rot=12deg</span>
+            </div>
+            <div class="card-body"><img src="polyshift-unmodified.svg" alt="Polyline Shift Unmodified"></div>
+            <div class="card-stats"><table>
+<tr><th colspan="7" style="text-align:left;padding:8px 0 4px">Alignment</th></tr>
+<tr><td colspan="3">Rotation</td><td colspan="4"><b>-166.99&deg;</b></td></tr>
+<tr><td colspan="3">Translation</td><td colspan="4"><b>(96.76, 79.22)</b></td></tr>
+<tr><td colspan="3">Residual (sum sq.)</td><td colspan="4"><b>23.9001</b></td></tr>
+<tr><th colspan="7" style="text-align:left;padding:12px 0 4px">Correction Vectors (template space)</th></tr>
+<tr><th>#</th><th>Segment</th><th>Point</th><th>Template</th><th>Corrected</th><th>dx, dy</th><th>|v|</th></tr>
+<tr><td>0</td><td>Seg0 Poly</td><td>P0</td><td>(10.0, 0.0)</td><td>(9.9, 0.1)</td><td>(-0.06, 0.11)</td><td>0.13</td></tr>
+<tr><td>1</td><td>Seg0 Poly</td><td>P1</td><td>(90.0, 0.0)</td><td>(89.6, -0.7)</td><td>(-0.41, -0.74)</td><td>0.84</td></tr>
+<tr><td>2</td><td>Seg1 Bezier</td><td>Start</td><td>(90.0, 0.0)</td><td>(89.6, -0.7)</td><td>(-0.41, -0.74)</td><td>0.84</td></tr>
+<tr><td>3</td><td>Seg1 Bezier</td><td>C0</td><td>(95.5, 0.0)</td><td>(94.7, 0.1)</td><td>(-0.83, 0.13)</td><td>0.84</td></tr>
+<tr><td>4</td><td>Seg1 Bezier</td><td>C1</td><td>(100.0, 4.5)</td><td>(101.6, 3.2)</td><td>(1.63, -1.30)</td><td>2.08</td></tr>
+<tr><td>5</td><td>Seg1 Bezier</td><td>End</td><td>(100.0, 10.0)</td><td>(100.4, 10.2)</td><td>(0.36, 0.23)</td><td>0.43</td></tr>
+<tr><td>6</td><td>Seg2 Poly</td><td>P0</td><td>(100.0, 10.0)</td><td>(100.4, 10.2)</td><td>(0.36, 0.23)</td><td>0.43</td></tr>
+<tr><td>7</td><td>Seg2 Poly</td><td>P1</td><td>(100.0, 60.0)</td><td>(100.7, 60.5)</td><td>(0.65, 0.45)</td><td>0.79</td></tr>
+<tr><td>8</td><td>Seg3 Bezier</td><td>Start</td><td>(100.0, 60.0)</td><td>(100.7, 60.5)</td><td>(0.65, 0.45)</td><td>0.79</td></tr>
+<tr><td>9</td><td>Seg3 Bezier</td><td>C0</td><td>(100.0, 65.5)</td><td>(100.4, 66.7)</td><td>(0.42, 1.16)</td><td>1.24</td></tr>
+<tr><td>10</td><td>Seg3 Bezier</td><td>C1</td><td>(95.5, 70.0)</td><td>(95.4, 70.0)</td><td>(-0.17, -0.01)</td><td>0.17</td></tr>
+<tr><td>11</td><td>Seg3 Bezier</td><td>End</td><td>(90.0, 70.0)</td><td>(90.1, 69.9)</td><td>(0.14, -0.12)</td><td>0.18</td></tr>
+<tr><td>12</td><td>Seg4 Poly</td><td>P0</td><td>(90.0, 70.0)</td><td>(90.1, 69.9)</td><td>(0.14, -0.12)</td><td>0.18</td></tr>
+<tr><td>13</td><td>Seg4 Poly</td><td>P1</td><td>(10.0, 70.0)</td><td>(10.3, 71.3)</td><td>(0.25, 1.32)</td><td>1.34</td></tr>
+<tr><td>14</td><td>Seg5 Bezier</td><td>Start</td><td>(10.0, 70.0)</td><td>(10.3, 71.3)</td><td>(0.25, 1.32)</td><td>1.34</td></tr>
+<tr><td>15</td><td>Seg5 Bezier</td><td>C0</td><td>(4.5, 70.0)</td><td>(5.2, 72.1)</td><td>(0.73, 2.07)</td><td>2.19</td></tr>
+<tr><td>16</td><td>Seg5 Bezier</td><td>C1</td><td>(0.0, 65.5)</td><td>(-2.3, 66.6)</td><td>(-2.29, 1.03)</td><td>2.51</td></tr>
+<tr><td>17</td><td>Seg5 Bezier</td><td>End</td><td>(0.0, 60.0)</td><td>(-0.9, 60.4)</td><td>(-0.85, 0.41)</td><td>0.94</td></tr>
+<tr><td>18</td><td>Seg6 Poly</td><td>P0</td><td>(0.0, 60.0)</td><td>(-0.9, 60.4)</td><td>(-0.85, 0.41)</td><td>0.94</td></tr>
+<tr><td>19</td><td>Seg6 Poly</td><td>P1</td><td>(0.0, 10.0)</td><td>(-0.8, 10.3)</td><td>(-0.79, 0.32)</td><td>0.85</td></tr>
+<tr><td>20</td><td>Seg7 Bezier</td><td>Start</td><td>(0.0, 10.0)</td><td>(-0.8, 10.3)</td><td>(-0.79, 0.32)</td><td>0.85</td></tr>
+<tr><td>21</td><td>Seg7 Bezier</td><td>C0</td><td>(0.0, 4.5)</td><td>(-2.0, 3.8)</td><td>(-1.99, -0.71)</td><td>2.11</td></tr>
+<tr><td>22</td><td>Seg7 Bezier</td><td>C1</td><td>(4.5, 0.0)</td><td>(4.4, -0.5)</td><td>(-0.05, -0.53)</td><td>0.53</td></tr>
+<tr><td>23</td><td>Seg7 Bezier</td><td>End</td><td>(10.0, 0.0)</td><td>(9.9, 0.1)</td><td>(-0.06, 0.11)</td><td>0.13</td></tr>
+<tr><th colspan="7" style="text-align:left;padding:12px 0 4px">Summary</th></tr>
+<tr><td colspan="3">Max key point displacement</td><td colspan="4"><b>2.51</b> at Seg5 Bezier C1</td></tr>
+<tr><td colspan="3">Max point displacement</td><td colspan="4"><b>1.56</b></td></tr>
+<tr><td colspan="3">Correction accuracy</td><td colspan="4"><b>1.87</b></td></tr>
+<tr><td colspan="3">Sum of correction lengths</td><td colspan="4"><b>22.68</b></td></tr>
+<tr><td colspan="3">Sum vector</td><td colspan="4"><b>(-3.97, 5.80)</b> |v| = <b>7.03</b></td></tr>
+</table>
+</div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span>Polyline Shift — Perturbed Corners</span>
+                <span class="meta">edges shifted +-3 | corners perturbed +-4 | noise=1.0 | rot=12deg</span>
+            </div>
+            <div class="card-body"><img src="polyshift-perturbed.svg" alt="Polyline Shift Perturbed"></div>
+            <div class="card-stats"><table>
+<tr><th colspan="7" style="text-align:left;padding:8px 0 4px">Alignment</th></tr>
+<tr><td colspan="3">Rotation</td><td colspan="4"><b>13.41&deg;</b></td></tr>
+<tr><td colspan="3">Translation</td><td colspan="4"><b>(15.65, -12.69)</b></td></tr>
+<tr><td colspan="3">Residual (sum sq.)</td><td colspan="4"><b>51.0573</b></td></tr>
+<tr><th colspan="7" style="text-align:left;padding:12px 0 4px">Correction Vectors (template space)</th></tr>
+<tr><th>#</th><th>Segment</th><th>Point</th><th>Template</th><th>Corrected</th><th>dx, dy</th><th>|v|</th></tr>
+<tr><td>0</td><td>Seg0 Poly</td><td>P0</td><td>(10.0, 0.0)</td><td>(9.7, 1.2)</td><td>(-0.29, 1.25)</td><td>1.28</td></tr>
+<tr><td>1</td><td>Seg0 Poly</td><td>P1</td><td>(90.0, 0.0)</td><td>(89.2, -3.5)</td><td>(-0.83, -3.51)</td><td>3.61</td></tr>
+<tr><td>2</td><td>Seg1 Bezier</td><td>Start</td><td>(90.0, 0.0)</td><td>(89.2, -3.5)</td><td>(-0.83, -3.51)</td><td>3.61</td></tr>
+<tr><td>3</td><td>Seg1 Bezier</td><td>C0</td><td>(95.5, 0.0)</td><td>(96.7, -5.4)</td><td>(1.20, -5.43)</td><td>5.57</td></tr>
+<tr><td>4</td><td>Seg1 Bezier</td><td>C1</td><td>(100.0, 4.5)</td><td>(97.9, 3.9)</td><td>(-2.08, -0.54)</td><td>2.15</td></tr>
+<tr><td>5</td><td>Seg1 Bezier</td><td>End</td><td>(100.0, 10.0)</td><td>(98.2, 10.1)</td><td>(-1.82, 0.06)</td><td>1.82</td></tr>
+<tr><td>6</td><td>Seg2 Poly</td><td>P0</td><td>(100.0, 10.0)</td><td>(98.2, 10.1)</td><td>(-1.82, 0.06)</td><td>1.82</td></tr>
+<tr><td>7</td><td>Seg2 Poly</td><td>P1</td><td>(100.0, 60.0)</td><td>(100.8, 59.3)</td><td>(0.84, -0.66)</td><td>1.07</td></tr>
+<tr><td>8</td><td>Seg3 Bezier</td><td>Start</td><td>(100.0, 60.0)</td><td>(100.8, 59.3)</td><td>(0.84, -0.66)</td><td>1.07</td></tr>
+<tr><td>9</td><td>Seg3 Bezier</td><td>C0</td><td>(100.0, 65.5)</td><td>(103.2, 65.8)</td><td>(3.19, 0.30)</td><td>3.21</td></tr>
+<tr><td>10</td><td>Seg3 Bezier</td><td>C1</td><td>(95.5, 70.0)</td><td>(95.6, 72.4)</td><td>(0.07, 2.38)</td><td>2.38</td></tr>
+<tr><td>11</td><td>Seg3 Bezier</td><td>End</td><td>(90.0, 70.0)</td><td>(90.1, 69.8)</td><td>(0.11, -0.20)</td><td>0.23</td></tr>
+<tr><td>12</td><td>Seg4 Poly</td><td>P0</td><td>(90.0, 70.0)</td><td>(90.1, 69.8)</td><td>(0.11, -0.20)</td><td>0.23</td></tr>
+<tr><td>13</td><td>Seg4 Poly</td><td>P1</td><td>(10.0, 70.0)</td><td>(10.3, 69.8)</td><td>(0.32, -0.21)</td><td>0.38</td></tr>
+<tr><td>14</td><td>Seg5 Bezier</td><td>Start</td><td>(10.0, 70.0)</td><td>(10.3, 69.8)</td><td>(0.32, -0.21)</td><td>0.38</td></tr>
+<tr><td>15</td><td>Seg5 Bezier</td><td>C0</td><td>(4.5, 70.0)</td><td>(1.1, 70.7)</td><td>(-3.37, 0.65)</td><td>3.43</td></tr>
+<tr><td>16</td><td>Seg5 Bezier</td><td>C1</td><td>(0.0, 65.5)</td><td>(1.5, 68.1)</td><td>(1.54, 2.56)</td><td>2.98</td></tr>
+<tr><td>17</td><td>Seg5 Bezier</td><td>End</td><td>(0.0, 60.0)</td><td>(1.5, 59.2)</td><td>(1.45, -0.76)</td><td>1.64</td></tr>
+<tr><td>18</td><td>Seg6 Poly</td><td>P0</td><td>(0.0, 60.0)</td><td>(1.5, 59.2)</td><td>(1.45, -0.76)</td><td>1.64</td></tr>
+<tr><td>19</td><td>Seg6 Poly</td><td>P1</td><td>(0.0, 10.0)</td><td>(-0.4, 9.0)</td><td>(-0.44, -0.97)</td><td>1.07</td></tr>
+<tr><td>20</td><td>Seg7 Bezier</td><td>Start</td><td>(0.0, 10.0)</td><td>(-0.4, 9.0)</td><td>(-0.44, -0.97)</td><td>1.07</td></tr>
+<tr><td>21</td><td>Seg7 Bezier</td><td>C0</td><td>(0.0, 4.5)</td><td>(-0.3, 4.3)</td><td>(-0.31, -0.22)</td><td>0.38</td></tr>
+<tr><td>22</td><td>Seg7 Bezier</td><td>C1</td><td>(4.5, 0.0)</td><td>(5.7, 1.0)</td><td>(1.19, 1.01)</td><td>1.56</td></tr>
+<tr><td>23</td><td>Seg7 Bezier</td><td>End</td><td>(10.0, 0.0)</td><td>(9.7, 1.2)</td><td>(-0.29, 1.25)</td><td>1.28</td></tr>
+<tr><th colspan="7" style="text-align:left;padding:12px 0 4px">Summary</th></tr>
+<tr><td colspan="3">Max key point displacement</td><td colspan="4"><b>5.57</b> at Seg1 Bezier C0</td></tr>
+<tr><td colspan="3">Max point displacement</td><td colspan="4"><b>3.87</b></td></tr>
+<tr><td colspan="3">Correction accuracy</td><td colspan="4"><b>2.97</b></td></tr>
+<tr><td colspan="3">Sum of correction lengths</td><td colspan="4"><b>43.85</b></td></tr>
+<tr><td colspan="3">Sum vector</td><td colspan="4"><b>(0.13, -9.33)</b> |v| = <b>9.33</b></td></tr>
+</table>
+</div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span>Smoothed — Unmodified Template</span>
+                <span class="meta">noise=1.0 | smoothed (window=3) | dropout=10% | rot=12deg | tx=15,ty=-10</span>
+            </div>
+            <div class="card-body"><img src="smoothed-unmodified.svg" alt="Smoothed Unmodified"></div>
+            <div class="card-stats"><table>
+<tr><th colspan="7" style="text-align:left;padding:8px 0 4px">Alignment</th></tr>
+<tr><td colspan="3">Rotation</td><td colspan="4"><b>-167.40&deg;</b></td></tr>
+<tr><td colspan="3">Translation</td><td colspan="4"><b>(97.50, 80.12)</b></td></tr>
+<tr><td colspan="3">Residual (sum sq.)</td><td colspan="4"><b>3.5070</b></td></tr>
+<tr><th colspan="7" style="text-align:left;padding:12px 0 4px">Correction Vectors (template space)</th></tr>
+<tr><th>#</th><th>Segment</th><th>Point</th><th>Template</th><th>Corrected</th><th>dx, dy</th><th>|v|</th></tr>
+<tr><td>0</td><td>Seg0 Poly</td><td>P0</td><td>(10.0, 0.0)</td><td>(9.9, 0.6)</td><td>(-0.06, 0.57)</td><td>0.57</td></tr>
+<tr><td>1</td><td>Seg0 Poly</td><td>P1</td><td>(90.0, 0.0)</td><td>(90.0, 0.3)</td><td>(-0.02, 0.33)</td><td>0.33</td></tr>
+<tr><td>2</td><td>Seg1 Bezier</td><td>Start</td><td>(90.0, 0.0)</td><td>(90.0, 0.3)</td><td>(-0.02, 0.33)</td><td>0.33</td></tr>
+<tr><td>3</td><td>Seg1 Bezier</td><td>C0</td><td>(95.5, 0.0)</td><td>(94.7, 0.5)</td><td>(-0.82, 0.45)</td><td>0.94</td></tr>
+<tr><td>4</td><td>Seg1 Bezier</td><td>C1</td><td>(100.0, 4.5)</td><td>(99.5, 5.5)</td><td>(-0.55, 1.05)</td><td>1.18</td></tr>
+<tr><td>5</td><td>Seg1 Bezier</td><td>End</td><td>(100.0, 10.0)</td><td>(99.7, 10.1)</td><td>(-0.27, 0.06)</td><td>0.28</td></tr>
+<tr><td>6</td><td>Seg2 Poly</td><td>P0</td><td>(100.0, 10.0)</td><td>(99.7, 10.1)</td><td>(-0.27, 0.06)</td><td>0.28</td></tr>
+<tr><td>7</td><td>Seg2 Poly</td><td>P1</td><td>(100.0, 60.0)</td><td>(100.2, 60.0)</td><td>(0.17, 0.01)</td><td>0.17</td></tr>
+<tr><td>8</td><td>Seg3 Bezier</td><td>Start</td><td>(100.0, 60.0)</td><td>(100.2, 60.0)</td><td>(0.17, 0.01)</td><td>0.17</td></tr>
+<tr><td>9</td><td>Seg3 Bezier</td><td>C0</td><td>(100.0, 65.5)</td><td>(100.2, 64.4)</td><td>(0.23, -1.10)</td><td>1.12</td></tr>
+<tr><td>10</td><td>Seg3 Bezier</td><td>C1</td><td>(95.5, 70.0)</td><td>(94.4, 71.7)</td><td>(-1.17, 1.72)</td><td>2.08</td></tr>
+<tr><td>11</td><td>Seg3 Bezier</td><td>End</td><td>(90.0, 70.0)</td><td>(89.8, 69.3)</td><td>(-0.22, -0.74)</td><td>0.77</td></tr>
+<tr><td>12</td><td>Seg4 Poly</td><td>P0</td><td>(90.0, 70.0)</td><td>(89.8, 69.3)</td><td>(-0.22, -0.74)</td><td>0.77</td></tr>
+<tr><td>13</td><td>Seg4 Poly</td><td>P1</td><td>(10.0, 70.0)</td><td>(9.9, 70.6)</td><td>(-0.06, 0.57)</td><td>0.57</td></tr>
+<tr><td>14</td><td>Seg5 Bezier</td><td>Start</td><td>(10.0, 70.0)</td><td>(9.9, 70.6)</td><td>(-0.06, 0.57)</td><td>0.57</td></tr>
+<tr><td>15</td><td>Seg5 Bezier</td><td>C0</td><td>(4.5, 70.0)</td><td>(4.3, 70.1)</td><td>(-0.19, 0.14)</td><td>0.24</td></tr>
+<tr><td>16</td><td>Seg5 Bezier</td><td>C1</td><td>(0.0, 65.5)</td><td>(-0.6, 65.8)</td><td>(-0.59, 0.26)</td><td>0.65</td></tr>
+<tr><td>17</td><td>Seg5 Bezier</td><td>End</td><td>(0.0, 60.0)</td><td>(-0.7, 60.0)</td><td>(-0.67, -0.02)</td><td>0.67</td></tr>
+<tr><td>18</td><td>Seg6 Poly</td><td>P0</td><td>(0.0, 60.0)</td><td>(-0.7, 60.0)</td><td>(-0.67, -0.02)</td><td>0.67</td></tr>
+<tr><td>19</td><td>Seg6 Poly</td><td>P1</td><td>(0.0, 10.0)</td><td>(-0.7, 9.9)</td><td>(-0.74, -0.14)</td><td>0.76</td></tr>
+<tr><td>20</td><td>Seg7 Bezier</td><td>Start</td><td>(0.0, 10.0)</td><td>(-0.7, 9.9)</td><td>(-0.74, -0.14)</td><td>0.76</td></tr>
+<tr><td>21</td><td>Seg7 Bezier</td><td>C0</td><td>(0.0, 4.5)</td><td>(0.5, 5.5)</td><td>(0.47, 0.98)</td><td>1.09</td></tr>
+<tr><td>22</td><td>Seg7 Bezier</td><td>C1</td><td>(4.5, 0.0)</td><td>(5.0, 0.2)</td><td>(0.50, 0.22)</td><td>0.55</td></tr>
+<tr><td>23</td><td>Seg7 Bezier</td><td>End</td><td>(10.0, 0.0)</td><td>(9.9, 0.6)</td><td>(-0.06, 0.57)</td><td>0.57</td></tr>
+<tr><th colspan="7" style="text-align:left;padding:12px 0 4px">Summary</th></tr>
+<tr><td colspan="3">Max key point displacement</td><td colspan="4"><b>2.08</b> at Seg3 Bezier C1</td></tr>
+<tr><td colspan="3">Max point displacement</td><td colspan="4"><b>0.94</b></td></tr>
+<tr><td colspan="3">Correction accuracy</td><td colspan="4"><b>0.94</b></td></tr>
+<tr><td colspan="3">Sum of correction lengths</td><td colspan="4"><b>16.08</b></td></tr>
+<tr><td colspan="3">Sum vector</td><td colspan="4"><b>(-5.87, 4.98)</b> |v| = <b>7.70</b></td></tr>
+</table>
+</div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span>Smoothed — Perturbed Key Points</span>
+                <span class="meta">2 corners perturbed +-5 | noise=1.0 | smoothed (window=3) | rot=12deg</span>
+            </div>
+            <div class="card-body"><img src="smoothed-perturbed.svg" alt="Smoothed Perturbed"></div>
+            <div class="card-stats"><table>
+<tr><th colspan="7" style="text-align:left;padding:8px 0 4px">Alignment</th></tr>
+<tr><td colspan="3">Rotation</td><td colspan="4"><b>12.83&deg;</b></td></tr>
+<tr><td colspan="3">Translation</td><td colspan="4"><b>(15.87, -11.30)</b></td></tr>
+<tr><td colspan="3">Residual (sum sq.)</td><td colspan="4"><b>34.2585</b></td></tr>
+<tr><th colspan="7" style="text-align:left;padding:12px 0 4px">Correction Vectors (template space)</th></tr>
+<tr><th>#</th><th>Segment</th><th>Point</th><th>Template</th><th>Corrected</th><th>dx, dy</th><th>|v|</th></tr>
+<tr><td>0</td><td>Seg0 Poly</td><td>P0</td><td>(10.0, 0.0)</td><td>(9.4, 0.6)</td><td>(-0.59, 0.61)</td><td>0.85</td></tr>
+<tr><td>1</td><td>Seg0 Poly</td><td>P1</td><td>(90.0, 0.0)</td><td>(90.3, -3.1)</td><td>(0.32, -3.08)</td><td>3.10</td></tr>
+<tr><td>2</td><td>Seg1 Bezier</td><td>Start</td><td>(90.0, 0.0)</td><td>(90.3, -3.1)</td><td>(0.32, -3.08)</td><td>3.10</td></tr>
+<tr><td>3</td><td>Seg1 Bezier</td><td>C0</td><td>(95.5, 0.0)</td><td>(96.2, -2.8)</td><td>(0.70, -2.83)</td><td>2.92</td></tr>
+<tr><td>4</td><td>Seg1 Bezier</td><td>C1</td><td>(100.0, 4.5)</td><td>(96.7, 5.1)</td><td>(-3.30, 0.63)</td><td>3.36</td></tr>
+<tr><td>5</td><td>Seg1 Bezier</td><td>End</td><td>(100.0, 10.0)</td><td>(96.6, 9.5)</td><td>(-3.43, -0.49)</td><td>3.47</td></tr>
+<tr><td>6</td><td>Seg2 Poly</td><td>P0</td><td>(100.0, 10.0)</td><td>(96.6, 9.5)</td><td>(-3.43, -0.49)</td><td>3.47</td></tr>
+<tr><td>7</td><td>Seg2 Poly</td><td>P1</td><td>(100.0, 60.0)</td><td>(100.6, 60.1)</td><td>(0.57, 0.08)</td><td>0.57</td></tr>
+<tr><td>8</td><td>Seg3 Bezier</td><td>Start</td><td>(100.0, 60.0)</td><td>(100.6, 60.1)</td><td>(0.57, 0.08)</td><td>0.57</td></tr>
+<tr><td>9</td><td>Seg3 Bezier</td><td>C0</td><td>(100.0, 65.5)</td><td>(99.4, 65.4)</td><td>(-0.65, -0.17)</td><td>0.67</td></tr>
+<tr><td>10</td><td>Seg3 Bezier</td><td>C1</td><td>(95.5, 70.0)</td><td>(96.3, 71.0)</td><td>(0.75, 0.96)</td><td>1.22</td></tr>
+<tr><td>11</td><td>Seg3 Bezier</td><td>End</td><td>(90.0, 70.0)</td><td>(90.0, 70.2)</td><td>(-0.01, 0.15)</td><td>0.15</td></tr>
+<tr><td>12</td><td>Seg4 Poly</td><td>P0</td><td>(90.0, 70.0)</td><td>(90.0, 70.2)</td><td>(-0.01, 0.15)</td><td>0.15</td></tr>
+<tr><td>13</td><td>Seg4 Poly</td><td>P1</td><td>(10.0, 70.0)</td><td>(9.9, 68.9)</td><td>(-0.11, -1.13)</td><td>1.14</td></tr>
+<tr><td>14</td><td>Seg5 Bezier</td><td>Start</td><td>(10.0, 70.0)</td><td>(9.9, 68.9)</td><td>(-0.11, -1.13)</td><td>1.14</td></tr>
+<tr><td>15</td><td>Seg5 Bezier</td><td>C0</td><td>(4.5, 70.0)</td><td>(2.7, 69.1)</td><td>(-1.79, -0.88)</td><td>2.00</td></tr>
+<tr><td>16</td><td>Seg5 Bezier</td><td>C1</td><td>(0.0, 65.5)</td><td>(1.9, 66.1)</td><td>(1.87, 0.59)</td><td>1.96</td></tr>
+<tr><td>17</td><td>Seg5 Bezier</td><td>End</td><td>(0.0, 60.0)</td><td>(2.3, 59.6)</td><td>(2.27, -0.39)</td><td>2.30</td></tr>
+<tr><td>18</td><td>Seg6 Poly</td><td>P0</td><td>(0.0, 60.0)</td><td>(2.3, 59.6)</td><td>(2.27, -0.39)</td><td>2.30</td></tr>
+<tr><td>19</td><td>Seg6 Poly</td><td>P1</td><td>(0.0, 10.0)</td><td>(-0.3, 10.0)</td><td>(-0.34, 0.00)</td><td>0.34</td></tr>
+<tr><td>20</td><td>Seg7 Bezier</td><td>Start</td><td>(0.0, 10.0)</td><td>(-0.3, 10.0)</td><td>(-0.34, 0.00)</td><td>0.34</td></tr>
+<tr><td>21</td><td>Seg7 Bezier</td><td>C0</td><td>(0.0, 4.5)</td><td>(1.4, 3.9)</td><td>(1.36, -0.60)</td><td>1.49</td></tr>
+<tr><td>22</td><td>Seg7 Bezier</td><td>C1</td><td>(4.5, 0.0)</td><td>(4.2, 3.0)</td><td>(-0.26, 3.02)</td><td>3.03</td></tr>
+<tr><td>23</td><td>Seg7 Bezier</td><td>End</td><td>(10.0, 0.0)</td><td>(9.4, 0.6)</td><td>(-0.59, 0.61)</td><td>0.85</td></tr>
+<tr><th colspan="7" style="text-align:left;padding:12px 0 4px">Summary</th></tr>
+<tr><td colspan="3">Max key point displacement</td><td colspan="4"><b>3.47</b> at Seg1 Bezier End</td></tr>
+<tr><td colspan="3">Max point displacement</td><td colspan="4"><b>3.41</b></td></tr>
+<tr><td colspan="3">Correction accuracy</td><td colspan="4"><b>1.30</b></td></tr>
+<tr><td colspan="3">Sum of correction lengths</td><td colspan="4"><b>40.46</b></td></tr>
+<tr><td colspan="3">Sum vector</td><td colspan="4"><b>(-3.98, -7.78)</b> |v| = <b>8.74</b></td></tr>
+</table>
+</div>
+        </div>
+    </div>
+</div>
+<script>
+document.querySelectorAll('.card-body img').forEach(img => {
+    img.addEventListener('click', () => {
+        document.getElementById('overlay-img').src = img.src;
+        document.getElementById('overlay').classList.add('active');
+    });
+});
+</script>
+</body></html>

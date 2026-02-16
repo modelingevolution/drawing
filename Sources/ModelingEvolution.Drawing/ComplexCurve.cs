@@ -96,6 +96,14 @@ public readonly record struct ComplexCurve<T> : IBoundingBox<T>, IParsable<Compl
     public static ComplexCurve<T> operator -(in ComplexCurve<T> c, Degree<T> angle)
         => c.Rotate(-angle);
 
+    /// <summary>Rotates the curve around the origin by the given radian angle.</summary>
+    public static ComplexCurve<T> operator +(in ComplexCurve<T> c, Radian<T> angle)
+        => c.Rotate((Degree<T>)angle);
+
+    /// <summary>Rotates the curve around the origin by the negation of the given radian angle.</summary>
+    public static ComplexCurve<T> operator -(in ComplexCurve<T> c, Radian<T> angle)
+        => c.Rotate(-(Degree<T>)angle);
+
     /// <summary>
     /// Rotates the curve around the specified origin by the given angle.
     /// </summary>
@@ -280,6 +288,9 @@ public readonly record struct ComplexCurve<T> : IBoundingBox<T>, IParsable<Compl
                     p0, projStart.EdgeIndex, projStart.EdgeParam,
                     p3, projEnd.EdgeIndex, projEnd.EdgeParam,
                     targetSpan);
+
+                // Filter to points within oriented rectangle around chord
+                subPts = CurveCorrection.FilterByOrientedRect(subPts);
 
                 // Fit Bezier with Schneider's iterative re-parameterization
                 var fitted = BezierCurve<T>.Fit(subPts.Span);

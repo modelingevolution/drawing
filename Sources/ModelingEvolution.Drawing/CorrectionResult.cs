@@ -85,26 +85,47 @@ internal static class CurveCorrection
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>,
                   IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
     {
-        // Handle direction: ensure we walk forward
-        bool reversed = edge0 > edge3 || (edge0 == edge3 && param0 > param3);
-        if (reversed)
+        int n = targetPoints.Length;
+
+        // Compute forward and backward vertex counts to pick the shorter path.
+        // Forward: walk edge0+1 → edge3 (wrapping if edge0 > edge3).
+        // Backward: walk edge0 → edge3+1 in reverse (wrapping if edge0 < edge3).
+        int fwdCount = edge0 < edge3
+            ? edge3 - edge0 - 1
+            : (n - 1 - edge0 - 1) + edge3;
+        int bwdCount = edge0 > edge3
+            ? edge0 - edge3 - 1
+            : (n - 1 - edge3 - 1) + edge0;
+
+        // Same edge: use parameter to decide direction
+        if (edge0 == edge3)
         {
-            (p0, p3) = (p3, p0);
-            (edge0, edge3) = (edge3, edge0);
-            (param0, param3) = (param3, param0);
+            if (param0 <= param3) { fwdCount = 0; bwdCount = n; }
+            else { fwdCount = n; bwdCount = 0; }
         }
 
-        // Collect points: p0, intermediate target vertices, p3
         var points = new List<Point<T>> { p0 };
 
-        for (int e = edge0 + 1; e <= edge3; e++)
-            points.Add(targetPoints[e]);
+        if (fwdCount <= bwdCount)
+        {
+            // Walk forward (with wrap-around)
+            for (int i = 0; i < fwdCount; i++)
+            {
+                int idx = (edge0 + 1 + i) % n;
+                points.Add(targetPoints[idx]);
+            }
+        }
+        else
+        {
+            // Walk backward (with wrap-around)
+            for (int i = 0; i < bwdCount; i++)
+            {
+                int idx = (edge0 - i + n) % n;
+                points.Add(targetPoints[idx]);
+            }
+        }
 
         points.Add(p3);
-
-        // If reversed, flip order back so the Bezier direction matches the original
-        if (reversed)
-            points.Reverse();
 
         int count = points.Count;
         var ptsMem = Alloc.Memory<Point<T>>(count);
@@ -113,6 +134,66 @@ internal static class CurveCorrection
             span[i] = points[i];
 
         return ptsMem;
+    }
+
+    /// <summary>
+    /// Filters sub-section points to those within an oriented rectangle centered on
+    /// the chord between first and last point. Width (along chord) = 2×dist,
+    /// height (perpendicular) = dist, so width = 2×height.
+    /// First and last points are always kept.
+    /// </summary>
+    public static ReadOnlyMemory<Point<T>> FilterByOrientedRect<T>(ReadOnlyMemory<Point<T>> points)
+        where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>,
+                  IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
+    {
+        var span = points.Span;
+        if (span.Length < 3) return points;
+
+        var first = span[0];
+        var last  = span[span.Length - 1];
+        var two   = T.One + T.One;
+
+        // Center of rect
+        var cx = (first.X + last.X) / two;
+        var cy = (first.Y + last.Y) / two;
+
+        // Chord vector and length
+        var dx = last.X - first.X;
+        var dy = last.Y - first.Y;
+        var dist = T.Sqrt(dx * dx + dy * dy);
+        var eps  = T.CreateTruncating(1e-12);
+        if (dist < eps) return points;
+
+        // Unit vectors along chord
+        var ux = dx / dist;
+        var uy = dy / dist;
+
+        // Half-extents: height/2 = dist/2 (along chord), width/2 = dist (perp)
+        var halfAlong = dist / two;
+        var halfPerp  = dist;
+
+        var filtered = new List<Point<T>>(span.Length) { first };
+        for (int i = 1; i < span.Length - 1; i++)
+        {
+            var vx = span[i].X - cx;
+            var vy = span[i].Y - cy;
+            var along = vx * ux + vy * uy;
+            var perp  = vx * (-uy) + vy * ux;
+            if (T.Abs(along) <= halfAlong && T.Abs(perp) <= halfPerp)
+                filtered.Add(span[i]);
+        }
+        filtered.Add(last);
+
+        // Need at least 4 points for a meaningful cubic Bezier fit;
+        // if filtering removed too many, fall back to unfiltered.
+        if (filtered.Count < 4)
+            return points;
+
+        var mem = Alloc.Memory<Point<T>>(filtered.Count);
+        var dst = mem.Span;
+        for (int i = 0; i < filtered.Count; i++)
+            dst[i] = filtered[i];
+        return mem;
     }
 
     /// <summary>

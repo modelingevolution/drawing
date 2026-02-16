@@ -47,12 +47,12 @@ public class SmoothCurveFTests
         var s2 = c.GetSmoothSegment(1);
         var s3 = c.GetSmoothSegment(2);
 
-        var ex = s2.CalculateExtremumPoints().Single();
+        var ex = s2.CalculateExtremumPoints().Span.ToArray().Single();
         ex.X.Should().BeInRange(1, 2);
         ex.Y.Should().BeInRange(2, 3);
 
-        var e0 = s1.CalculateExtremumPoints().Single();
-        var e1 = s3.CalculateExtremumPoints().Single();
+        var e0 = s1.CalculateExtremumPoints().Span.ToArray().Single();
+        var e1 = s3.CalculateExtremumPoints().Span.ToArray().Single();
         e0.Should().Be(new Point<float>(1, 2));
         e1.Should().Be(new Point<float>(2, 2));
     }

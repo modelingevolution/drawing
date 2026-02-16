@@ -174,7 +174,7 @@ public class SkeletonTests
         var polygon = Rectangle2x1;
         var skel = polygon.Skeleton(algo);
 
-        foreach (var edge in skel.Edges.ToArray())
+        foreach (var edge in skel.Edges().ToArray())
         {
             var mid = edge.Middle;
             polygon.Contains(mid).Should().BeTrue(
@@ -248,16 +248,20 @@ public class SkeletonTests
 
         for (int i = 0; i < skel.NodeCount; i++)
         {
-            deserialized.Nodes[i].X.Should().BeApproximately(skel.Nodes[i].X, 1e-4f);
-            deserialized.Nodes[i].Y.Should().BeApproximately(skel.Nodes[i].Y, 1e-4f);
+            var dn = deserialized.Nodes();
+            var sn = skel.Nodes();
+            dn[i].X.Should().BeApproximately(sn[i].X, 1e-4f);
+            dn[i].Y.Should().BeApproximately(sn[i].Y, 1e-4f);
         }
 
         for (int i = 0; i < skel.EdgeCount; i++)
         {
-            deserialized.Edges[i].Start.X.Should().BeApproximately(skel.Edges[i].Start.X, 1e-4f);
-            deserialized.Edges[i].Start.Y.Should().BeApproximately(skel.Edges[i].Start.Y, 1e-4f);
-            deserialized.Edges[i].End.X.Should().BeApproximately(skel.Edges[i].End.X, 1e-4f);
-            deserialized.Edges[i].End.Y.Should().BeApproximately(skel.Edges[i].End.Y, 1e-4f);
+            var de = deserialized.Edges();
+            var se = skel.Edges();
+            de[i].Start.X.Should().BeApproximately(se[i].Start.X, 1e-4f);
+            de[i].Start.Y.Should().BeApproximately(se[i].Start.Y, 1e-4f);
+            de[i].End.X.Should().BeApproximately(se[i].End.X, 1e-4f);
+            de[i].End.Y.Should().BeApproximately(se[i].End.Y, 1e-4f);
         }
     }
 
@@ -431,27 +435,55 @@ public class SkeletonTests
     /// <summary>Fatter welding seam — wider ribbon (~100×12 units) with gentler waves</summary>
     private static Polygon<float> MakeFatWeldingSeam()
     {
+        var rng = new Random(42); // fixed seed for reproducibility
         var pts = new List<Point<float>>();
-        int nSamples = 25;
         float length = 100f;
+        float halfWidth = 5f;
+        int capPoints = 40;
+        int edgePoints = (500 - 2 * capPoints) / 2;
 
-        // Top edge
-        for (int i = 0; i <= nSamples; i++)
+        // Top edge (left → right) with wavy variation + noise
+        for (int i = 0; i <= edgePoints; i++)
         {
-            float t = (float)i / nSamples;
-            float x = t * length;
-            float y = 3f * MathF.Sin(t * MathF.PI * 2.5f);
+            float t = (float)i / edgePoints;
+            float x = halfWidth + t * (length - 2 * halfWidth);
+            float widthVar = halfWidth + 1.5f * MathF.Sin(t * MathF.PI * 3f);
+            float noise = (float)(rng.NextDouble() - 0.5) * 0.6f;
+            float y = -widthVar + 2f * MathF.Sin(t * MathF.PI * 2.5f) + noise;
             pts.Add(new Point<float>(x, y));
         }
 
-        // Bottom edge (right → left) offset downward by 8-12 units
-        for (int i = nSamples; i >= 0; i--)
+        // Right semicircle cap
+        float rightCx = length - halfWidth;
+        for (int i = 1; i < capPoints; i++)
         {
-            float t = (float)i / nSamples;
-            float x = t * length;
-            float width = 10f + 2f * MathF.Sin(t * MathF.PI * 1.5f + 0.7f);
-            float y = 3f * MathF.Sin(t * MathF.PI * 2.5f) + width;
+            float a = -MathF.PI / 2f + MathF.PI * i / capPoints;
+            float rNoise = (float)(rng.NextDouble() - 0.5) * 0.3f;
+            pts.Add(new Point<float>(
+                rightCx + (halfWidth + rNoise) * MathF.Cos(a),
+                (halfWidth + rNoise) * MathF.Sin(a)));
+        }
+
+        // Bottom edge (right → left) with wavy variation + noise
+        for (int i = edgePoints; i >= 0; i--)
+        {
+            float t = (float)i / edgePoints;
+            float x = halfWidth + t * (length - 2 * halfWidth);
+            float widthVar = halfWidth + 1.5f * MathF.Sin(t * MathF.PI * 3f + 1.2f);
+            float noise = (float)(rng.NextDouble() - 0.5) * 0.6f;
+            float y = widthVar + 2f * MathF.Sin(t * MathF.PI * 2.5f) + noise;
             pts.Add(new Point<float>(x, y));
+        }
+
+        // Left semicircle cap
+        float leftCx = halfWidth;
+        for (int i = 1; i < capPoints; i++)
+        {
+            float a = MathF.PI / 2f + MathF.PI * i / capPoints;
+            float rNoise = (float)(rng.NextDouble() - 0.5) * 0.3f;
+            pts.Add(new Point<float>(
+                leftCx + (halfWidth + rNoise) * MathF.Cos(a),
+                (halfWidth + rNoise) * MathF.Sin(a)));
         }
 
         return new Polygon<float>(pts.ToArray());
@@ -583,7 +615,7 @@ public class SkeletonTests
 
         var polyPaint = new SvgPaint(Color.Parse("#e8edff"), Color.Parse("#4466aa"), 0.3f);
         var skelPaint = new SvgPaint(Color.Parse("#dd3333"), Color.Parse("#dd3333"), 0.25f, 0.4f);
-        var skelCorePaint = new SvgPaint(Color.Parse("#dd3333"), Color.Parse("#dd3333"), 0.75f, 0.4f);
+        var spinePaint = new SvgPaint(Color.Parse("#dd3333"), Color.Parse("#dd3333"), 0.75f, 0f);
         var leafPaint = new SvgPaint(Color.Parse("#bbbbbb"), Color.Parse("#bbbbbb"), 0.25f, 0.4f);
 
         // Collect timing data: (shapeName, algo, edgeCount, elapsedMs)
@@ -609,27 +641,13 @@ public class SkeletonTests
                 var shiftedPoly = poly + offset;
                 var shiftedSkel = skel + offset;
 
-                List<(object obj, SvgPaint paint)> items;
-
-                // For StraightSkeleton: split leaf edges (gray) from core edges (thick red)
-                if (algo == SkeletonAlgo.StraightSkeleton)
+                var spine = shiftedSkel.Spine();
+                var items = new List<(object obj, SvgPaint paint)>
                 {
-                    var (core, leaves) = shiftedSkel.SplitLeafEdges();
-                    items = new List<(object, SvgPaint)>
-                    {
-                        (shiftedPoly, polyPaint),
-                        (core, skelCorePaint),
-                        (leaves, leafPaint)
-                    };
-                }
-                else
-                {
-                    items = new List<(object, SvgPaint)>
-                    {
-                        (shiftedPoly, polyPaint),
-                        (shiftedSkel, skelPaint)
-                    };
-                }
+                    (shiftedPoly, polyPaint),
+                    (shiftedSkel, leafPaint),
+                    (spine, spinePaint),
+                };
 
                 var svg = SvgExporter.Export(
                     items,
@@ -642,6 +660,54 @@ public class SkeletonTests
                 File.WriteAllText(filePath, svg);
                 _output.WriteLine($"Written: {filePath} ({elapsedMs:F2}ms)");
             }
+        }
+
+        // Generate Fat-Weld Spine LongestPath SVGs (with simplified overlay)
+        var longestPathPaint = new SvgPaint(Colors.Transparent, Color.Parse("#dd3333"), 0.6f);
+        var simplifiedPathPaint = new SvgPaint(Colors.Transparent, Color.Parse("#2196f3"), 0.6f);
+        var fatWeld = MakeFatWeldingSeam();
+        var fatWeldSimplified = fatWeld.Simplify(1.2f);
+        var spineTimings = new List<(SkeletonAlgo algo, int edges, double ms, int simplifiedEdges, double simplifiedMs)>();
+        foreach (var algo in algos)
+        {
+            var sw = Stopwatch.StartNew();
+            var skel = fatWeld.Skeleton(algo);
+            var longestPath = skel.Spine().LongestPath();
+            sw.Stop();
+            var skelMs = sw.Elapsed.TotalMilliseconds;
+            var skelEdges = skel.EdgeCount;
+
+            sw.Restart();
+            var simplifiedSkel = fatWeldSimplified.Skeleton(algo);
+            var simplifiedLongestPath = simplifiedSkel.Spine().LongestPath();
+            sw.Stop();
+            var simplifiedMs = sw.Elapsed.TotalMilliseconds;
+            var simplifiedEdges = simplifiedSkel.EdgeCount;
+
+            spineTimings.Add((algo, skelEdges, skelMs, simplifiedEdges, simplifiedMs));
+
+            var bb = fatWeld.BoundingBox();
+            int w = (int)(bb.Width + 30);
+            int h = (int)(bb.Height + 30);
+            var offset = new Vector<float>(-bb.X + 15, -bb.Y + 15);
+            var shiftedPoly = fatWeld + offset;
+            var shiftedSimplifiedPoly = fatWeldSimplified + offset;
+            var shiftedPath = longestPath + offset;
+            var shiftedSimplifiedPath = simplifiedLongestPath + offset;
+
+            var simplifiedPolyPaint = new SvgPaint(Colors.Transparent, Color.Parse("#2196f3"), 0.3f);
+            var items = new List<(object obj, SvgPaint paint)>
+            {
+                (shiftedPoly, polyPaint),
+                (shiftedSimplifiedPoly, simplifiedPolyPaint),
+                (shiftedPath, longestPathPaint),
+                (shiftedSimplifiedPath, simplifiedPathPaint),
+            };
+            var svg = SvgExporter.Export(items, i => i.obj, i => i.paint, w, h);
+
+            var fileName = $"fat-weld-spine_{algo.ToString().ToLower()}.svg";
+            File.WriteAllText(Path.Combine(outputDir, fileName), svg);
+            _output.WriteLine($"Written: {fileName} ({skelMs:F2}ms, {skelEdges}e | simplified: {simplifiedMs:F2}ms, {simplifiedEdges}e)");
         }
 
         // Write timing data as JSON for the HTML gallery
@@ -658,7 +724,7 @@ public class SkeletonTests
         GenerateOverviewSvg(shapes, algos, outputDir, polyPaint, skelPaint);
 
         // Generate HTML gallery
-        GenerateHtmlGallery(shapes, algos, outputDir, timings);
+        GenerateHtmlGallery(shapes, algos, outputDir, timings, spineTimings);
 
         _output.WriteLine($"\nAll SVGs written to: {outputDir}");
         Directory.EnumerateFiles(outputDir, "*.svg").Should().NotBeEmpty();
@@ -749,7 +815,8 @@ public class SkeletonTests
         (string name, Polygon<float> poly)[] shapes,
         SkeletonAlgo[] algos,
         string outputDir,
-        List<(string shape, SkeletonAlgo algo, int edges, double ms)> timings)
+        List<(string shape, SkeletonAlgo algo, int edges, double ms)> timings,
+        List<(SkeletonAlgo algo, int edges, double ms, int simplifiedEdges, double simplifiedMs)> spineTimings)
     {
         var algoDisplayNames = new Dictionary<SkeletonAlgo, string>
         {
@@ -793,8 +860,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 .card-header .algo-name { color: #333; }
 .card-header .meta { color: #999; font-weight: 400; font-size: 12px; display: flex; gap: 12px; }
 .card-header .meta .time { color: #5a9; }
-.card-body { padding: 16px; display: flex; align-items: center; justify-content: center; aspect-ratio: 1; background: #fafbfc; }
+.card-body { padding: 16px; display: flex; align-items: center; justify-content: center; aspect-ratio: 1; background: #fafbfc; cursor: pointer; }
 .card-body img { width: 100%; height: 100%; object-fit: contain; }
+
+.overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:1000; cursor:pointer; align-items:center; justify-content:center; }
+.overlay.active { display:flex; }
+.overlay img { width:90vw; height:90vh; object-fit:contain; background:#fff; border-radius:8px; padding:20px; }
 
 @media (max-width: 900px) {
     .cards { grid-template-columns: 1fr 1fr; }
@@ -819,10 +890,12 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
     </div>
 </div>
 
+<div class="overlay" id="overlay" onclick="this.classList.remove('active')"><img id="overlay-img"></div>
+
 <div class="container">
     <div class="algo-legend">
-        <div class="item"><div class="dot" style="background:#e74c3c"></div> Core skeleton edges (red)</div>
-        <div class="item"><div class="dot" style="background:#bbbbbb"></div> Leaf edges (gray, Straight Skeleton only)</div>
+        <div class="item"><div class="dot" style="background:#e74c3c"></div> Spine (red)</div>
+        <div class="item"><div class="dot" style="background:#bbbbbb"></div> Skeleton edges (gray)</div>
         <div class="item"><div class="dot" style="background:#4466aa"></div> Polygon outline (blue)</div>
     </div>
 """);
@@ -855,8 +928,43 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
             sb.AppendLine($"    </div>");
         }
 
+        // Fat-Weld Spine (LongestPath) section
+        sb.AppendLine($"    <div class=\"shape-section\">");
+        sb.AppendLine($"        <div class=\"shape-title\">Fat-Weld Spine (LongestPath)</div>");
+        sb.AppendLine($"        <div class=\"algo-legend\" style=\"justify-content:flex-start; margin-bottom:12px;\">");
+        sb.AppendLine($"            <div class=\"item\"><div class=\"dot\" style=\"background:#dd3333\"></div> LongestPath (red)</div>");
+        sb.AppendLine($"            <div class=\"item\"><div class=\"dot\" style=\"background:#2196f3\"></div> Simplify(1.2) outline + LongestPath (blue)</div>");
+        sb.AppendLine($"        </div>");
+        sb.AppendLine($"        <div class=\"cards\">");
+        foreach (var algo in algos)
+        {
+            var algoSlug = algo.ToString().ToLower();
+            var st = spineTimings.FirstOrDefault(t => t.algo == algo);
+            var timeStr = st.ms < 1 ? $"{st.ms:F2}ms" : $"{st.ms:F1}ms";
+            var simpTimeStr = st.simplifiedMs < 1 ? $"{st.simplifiedMs:F2}ms" : $"{st.simplifiedMs:F1}ms";
+            sb.AppendLine($"            <div class=\"card\">");
+            sb.AppendLine($"                <div class=\"card-header\">");
+            sb.AppendLine($"                    <span class=\"algo-name\">{algoDisplayNames[algo]}</span>");
+            sb.AppendLine($"                    <span class=\"meta\"><span>{st.edges}e</span><span class=\"time\">{timeStr}</span><span style=\"color:#2196f3\">{st.simplifiedEdges}e {simpTimeStr}</span></span>");
+            sb.AppendLine($"                </div>");
+            sb.AppendLine($"                <div class=\"card-body\"><img src=\"fat-weld-spine_{algoSlug}.svg\" alt=\"Fat-Weld Spine - {algoDisplayNames[algo]}\"></div>");
+            sb.AppendLine($"            </div>");
+        }
+        sb.AppendLine($"        </div>");
+        sb.AppendLine($"    </div>");
+
         sb.AppendLine("</div>");
-        sb.AppendLine("</body></html>");
+        sb.AppendLine("""
+<script>
+document.querySelectorAll('.card-body img').forEach(img => {
+    img.addEventListener('click', () => {
+        document.getElementById('overlay-img').src = img.src;
+        document.getElementById('overlay').classList.add('active');
+    });
+});
+</script>
+</body></html>
+""");
 
         var filePath = Path.Combine(outputDir, "skeletons.html");
         File.WriteAllText(filePath, sb.ToString());

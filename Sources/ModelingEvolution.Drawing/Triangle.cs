@@ -329,6 +329,25 @@ public readonly struct Triangle<T> : IEquatable<Triangle<T>>, IShape<T, Triangle
     }
 
     /// <summary>
+    /// Densifies the triangle by placing points along each edge at most 1 unit apart.
+    /// </summary>
+    public Polygon<T> Densify()
+    {
+        return new Polygon<T>(_a, _b, _c).Densify();
+    }
+
+    /// <summary>
+    /// Computes a PCA-based rigid alignment that maps this triangle onto the target point cloud.
+    /// </summary>
+    /// <param name="target">The target point cloud to align to.</param>
+    /// <param name="densify">If true, densifies this triangle before alignment for uniform point spacing.</param>
+    public AlignmentResult<T> AlignTo(ReadOnlySpan<Point<T>> target, bool densify = false)
+    {
+        var source = densify ? Densify().AsSpan() : new Polygon<T>(_a, _b, _c).AsSpan();
+        return Alignment.Pca(source, target);
+    }
+
+    /// <summary>
     /// Returns the axis-aligned bounding box of the triangle.
     /// </summary>
     public Rectangle<T> BoundingBox()

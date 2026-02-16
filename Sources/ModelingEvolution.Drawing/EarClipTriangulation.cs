@@ -15,25 +15,28 @@ internal static class EarClipTriangulation
     /// Triangulates a simple polygon using ear clipping.
     /// Returns triangles as index triplets referencing the input points.
     /// </summary>
-    internal static List<Triangle> Triangulate<T>(ReadOnlySpan<Point<T>> polygon)
+    internal static PooledList<Triangle> Triangulate<T>(ReadOnlySpan<Point<T>> polygon)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>,
         ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
     {
         int n = polygon.Length;
-        var result = new List<Triangle>(n - 2);
+        var result = new PooledList<Triangle>(n - 2);
         if (n < 3) return result;
 
         // Copy points for local use
-        var pts = new Point<T>[n];
+        var ptsMem = Alloc.Memory<Point<T>>(n);
+        var pts = ptsMem.Span;
         for (int i = 0; i < n; i++) pts[i] = polygon[i];
 
         // Ensure CCW winding (ear clipping assumes CCW)
         if (SignedArea(pts) < T.Zero)
-            Array.Reverse(pts);
+            pts.Reverse();
 
         // Build index linked list
-        var prev = new int[n];
-        var next = new int[n];
+        var prevMem = Alloc.Memory<int>(n);
+        var nextMem = Alloc.Memory<int>(n);
+        var prev = prevMem.Span;
+        var next = nextMem.Span;
         for (int i = 0; i < n; i++)
         {
             prev[i] = (i - 1 + n) % n;
@@ -88,7 +91,7 @@ internal static class EarClipTriangulation
         return result;
     }
 
-    private static T SignedArea<T>(Point<T>[] pts)
+    private static T SignedArea<T>(Span<Point<T>> pts)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>,
         ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
     {
@@ -116,7 +119,7 @@ internal static class EarClipTriangulation
     /// <summary>
     /// Checks if any polygon vertex (other than p, cur, nx) lies inside triangle (p, cur, nx).
     /// </summary>
-    private static bool AnyPointInside<T>(Point<T>[] pts, int[] prev, int[] next,
+    private static bool AnyPointInside<T>(Span<Point<T>> pts, Span<int> prev, Span<int> next,
         int remaining, int p, int cur, int nx)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>,
         ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>

@@ -57,6 +57,48 @@ public readonly record struct Segment<T>
     public Point<T> Middle => new((Start.X + End.X) / Two, (Start.Y + End.Y) / Two);
 
     /// <summary>
+    /// Computes the axis-aligned bounding box of this segment.
+    /// </summary>
+    public Rectangle<T> BoundingBox()
+    {
+        var minX = T.Min(Start.X, End.X);
+        var minY = T.Min(Start.Y, End.Y);
+        return new Rectangle<T>(minX, minY, T.Max(Start.X, End.X) - minX, T.Max(Start.Y, End.Y) - minY);
+    }
+
+    /// <summary>
+    /// Densifies the segment by placing points at most 1 unit apart from start to end.
+    /// </summary>
+    public Polyline<T> Densify()
+    {
+        var len = Length;
+        int steps = int.Max(1, int.CreateChecked(T.Ceiling(len)));
+        var mem = Alloc.Memory<Point<T>>(steps + 1);
+        var span = mem.Span;
+        for (int i = 0; i <= steps; i++)
+        {
+            var t = T.CreateChecked(i) / T.CreateChecked(steps);
+            span[i] = new Point<T>(
+                Start.X + (End.X - Start.X) * t,
+                Start.Y + (End.Y - Start.Y) * t);
+        }
+        return new Polyline<T>(mem);
+    }
+
+    /// <summary>
+    /// Computes a PCA-based rigid alignment that maps this segment onto the target point cloud.
+    /// </summary>
+    /// <param name="target">The target point cloud to align to.</param>
+    /// <param name="densify">If true, densifies this segment before alignment for uniform point spacing.</param>
+    public AlignmentResult<T> AlignTo(ReadOnlySpan<Point<T>> target, bool densify = false)
+    {
+        if (densify)
+            return Alignment.Pca(Densify().AsSpan(), target);
+        var pts = new Point<T>[] { Start, End };
+        return Alignment.Pca(pts, target);
+    }
+
+    /// <summary>
     /// Translates the segment by adding a vector.
     /// </summary>
     public static Segment<T> operator +(in Segment<T> s, Vector<T> v) =>

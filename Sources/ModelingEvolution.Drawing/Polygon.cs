@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
@@ -17,59 +16,55 @@ namespace ModelingEvolution.Drawing;
 [SvgExporterAttribute(typeof(PolygonSvgExporterFactory))]
 [JsonConverter(typeof(PolygonJsonConverterFactory))]
 [ProtoContract]
-public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
+public readonly record struct Polygon<T> : IShape<T, Polygon<T>>, IPoolable<Polygon<T>, Lease<Point<T>>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
     IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {
+    internal readonly ReadOnlyMemory<Point<T>> _points;
+
     [ProtoMember(1)]
-    internal readonly Point<T>[] _points;
-
-    // Tracks actual element count; 0 means use _points.Length (for deserialization compat)
-    [ProtoMember(2)]
-    internal readonly int _length;
-
-    // Offset into _points for pool-backed slices; 0 for owned arrays and deserialization compat
-    [ProtoMember(3)]
-    internal readonly int _offset;
+    private Point<T>[] ProtoPoints
+    {
+        get
+        {
+            if (_points.Length == 0) return Array.Empty<Point<T>>();
+            if (MemoryMarshal.TryGetArray(_points, out var seg)
+                && seg.Offset == 0 && seg.Count == seg.Array!.Length)
+                return seg.Array;
+            return _points.ToArray();
+        }
+        init => _points = value ?? ReadOnlyMemory<Point<T>>.Empty;
+    }
 
     /// <summary>
     /// Gets the number of vertices in this polygon.
     /// </summary>
     [JsonIgnore]
-    public int Count => _points != null
-        ? (_length > 0 ? _length : _points.Length)
-        : 0;
+    public int Count => _points.Length;
 
     /// <summary>
-    /// Gets a read-only span over the polygon's vertices. This is the preferred high-performance access path.
+    /// Returns a read-only span over the polygon's vertices.
+    /// Hoist the result before loops — this is a method call, not a field access.
     /// </summary>
-    public ReadOnlySpan<Point<T>> Span => _points != null
-        ? (_length > 0 ? _points.AsSpan(_offset, _length) : _points.AsSpan())
-        : ReadOnlySpan<Point<T>>.Empty;
-
-    /// <summary>
-    /// Gets a ReadOnlyMemory over the polygon's vertices.
-    /// </summary>
-    public ReadOnlyMemory<Point<T>> Memory => _points != null
-        ? (_length > 0 ? new ReadOnlyMemory<Point<T>>(_points, _offset, _length) : _points.AsMemory())
-        : ReadOnlyMemory<Point<T>>.Empty;
+    public ReadOnlySpan<Point<T>> AsSpan() => _points.Span;
 
     /// <summary>
     /// Gets the vertex at the specified index.
     /// </summary>
-    public Point<T> this[int index] => Span[index];
+    public Point<T> this[int index] => _points.Span[index];
 
     /// <summary>
-    /// Gets a read-only list of all vertices. For high-performance code, prefer Span instead.
+    /// Gets a read-only list of all vertices. For high-performance code, prefer AsSpan() instead.
     /// </summary>
     public IReadOnlyList<Point<T>> Points
     {
         get
         {
-            if (_points == null) return Array.Empty<Point<T>>();
-            if (_offset == 0 && (_length == 0 || _length == _points.Length)) return _points;
-            // Pool-backed or offset slice: copy only the valid portion
-            return Span.ToArray();
+            if (_points.Length == 0) return Array.Empty<Point<T>>();
+            if (MemoryMarshal.TryGetArray(_points, out var seg)
+                && seg.Offset == 0 && seg.Count == seg.Array!.Length)
+                return seg.Array;
+            return _points.ToArray();
         }
     }
 
@@ -83,34 +78,15 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// </summary>
     public Polygon()
     {
-        _points = Array.Empty<Point<T>>();
-        _offset = 0;
-        _length = 0;
+        _points = ReadOnlyMemory<Point<T>>.Empty;
     }
 
     /// <summary>
-    /// Initializes a new polygon wrapping a ReadOnlyMemory of points. Zero-copy — requires array-backed memory.
-    /// Supports non-zero offsets for pooled buffer slices (e.g., multiple polygons sharing one ArrayPool buffer).
+    /// Initializes a new polygon wrapping a ReadOnlyMemory of points. Zero-copy.
     /// </summary>
-    /// <exception cref="ArgumentException">Thrown when the memory is not backed by an array.</exception>
     public Polygon(ReadOnlyMemory<Point<T>> memory)
     {
-        if (memory.Length == 0)
-        {
-            _points = Array.Empty<Point<T>>();
-            _offset = 0;
-            _length = 0;
-            return;
-        }
-
-        if (!MemoryMarshal.TryGetArray(memory, out ArraySegment<Point<T>> segment))
-            throw new ArgumentException(
-                "Memory must be backed by an array. " +
-                "Use MemoryPool<T>.Shared or pass a Point<T>[] directly.", nameof(memory));
-
-        _points = segment.Array!;
-        _offset = segment.Offset;
-        _length = segment.Count;
+        _points = memory;
     }
 
     /// <summary>
@@ -119,8 +95,6 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     public Polygon(params Point<T>[] points)
     {
         _points = points;
-        _offset = 0;
-        _length = points.Length;
     }
 
     /// <summary>
@@ -128,17 +102,13 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// </summary>
     public Polygon(IList<Point<T>> points)
     {
-        _offset = 0;
         if (points is Point<T>[] arr)
-        {
             _points = arr;
-            _length = arr.Length;
-        }
         else
         {
-            _points = new Point<T>[points.Count];
-            points.CopyTo(_points, 0);
-            _length = _points.Length;
+            var tmp = new Point<T>[points.Count];
+            points.CopyTo(tmp, 0);
+            _points = tmp;
         }
     }
 
@@ -147,11 +117,26 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// </summary>
     public Polygon(IReadOnlyList<T> coords)
     {
-        _points = new Point<T>[coords.Count / 2];
-        _offset = 0;
+        var tmp = new Point<T>[coords.Count / 2];
         for (int i = 0; i < coords.Count; i += 2)
-            _points[i / 2] = new Point<T>(coords[i], coords[i + 1]);
-        _length = _points.Length;
+            tmp[i / 2] = new Point<T>(coords[i], coords[i + 1]);
+        _points = tmp;
+    }
+
+    #endregion
+
+    #region IPoolable
+
+    /// <summary>
+    /// Detaches this polygon's backing memory from the given scope and returns a lease.
+    /// The caller becomes responsible for disposing the lease to return memory to the pool.
+    /// </summary>
+    public Lease<Point<T>> DetachFrom(AllocationScope scope)
+    {
+        if (!MemoryMarshal.TryGetArray(_points, out var seg))
+            throw new InvalidOperationException("Cannot detach non-array-backed memory.");
+        var owner = scope.UntrackMemory(new Memory<Point<T>>(seg.Array!, seg.Offset, seg.Count));
+        return new Lease<Point<T>> { _owner = owner };
     }
 
     #endregion
@@ -163,26 +148,12 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// </summary>
     public Polygon<T> Add(Point<T> point)
     {
-        var span = Span;
-        var newPoints = new Point<T>[span.Length + 1];
+        var span = AsSpan();
+        var mem = Alloc.Memory<Point<T>>(span.Length + 1);
+        var newPoints = mem.Span;
         span.CopyTo(newPoints);
         newPoints[span.Length] = point;
-        return new Polygon<T>(newPoints);
-    }
-
-    /// <summary>
-    /// Returns a new polygon with the specified point appended, using pooled memory.
-    /// Caller must dispose the returned IMemoryOwner when the polygon is no longer needed.
-    /// </summary>
-    public Polygon<T> Add(Point<T> point, MemoryPool<Point<T>> pool, out IMemoryOwner<Point<T>> owner)
-    {
-        var span = Span;
-        int newLength = span.Length + 1;
-        owner = pool.Rent(newLength);
-        var dest = owner.Memory.Span;
-        span.CopyTo(dest);
-        dest[span.Length] = point;
-        return new Polygon<T>(owner.Memory.Slice(0, newLength));
+        return new Polygon<T>(mem);
     }
 
     /// <summary>
@@ -190,28 +161,13 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// </summary>
     public Polygon<T> InsertAt(int index, Point<T> point)
     {
-        var span = Span;
-        var newPoints = new Point<T>[span.Length + 1];
+        var span = AsSpan();
+        var mem = Alloc.Memory<Point<T>>(span.Length + 1);
+        var newPoints = mem.Span;
         span[..index].CopyTo(newPoints);
         newPoints[index] = point;
-        span[index..].CopyTo(newPoints.AsSpan(index + 1));
-        return new Polygon<T>(newPoints);
-    }
-
-    /// <summary>
-    /// Returns a new polygon with the specified point inserted at the given index, using pooled memory.
-    /// Caller must dispose the returned IMemoryOwner when the polygon is no longer needed.
-    /// </summary>
-    public Polygon<T> InsertAt(int index, Point<T> point, MemoryPool<Point<T>> pool, out IMemoryOwner<Point<T>> owner)
-    {
-        var span = Span;
-        int newLength = span.Length + 1;
-        owner = pool.Rent(newLength);
-        var dest = owner.Memory.Span;
-        span[..index].CopyTo(dest);
-        dest[index] = point;
-        span[index..].CopyTo(dest[(index + 1)..]);
-        return new Polygon<T>(owner.Memory.Slice(0, newLength));
+        span[index..].CopyTo(newPoints[(index + 1)..]);
+        return new Polygon<T>(mem);
     }
 
     /// <summary>
@@ -219,26 +175,12 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// </summary>
     public Polygon<T> RemoveAt(int index)
     {
-        var span = Span;
-        var newPoints = new Point<T>[span.Length - 1];
+        var span = AsSpan();
+        var mem = Alloc.Memory<Point<T>>(span.Length - 1);
+        var newPoints = mem.Span;
         span[..index].CopyTo(newPoints);
-        span[(index + 1)..].CopyTo(newPoints.AsSpan(index));
-        return new Polygon<T>(newPoints);
-    }
-
-    /// <summary>
-    /// Returns a new polygon with the point at the specified index removed, using pooled memory.
-    /// Caller must dispose the returned IMemoryOwner when the polygon is no longer needed.
-    /// </summary>
-    public Polygon<T> RemoveAt(int index, MemoryPool<Point<T>> pool, out IMemoryOwner<Point<T>> owner)
-    {
-        var span = Span;
-        int newLength = span.Length - 1;
-        owner = pool.Rent(newLength);
-        var dest = owner.Memory.Span;
-        span[..index].CopyTo(dest);
-        span[(index + 1)..].CopyTo(dest[index..]);
-        return new Polygon<T>(owner.Memory.Slice(0, newLength));
+        span[(index + 1)..].CopyTo(newPoints[index..]);
+        return new Polygon<T>(mem);
     }
 
     #endregion
@@ -250,7 +192,7 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// </summary>
     public T Area()
     {
-        var span = Span;
+        var span = AsSpan();
         int n = span.Length;
         if (n < 3)
             throw new ArgumentException("A polygon must have at least 3 points.");
@@ -273,7 +215,7 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// </summary>
     public Rectangle<T> BoundingBox()
     {
-        var span = Span;
+        var span = AsSpan();
         if (span.Length == 0)
             return new Rectangle<T>(new Point<T>(T.Zero, T.Zero), new Size<T>(T.Zero, T.Zero));
 
@@ -296,7 +238,7 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// </summary>
     public bool HasVertex(in Point<T> item)
     {
-        var span = Span;
+        var span = AsSpan();
         for (int i = 0; i < span.Length; i++)
             if (span[i].Equals(item)) return true;
         return false;
@@ -325,6 +267,59 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     }
 
     /// <summary>
+    /// Densifies the polygon by inserting points along each edge so that consecutive points
+    /// are at most 1 unit apart.
+    /// </summary>
+    public Polygon<T> Densify()
+    {
+        var span = AsSpan();
+        int n = span.Length;
+        if (n < 2) return this;
+
+        // First pass: count total points
+        int total = 0;
+        for (int i = 0; i < n; i++)
+        {
+            var a = span[i];
+            var b = span[(i + 1) % n];
+            var len = a.DistanceTo(b);
+            int steps = int.Max(1, int.CreateChecked(T.Ceiling(len)));
+            total += steps;
+        }
+
+        var mem = Alloc.Memory<Point<T>>(total);
+        var dst = mem.Span;
+        int idx = 0;
+        for (int i = 0; i < n; i++)
+        {
+            var a = span[i];
+            var b = span[(i + 1) % n];
+            var len = a.DistanceTo(b);
+            int steps = int.Max(1, int.CreateChecked(T.Ceiling(len)));
+            for (int s = 0; s < steps; s++)
+            {
+                var t = T.CreateChecked(s) / T.CreateChecked(steps);
+                dst[idx++] = new Point<T>(
+                    a.X + (b.X - a.X) * t,
+                    a.Y + (b.Y - a.Y) * t);
+            }
+        }
+
+        return new Polygon<T>(mem);
+    }
+
+    /// <summary>
+    /// Computes a PCA-based rigid alignment that maps this polygon onto the target point cloud.
+    /// </summary>
+    /// <param name="target">The target point cloud to align to.</param>
+    /// <param name="densify">If true, densifies this polygon before alignment for uniform point spacing.</param>
+    public AlignmentResult<T> AlignTo(ReadOnlySpan<Point<T>> target, bool densify = false)
+    {
+        var source = densify ? Densify().AsSpan() : AsSpan();
+        return Alignment.Pca(source, target);
+    }
+
+    /// <summary>
     /// Finds all segments where the given infinite line intersects this polygon.
     /// For convex polygons, this yields 0 or 1 segment. For concave polygons, multiple segments.
     /// </summary>
@@ -342,7 +337,7 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// </summary>
     public bool Contains(Point<T> point)
     {
-        var span = Span;
+        var span = AsSpan();
         int n = span.Length;
         if (n < 3) return false;
 
@@ -363,7 +358,7 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// </summary>
     public T Perimeter()
     {
-        var span = Span;
+        var span = AsSpan();
         int n = span.Length;
         if (n < 2) return T.Zero;
 
@@ -383,7 +378,7 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// </summary>
     public Point<T> Centroid()
     {
-        var span = Span;
+        var span = AsSpan();
         int n = span.Length;
         if (n == 0) return Point<T>.Zero;
 
@@ -412,7 +407,7 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// </summary>
     public bool IsConvex()
     {
-        var span = Span;
+        var span = AsSpan();
         int n = span.Length;
         if (n < 3) return false;
 
@@ -437,16 +432,16 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// <summary>
     /// Returns the edges of this polygon as segments.
     /// </summary>
-    public Segment<T>[] Edges()
+    public ReadOnlyMemory<Segment<T>> Edges()
     {
-        var span = Span;
+        var span = AsSpan();
         int n = span.Length;
-        if (n < 2) return Array.Empty<Segment<T>>();
-
-        var edges = new Segment<T>[n];
+        if (n < 2) return ReadOnlyMemory<Segment<T>>.Empty;
+        var mem = Alloc.Memory<Segment<T>>(n);
+        var edges = mem.Span;
         for (int i = 0; i < n; i++)
             edges[i] = new Segment<T>(span[i], span[(i + 1) % n]);
-        return edges;
+        return mem;
     }
 
     /// <summary>
@@ -455,11 +450,12 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     public Polygon<T> Scale(T factor)
     {
         var c = Centroid();
-        var span = Span;
-        var points = new Point<T>[span.Length];
+        var span = AsSpan();
+        var mem = Alloc.Memory<Point<T>>(span.Length);
+        var points = mem.Span;
         for (int i = 0; i < span.Length; i++)
             points[i] = new Point<T>(c.X + (span[i].X - c.X) * factor, c.Y + (span[i].Y - c.Y) * factor);
-        return new Polygon<T>(points);
+        return new Polygon<T>(mem);
     }
 
     /// <summary>
@@ -467,11 +463,14 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// </summary>
     public Polygon<T> ConvexHull()
     {
-        var span = Span;
+        var span = AsSpan();
         int n = span.Length;
         if (n < 3) return this;
 
-        var points = span.ToArray();
+        // Working copy for sorting — use pooled memory
+        var workMem = Alloc.Memory<Point<T>>(n);
+        var points = workMem.Span;
+        span.CopyTo(points);
 
         int lowest = 0;
         for (int i = 1; i < n; i++)
@@ -483,7 +482,10 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
         (points[0], points[lowest]) = (points[lowest], points[0]);
         var pivot = points[0];
 
-        Array.Sort(points, 1, n - 1, Comparer<Point<T>>.Create((a, b) =>
+        // Sort requires array — extract the backing array for Array.Sort
+        if (!System.Runtime.InteropServices.MemoryMarshal.TryGetArray((ReadOnlyMemory<Point<T>>)workMem, out var seg))
+            throw new InvalidOperationException("Working memory must be array-backed.");
+        Array.Sort(seg.Array!, seg.Offset + 1, n - 1, Comparer<Point<T>>.Create((a, b) =>
         {
             var cross = (a.X - pivot.X) * (b.Y - pivot.Y) - (a.Y - pivot.Y) * (b.X - pivot.X);
             if (cross != T.Zero) return cross > T.Zero ? -1 : 1;
@@ -491,6 +493,8 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
             var db = (b.X - pivot.X) * (b.X - pivot.X) + (b.Y - pivot.Y) * (b.Y - pivot.Y);
             return da.CompareTo(db);
         }));
+        // Re-read span after sort (same memory, but span may have been invalidated)
+        points = workMem.Span;
 
         var hull = new List<Point<T>> { points[0], points[1] };
         for (int i = 2; i < n; i++)
@@ -509,7 +513,12 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
             hull.Add(points[i]);
         }
 
-        return new Polygon<T>(hull.ToArray());
+        // Result — use pooled memory
+        var resultMem = Alloc.Memory<Point<T>>(hull.Count);
+        var resultSpan = resultMem.Span;
+        for (int i = 0; i < hull.Count; i++)
+            resultSpan[i] = hull[i];
+        return new Polygon<T>(resultMem);
     }
 
     /// <summary>
@@ -568,11 +577,12 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// </summary>
     public static Polygon<T> operator *(in Polygon<T> a, in Size<T> f)
     {
-        var span = a.Span;
-        var points = new Point<T>[span.Length];
+        var span = a.AsSpan();
+        var mem = Alloc.Memory<Point<T>>(span.Length);
+        var points = mem.Span;
         for (int i = 0; i < span.Length; i++)
             points[i] = span[i] * f;
-        return new Polygon<T>(points);
+        return new Polygon<T>(mem);
     }
 
     /// <summary>
@@ -580,11 +590,12 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// </summary>
     public static Polygon<T> operator /(in Polygon<T> a, in Size<T> f)
     {
-        var span = a.Span;
-        var points = new Point<T>[span.Length];
+        var span = a.AsSpan();
+        var mem = Alloc.Memory<Point<T>>(span.Length);
+        var points = mem.Span;
         for (int i = 0; i < span.Length; i++)
             points[i] = span[i] / f;
-        return new Polygon<T>(points);
+        return new Polygon<T>(mem);
     }
 
     /// <summary>
@@ -595,11 +606,12 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// <returns>The rotated polygon.</returns>
     public Polygon<T> Rotate(Degree<T> angle, Point<T> origin = default)
     {
-        var span = Span;
-        var points = new Point<T>[span.Length];
+        var span = AsSpan();
+        var mem = Alloc.Memory<Point<T>>(span.Length);
+        var points = mem.Span;
         for (int i = 0; i < span.Length; i++)
             points[i] = span[i].Rotate(angle, origin);
-        return new Polygon<T>(points);
+        return new Polygon<T>(mem);
     }
 
     /// <summary>
@@ -619,11 +631,12 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// </summary>
     public static Polygon<T> operator -(in Polygon<T> a, in Vector<T> f)
     {
-        var span = a.Span;
-        var points = new Point<T>[span.Length];
+        var span = a.AsSpan();
+        var mem = Alloc.Memory<Point<T>>(span.Length);
+        var points = mem.Span;
         for (int i = 0; i < span.Length; i++)
             points[i] = span[i] - f;
-        return new Polygon<T>(points);
+        return new Polygon<T>(mem);
     }
 
     /// <summary>
@@ -631,11 +644,12 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// </summary>
     public static Polygon<T> operator +(in Polygon<T> a, in Vector<T> f)
     {
-        var span = a.Span;
-        var points = new Point<T>[span.Length];
+        var span = a.AsSpan();
+        var mem = Alloc.Memory<Point<T>>(span.Length);
+        var points = mem.Span;
         for (int i = 0; i < span.Length; i++)
             points[i] = span[i] + f;
-        return new Polygon<T>(points);
+        return new Polygon<T>(mem);
     }
 
     /// <summary>
@@ -685,19 +699,20 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
 
     private static Polygon<T> FromClipper2Path(PathD path)
     {
-        var points = new Point<T>[path.Count];
+        var mem = Alloc.Memory<Point<T>>(path.Count);
+        var points = mem.Span;
         for (int i = 0; i < path.Count; i++)
         {
             points[i] = new Point<T>(
                 T.CreateTruncating(path[i].x),
                 T.CreateTruncating(path[i].y));
         }
-        return new Polygon<T>(points);
+        return new Polygon<T>(mem);
     }
 
     private PathD ToClipper2Path()
     {
-        var span = Span;
+        var span = AsSpan();
         var path = new PathD(span.Length);
         for (int i = 0; i < span.Length; i++)
         {
@@ -1006,12 +1021,12 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
 
     #region Equality
 
-    public bool Equals(Polygon<T> other) => Span.SequenceEqual(other.Span);
+    public bool Equals(Polygon<T> other) => AsSpan().SequenceEqual(other.AsSpan());
 
     public override int GetHashCode()
     {
         var hash = new System.HashCode();
-        var span = Span;
+        var span = AsSpan();
         for (int i = 0; i < span.Length; i++)
             hash.Add(span[i]);
         return hash.ToHashCode();
@@ -1024,8 +1039,10 @@ public readonly record struct Polygon<T> : IShape<T, Polygon<T>>
     /// </summary>
     internal Point<T>[] AsArray()
     {
-        if (_points == null) return Array.Empty<Point<T>>();
-        if (_offset == 0 && (_length == 0 || _length == _points.Length)) return _points;
-        return Span.ToArray();
+        if (_points.Length == 0) return Array.Empty<Point<T>>();
+        if (MemoryMarshal.TryGetArray(_points, out var seg)
+            && seg.Offset == 0 && seg.Count == seg.Array!.Length)
+            return seg.Array;
+        return _points.ToArray();
     }
 }

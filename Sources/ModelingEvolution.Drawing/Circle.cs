@@ -160,6 +160,34 @@ public readonly record struct Circle<T> : IShape<T, Circle<T>>
     }
 
     /// <summary>
+    /// Densifies the circle by placing points along the circumference at most 1 unit apart.
+    /// Returns a polygon approximation.
+    /// </summary>
+    public Polygon<T> Densify()
+    {
+        var circumference = Two * Pi * Radius;
+        int n = int.Max(8, int.CreateChecked(T.Ceiling(circumference)));
+        var mem = Alloc.Memory<Point<T>>(n);
+        var span = mem.Span;
+        var step = Two * Pi / T.CreateTruncating(n);
+        for (int i = 0; i < n; i++)
+        {
+            var angle = step * T.CreateTruncating(i);
+            span[i] = new Point<T>(Center.X + Radius * T.Cos(angle), Center.Y + Radius * T.Sin(angle));
+        }
+        return new Polygon<T>(mem);
+    }
+
+    /// <summary>
+    /// Computes a PCA-based rigid alignment that maps this circle (densified) onto the target point cloud.
+    /// </summary>
+    /// <param name="target">The target point cloud to align to.</param>
+    public AlignmentResult<T> AlignTo(ReadOnlySpan<Point<T>> target)
+    {
+        return Alignment.Pca(Densify().AsSpan(), target);
+    }
+
+    /// <summary>
     /// Returns the portion of this circle that lies inside the rectangle,
     /// approximated as a polygon.
     /// </summary>

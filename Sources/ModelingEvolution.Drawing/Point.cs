@@ -2,6 +2,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 using ProtoBuf;
 
@@ -14,6 +15,7 @@ namespace ModelingEvolution.Drawing;
 [ProtoContract]
 [PointJsonConverter()]
 [Svg.SvgExporter(typeof(PointSvgExporterFactory))]
+[StructLayout(LayoutKind.Sequential, Pack = 1)]
 public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {

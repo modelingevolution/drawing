@@ -16,7 +16,7 @@ public class PolylineTests
     {
         var pl = new Polyline<float>();
         pl.Count.Should().Be(0);
-        pl.Span.Length.Should().Be(0);
+        pl.AsSpan().Length.Should().Be(0);
     }
 
     [Fact]
@@ -163,10 +163,11 @@ public class PolylineTests
             new Point<float>(10, 10));
         var edges = pl.Edges();
         edges.Length.Should().Be(2);
-        edges[0].Start.Should().Be(new Point<float>(0, 0));
-        edges[0].End.Should().Be(new Point<float>(10, 0));
-        edges[1].Start.Should().Be(new Point<float>(10, 0));
-        edges[1].End.Should().Be(new Point<float>(10, 10));
+        var edgesSpan = edges.Span;
+        edgesSpan[0].Start.Should().Be(new Point<float>(0, 0));
+        edgesSpan[0].End.Should().Be(new Point<float>(10, 0));
+        edgesSpan[1].Start.Should().Be(new Point<float>(10, 0));
+        edgesSpan[1].End.Should().Be(new Point<float>(10, 10));
     }
 
     [Fact]
@@ -186,7 +187,7 @@ public class PolylineTests
     public void Edges_SinglePoint_Empty()
     {
         var pl = new Polyline<float>(new Point<float>(5, 5));
-        pl.Edges().Should().BeEmpty();
+        pl.Edges().Span.ToArray().Should().BeEmpty();
     }
 
     // ─────────────────────────────────────────────

@@ -31,7 +31,7 @@ public record class PolygonBuilder<T>
 
     public PolygonBuilder(Polygon<T> polygon)
     {
-        var span = polygon.Span;
+        var span = polygon.AsSpan();
         _points = new List<Point<T>>(span.Length);
         for (int i = 0; i < span.Length; i++)
             _points.Add(span[i]);

@@ -24,7 +24,7 @@ public class SkeletonSvgExporter<T> : ISvgExporter
         var sb = new StringBuilder();
 
         // Render edges as lines
-        foreach (var edge in skeleton.Edges.ToArray())
+        foreach (var edge in skeleton.Edges().ToArray())
         {
             sb.AppendFormat(CultureInfo.InvariantCulture,
                 "<line x1=\"{0}\" y1=\"{1}\" x2=\"{2}\" y2=\"{3}\" stroke=\"{4}\" stroke-width=\"{5}\" stroke-linecap=\"round\"/>",
@@ -37,7 +37,7 @@ public class SkeletonSvgExporter<T> : ISvgExporter
         }
 
         // Render nodes as circles
-        foreach (var node in skeleton.Nodes.ToArray())
+        foreach (var node in skeleton.Nodes().ToArray())
         {
             sb.AppendFormat(CultureInfo.InvariantCulture,
                 "<circle cx=\"{0}\" cy=\"{1}\" r=\"{2}\" fill=\"{3}\"/>",

@@ -65,40 +65,36 @@ public readonly record struct CubicEquation<T>
     /// Calculates all real roots of the cubic equation.
     /// </summary>
     /// <returns>An array containing all real roots of the equation.</returns>
-    public T[] ZeroPoints()
+    public ReadOnlyMemory<T> ZeroPoints()
     {
-        // Handle the special case where the equation is not actually cubic
         if (a == T.Zero)
         {
-            // Handle quadratic case
             var quadratic = new QuadraticEquation<T>(b, c, d);
             return quadratic.ZeroPoints();
         }
 
-        // Normalize coefficients
         var bn = b / a;
         var cn = c / a;
         var dn = d / a;
 
-        // Calculate discriminant
         var delta0 = bn * bn - t3 * cn;
         var delta1 = t2 * bn * bn * bn - t8 * bn * cn + t27 * dn;
 
         var discriminant = delta1 * delta1 - t4 * delta0 * delta0 * delta0;
 
-        // Calculate roots
-
-
         var b3 = -bn / t3;
         if (delta0 == T.Zero && delta1 == T.Zero)
         {
-            // All roots are real and equal
-            return new T[] { (T)b3 };
+            var mem = Alloc.Memory<T>(1);
+            mem.Span[0] = (T)b3;
+            return mem;
         }
         else if (discriminant >= T.Zero)
         {
             T C = T.Cbrt((delta1 + T.Sqrt(discriminant)) / t2);
-            return new T[] { -(bn + C + delta0 / C) / t3 };
+            var mem = Alloc.Memory<T>(1);
+            mem.Span[0] = -(bn + C + delta0 / C) / t3;
+            return mem;
         }
         else
         {
@@ -110,10 +106,13 @@ public readonly record struct CubicEquation<T>
             var x1 = b3 - delta2 * T.Cos((phi - t2 * T.Pi) / t3);
             var x2 = b3 - delta2 * T.Cos((phi - t4 * T.Pi) / t3);
 
-            return new[] { (T)x0, (T)x1, (T)x2 };
+            var mem = Alloc.Memory<T>(3);
+            var span = mem.Span;
+            span[0] = (T)x0;
+            span[1] = (T)x1;
+            span[2] = (T)x2;
+            return mem;
         }
-
-
     }
     /// <summary>
     /// Finds a root of the cubic equation using Newton's method with the specified initial guess.

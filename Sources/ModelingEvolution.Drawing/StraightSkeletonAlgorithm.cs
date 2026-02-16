@@ -1,3 +1,4 @@
+using System.Buffers;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
@@ -65,9 +66,9 @@ internal static class StraightSkeletonAlgorithm
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>,
         ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
     {
-        var span = polygon.Span;
+        var span = polygon.AsSpan();
         int n = span.Length;
-        if (n < 3) return new Skeleton<T>(Array.Empty<Point<T>>(), Array.Empty<Segment<T>>());
+        if (n < 3) return new Skeleton<T>(ReadOnlyMemory<Point<T>>.Empty, ReadOnlyMemory<Segment<T>>.Empty);
 
         var highEps = T.CreateTruncating(1e-12);
         var medEps = T.CreateTruncating(1e-5);
@@ -75,84 +76,105 @@ internal static class StraightSkeletonAlgorithm
         var pi = T.Pi;
         var pi2 = pi + pi;
 
-        // Reference algorithm assumes CW winding
-        var pts = EnsureCW(span);
-        n = pts.Length;
+        // Reference algorithm assumes CW winding — detect and read in correct order
+        bool needReverse = IsCCW(span);
 
-        // Initialize chain vertices
-        var v = new ChainVert<T>[n * 8];
-        int vc = n;
-        for (int i = 0; i < n; i++)
+        // Working buffer — rented directly from pool, returned when done
+        var v = ArrayPool<ChainVert<T>>.Shared.Rent(n * 8);
+        try
         {
-            v[i] = new ChainVert<T>
+            int vc = n;
+            for (int i = 0; i < n; i++)
             {
-                Index = i,
-                X = pts[i].X, Y = pts[i].Y,
-                OrigX = pts[i].X, OrigY = pts[i].Y,
-                Prev = (i - 1 + n) % n,
-                Next = (i + 1) % n
-            };
-        }
-
-        // Compute initial segments
-        for (int i = 0; i < n; i++)
-        {
-            ref var cur = ref v[i];
-            cur.RecalcSegment(v[cur.Next].X, v[cur.Next].Y, highEps);
-        }
-
-        // Compute initial bisectors
-        for (int i = 0; i < n; i++)
-        {
-            ref var prev = ref v[i];
-            ref var next = ref v[prev.Next];
-            next.RecalcBisector(prev.DirX, prev.DirY, pi2, pi);
-        }
-
-        var activeChains = new List<int> { 0 };
-        var splitChains = new List<int>();
-        var skeletonEdges = new List<Segment<T>>();
-        var nodeSet = new HashSet<(double, double)>();
-        var nodeList = new List<Point<T>>();
-
-        // Reusable buffers for intersection processing
-        var incidentBuf = new List<int>();
-        var unresolvedBuf = new List<int>();
-        var resolvedBuf = new List<int>();
-
-        int pass = 0;
-        while (activeChains.Count > 0)
-        {
-            if (pass++ > n * 4) break; // safety limit
-
-            splitChains.Clear();
-            for (int ci = 0; ci < activeChains.Count; ci++)
-            {
-                int chain = activeChains[ci];
-
-                // Find shortest shrink distance (edge + split events)
-                T dist = FindShortestDistance(v, chain, highEps, medEps);
-                if (T.IsPositiveInfinity(dist) || T.IsNaN(dist))
-                    continue;
-
-                dist = T.Max(dist, T.Zero);
-
-                // Apply shrink distance
-                if (dist > T.Zero)
-                    ApplyShrinkDistance(v, chain, dist, highEps, pi2, pi);
-
-                // Process intersection events and emit skeleton edges
-                ProcessIntersections(ref v, ref vc, chain, pass,
-                    highEps, medEps, lowEps, pi2, pi,
-                    skeletonEdges, nodeSet, nodeList,
-                    incidentBuf, unresolvedBuf, resolvedBuf, splitChains);
+                int si = needReverse ? (n - 1 - i) : i;
+                v[i] = new ChainVert<T>
+                {
+                    Index = i,
+                    X = span[si].X, Y = span[si].Y,
+                    OrigX = span[si].X, OrigY = span[si].Y,
+                    Prev = (i - 1 + n) % n,
+                    Next = (i + 1) % n
+                };
             }
 
-            activeChains.Clear();
-            activeChains.AddRange(splitChains);
-        }
+            // Compute initial segments
+            for (int i = 0; i < n; i++)
+            {
+                ref var cur = ref v[i];
+                cur.RecalcSegment(v[cur.Next].X, v[cur.Next].Y, highEps);
+            }
 
-        return new Skeleton<T>(nodeList.ToArray(), skeletonEdges.ToArray());
+            // Compute initial bisectors
+            for (int i = 0; i < n; i++)
+            {
+                ref var prev = ref v[i];
+                ref var next = ref v[prev.Next];
+                next.RecalcBisector(prev.DirX, prev.DirY, pi2, pi);
+            }
+
+            var activeChains = new PooledList<int>(n);
+            activeChains.Add(0);
+            var splitChains = new PooledList<int>(n);
+            var skeletonEdges = new PooledList<Segment<T>>(n);
+            var nodeSet = new HashSet<(double, double)>();
+            var nodeList = new PooledList<Point<T>>(n);
+
+            // Reusable buffers for intersection processing
+            var incidentBuf = new PooledList<int>(n);
+            var unresolvedBuf = new PooledList<int>(n);
+            var resolvedBuf = new PooledList<int>(n);
+
+            int pass = 0;
+            while (activeChains.Count > 0)
+            {
+                if (pass++ > n * 4) break; // safety limit
+
+                splitChains.Clear();
+                var activeSpan = activeChains.AsSpan();
+                for (int ci = 0; ci < activeSpan.Length; ci++)
+                {
+                    int chain = activeSpan[ci];
+
+                    // Find shortest shrink distance (edge + split events)
+                    T dist = FindShortestDistance(v, chain, highEps, medEps);
+                    if (T.IsPositiveInfinity(dist) || T.IsNaN(dist))
+                        continue;
+
+                    dist = T.Max(dist, T.Zero);
+
+                    // Apply shrink distance
+                    if (dist > T.Zero)
+                        ApplyShrinkDistance(v, chain, dist, highEps, pi2, pi);
+
+                    // Process intersection events and emit skeleton edges
+                    ProcessIntersections(ref v, ref vc, chain, pass,
+                        highEps, medEps, lowEps, pi2, pi,
+                        ref skeletonEdges, nodeSet, ref nodeList,
+                        ref incidentBuf, ref unresolvedBuf, ref resolvedBuf, ref splitChains);
+                }
+
+                activeChains.Clear();
+                var splitSpan = splitChains.AsSpan();
+                for (int i = 0; i < splitSpan.Length; i++)
+                    activeChains.Add(splitSpan[i]);
+            }
+
+            // ToReadOnlyMemory copies to Alloc.Memory and returns the working buffer to pool
+            var result = new Skeleton<T>(nodeList.ToReadOnlyMemory(), skeletonEdges.ToReadOnlyMemory());
+
+            // Return working buffers to pool
+            activeChains.Dispose();
+            splitChains.Dispose();
+            incidentBuf.Dispose();
+            unresolvedBuf.Dispose();
+            resolvedBuf.Dispose();
+
+            return result;
+        }
+        finally
+        {
+            ArrayPool<ChainVert<T>>.Shared.Return(v);
+        }
     }
 
     /// <summary>
@@ -305,9 +327,9 @@ internal static class StraightSkeletonAlgorithm
     private static void ProcessIntersections<T>(ref ChainVert<T>[] v, ref int vc,
         int chain, int pass,
         T highEps, T medEps, T lowEps, T pi2, T pi,
-        List<Segment<T>> skeletonEdges, HashSet<(double, double)> nodeSet, List<Point<T>> nodeList,
-        List<int> incidentBuf, List<int> unresolvedBuf, List<int> resolvedBuf,
-        List<int> splitChains)
+        ref PooledList<Segment<T>> skeletonEdges, HashSet<(double, double)> nodeSet, ref PooledList<Point<T>> nodeList,
+        ref PooledList<int> incidentBuf, ref PooledList<int> unresolvedBuf, ref PooledList<int> resolvedBuf,
+        ref PooledList<int> splitChains)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>,
         ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
     {
@@ -422,11 +444,12 @@ internal static class StraightSkeletonAlgorithm
 
                         // Emit skeleton edges from all incident vertices to the event point
                         var eventPt = new Point<T>(vert.X, vert.Y);
-                        foreach (int iv in incidentBuf)
+                        var incSpan = incidentBuf.AsSpan();
+                        for (int ii = 0; ii < incSpan.Length; ii++)
                         {
-                            ref var inc = ref v[iv];
+                            ref var inc = ref v[incSpan[ii]];
                             var orig = new Point<T>(inc.OrigX, inc.OrigY);
-                            EmitEdge(skeletonEdges, nodeSet, nodeList, orig, eventPt, medEps);
+                            EmitEdge(ref skeletonEdges, nodeSet, ref nodeList, orig, eventPt, medEps);
                         }
 
                         // Split chains at incident vertices
@@ -480,8 +503,10 @@ internal static class StraightSkeletonAlgorithm
         }
 
         // Phase 3: Filter resolved chains
-        foreach (int resolved in resolvedBuf)
+        var resSpan = resolvedBuf.AsSpan();
+        for (int ri = 0; ri < resSpan.Length; ri++)
         {
+            int resolved = resSpan[ri];
             int count = ChainLength(v, resolved);
 
             if (count > 2)
@@ -496,16 +521,16 @@ internal static class StraightSkeletonAlgorithm
                 ref var b = ref v[a.Next];
                 var two = T.One + T.One;
                 var mid = new Point<T>((a.X + b.X) / two, (a.Y + b.Y) / two);
-                EmitEdge(skeletonEdges, nodeSet, nodeList,
+                EmitEdge(ref skeletonEdges, nodeSet, ref nodeList,
                     new Point<T>(a.OrigX, a.OrigY), mid, medEps);
-                EmitEdge(skeletonEdges, nodeSet, nodeList,
+                EmitEdge(ref skeletonEdges, nodeSet, ref nodeList,
                     new Point<T>(b.OrigX, b.OrigY), mid, medEps);
             }
             else if (count == 1)
             {
                 // Degenerate single vertex — emit edge from origin
                 ref var a = ref v[resolved];
-                EmitEdge(skeletonEdges, nodeSet, nodeList,
+                EmitEdge(ref skeletonEdges, nodeSet, ref nodeList,
                     new Point<T>(a.OrigX, a.OrigY), new Point<T>(a.X, a.Y), medEps);
             }
         }
@@ -515,7 +540,8 @@ internal static class StraightSkeletonAlgorithm
     //  Helper methods
     // ════════════════════════════════════════════════
 
-    private static Point<T>[] EnsureCW<T>(ReadOnlySpan<Point<T>> vertices)
+    /// <summary>Returns true if vertices are in CCW winding order.</summary>
+    private static bool IsCCW<T>(ReadOnlySpan<Point<T>> vertices)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>,
         ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
     {
@@ -527,12 +553,9 @@ internal static class StraightSkeletonAlgorithm
             var next = vertices[(i + 1) % n];
             signedArea += cur.X * next.Y - next.X * cur.Y;
         }
-
-        var result = vertices.ToArray();
-        if (signedArea > T.Zero) // CCW -> reverse to CW
-            Array.Reverse(result);
-        return result;
+        return signedArea > T.Zero;
     }
+
 
     /// <summary>
     /// Trace a plane from a ray. Returns false if the ray is behind the plane or parallel.
@@ -674,13 +697,14 @@ internal static class StraightSkeletonAlgorithm
         if (needed <= v.Length) return;
         int newSize = v.Length;
         while (newSize < needed) newSize <<= 1;
-        var newArr = new ChainVert<T>[newSize];
+        var newArr = ArrayPool<ChainVert<T>>.Shared.Rent(newSize);
         Array.Copy(v, newArr, v.Length);
+        ArrayPool<ChainVert<T>>.Shared.Return(v);
         v = newArr;
     }
 
-    private static void EmitEdge<T>(List<Segment<T>> edges, HashSet<(double, double)> nodeSet,
-        List<Point<T>> nodeList, Point<T> a, Point<T> b, T eps)
+    private static void EmitEdge<T>(ref PooledList<Segment<T>> edges, HashSet<(double, double)> nodeSet,
+        ref PooledList<Point<T>> nodeList, Point<T> a, Point<T> b, T eps)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>,
         ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
     {
@@ -688,12 +712,12 @@ internal static class StraightSkeletonAlgorithm
         var dy = b.Y - a.Y;
         if (T.Abs(dx) < eps && T.Abs(dy) < eps) return;
 
-        AddNode(nodeSet, nodeList, a);
-        AddNode(nodeSet, nodeList, b);
+        AddNode(nodeSet, ref nodeList, a);
+        AddNode(nodeSet, ref nodeList, b);
         edges.Add(new Segment<T>(a, b));
     }
 
-    private static void AddNode<T>(HashSet<(double, double)> nodeSet, List<Point<T>> nodeList,
+    private static void AddNode<T>(HashSet<(double, double)> nodeSet, ref PooledList<Point<T>> nodeList,
         Point<T> pt)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>,
         ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>

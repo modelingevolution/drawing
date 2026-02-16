@@ -1,4 +1,6 @@
+using System.Buffers;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
 using ProtoBuf;
 
@@ -32,75 +34,124 @@ public enum SkeletonAlgo
 [JsonConverter(typeof(SkeletonJsonConverterFactory))]
 [ProtoContract]
 [Svg.SvgExporter(typeof(SkeletonSvgExporterFactory))]
-public readonly record struct Skeleton<T>
+public readonly record struct Skeleton<T> : IPoolable<Skeleton<T>, Lease<Point<T>, Segment<T>>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
     IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {
+    internal readonly ReadOnlyMemory<Point<T>> _nodes;
+    internal readonly ReadOnlyMemory<Segment<T>> _edges;
+
     [ProtoMember(1)]
-    internal readonly Point<T>[] _nodes;
+    private Point<T>[] ProtoNodes
+    {
+        get
+        {
+            if (_nodes.Length == 0) return Array.Empty<Point<T>>();
+            if (MemoryMarshal.TryGetArray(_nodes, out var seg)
+                && seg.Offset == 0 && seg.Count == seg.Array!.Length)
+                return seg.Array;
+            return _nodes.ToArray();
+        }
+        init => _nodes = value ?? ReadOnlyMemory<Point<T>>.Empty;
+    }
 
     [ProtoMember(2)]
-    internal readonly Segment<T>[] _edges;
-
-    /// <summary>
-    /// Initializes a new skeleton from the given nodes and edges.
-    /// </summary>
-    /// <param name="nodes">The skeleton's interior node positions.</param>
-    /// <param name="edges">The skeleton's edge segments connecting nodes.</param>
-    public Skeleton(Point<T>[] nodes, Segment<T>[] edges)
+    private Segment<T>[] ProtoEdges
     {
-        _nodes = nodes ?? Array.Empty<Point<T>>();
-        _edges = edges ?? Array.Empty<Segment<T>>();
+        get
+        {
+            if (_edges.Length == 0) return Array.Empty<Segment<T>>();
+            if (MemoryMarshal.TryGetArray(_edges, out var seg)
+                && seg.Offset == 0 && seg.Count == seg.Array!.Length)
+                return seg.Array;
+            return _edges.ToArray();
+        }
+        init => _edges = value ?? ReadOnlyMemory<Segment<T>>.Empty;
     }
 
     /// <summary>
-    /// Gets a read-only span over the skeleton's node positions.
+    /// Initializes a new skeleton from the given nodes and edges arrays.
     /// </summary>
-    [JsonIgnore]
-    public ReadOnlySpan<Point<T>> Nodes => _nodes != null ? _nodes.AsSpan() : ReadOnlySpan<Point<T>>.Empty;
+    public Skeleton(Point<T>[] nodes, Segment<T>[] edges)
+    {
+        _nodes = nodes ?? ReadOnlyMemory<Point<T>>.Empty;
+        _edges = edges ?? ReadOnlyMemory<Segment<T>>.Empty;
+    }
 
     /// <summary>
-    /// Gets a read-only span over the skeleton's edge segments.
+    /// Initializes a new skeleton from Memory-backed nodes and edges. Zero-copy.
     /// </summary>
-    [JsonIgnore]
-    public ReadOnlySpan<Segment<T>> Edges => _edges != null ? _edges.AsSpan() : ReadOnlySpan<Segment<T>>.Empty;
+    public Skeleton(ReadOnlyMemory<Point<T>> nodes, ReadOnlyMemory<Segment<T>> edges)
+    {
+        _nodes = nodes;
+        _edges = edges;
+    }
+
+    /// <summary>
+    /// Returns a read-only span over the skeleton's node positions.
+    /// Hoist the result before loops — this is a method call, not a field access.
+    /// </summary>
+    public ReadOnlySpan<Point<T>> Nodes() => _nodes.Span;
+
+    /// <summary>
+    /// Returns a read-only span over the skeleton's edge segments.
+    /// Hoist the result before loops — this is a method call, not a field access.
+    /// </summary>
+    public ReadOnlySpan<Segment<T>> Edges() => _edges.Span;
 
     /// <summary>
     /// Gets the number of nodes in this skeleton.
     /// </summary>
     [JsonIgnore]
-    public int NodeCount => _nodes != null ? _nodes.Length : 0;
+    public int NodeCount => _nodes.Length;
 
     /// <summary>
     /// Gets the number of edges in this skeleton.
     /// </summary>
     [JsonIgnore]
-    public int EdgeCount => _edges != null ? _edges.Length : 0;
+    public int EdgeCount => _edges.Length;
+
+    /// <inheritdoc />
+    public Lease<Point<T>, Segment<T>> DetachFrom(AllocationScope scope)
+    {
+        if (!MemoryMarshal.TryGetArray(_nodes, out var nodeSeg))
+            throw new InvalidOperationException("Cannot detach non-array-backed memory.");
+        if (!MemoryMarshal.TryGetArray(_edges, out var edgeSeg))
+            throw new InvalidOperationException("Cannot detach non-array-backed memory.");
+        var nodeOwner = scope.UntrackMemory(new Memory<Point<T>>(nodeSeg.Array!, nodeSeg.Offset, nodeSeg.Count));
+        var edgeOwner = scope.UntrackMemory(new Memory<Segment<T>>(edgeSeg.Array!, edgeSeg.Offset, edgeSeg.Count));
+        return new Lease<Point<T>, Segment<T>> { _o1 = nodeOwner, _o2 = edgeOwner };
+    }
 
     /// <summary>
     /// Finds the longest path through the skeleton graph (tree diameter via 2x BFS).
     /// </summary>
     public Polyline<T> LongestPath()
     {
-        if (_edges == null || _edges.Length == 0 || _nodes == null || _nodes.Length == 0)
+        if (EdgeCount == 0 || NodeCount == 0)
             return new Polyline<T>();
 
         var eps = T.CreateTruncating(1e-7);
-        // Build adjacency from edges
         var adj = BuildAdjacency(eps);
 
-        // BFS from node 0 to find farthest node
-        var farthest1 = BfsFarthest(adj, 0);
-        // BFS from farthest1 to find the actual diameter endpoint
+        // Find a node that has at least one edge (spine may share nodes with no edges)
+        int startNode = -1;
+        foreach (var (idx, neighbors) in adj)
+        {
+            if (neighbors.Count > 0) { startNode = idx; break; }
+        }
+        if (startNode < 0) return new Polyline<T>();
+
+        var farthest1 = BfsFarthest(adj, startNode);
         var farthest2 = BfsFarthest(adj, farthest1);
-        // Reconstruct path from farthest1 to farthest2
         var path = BfsPath(adj, farthest1, farthest2);
 
-        var nodes = _nodes;
-        var points = new Point<T>[path.Length];
+        var nodesSpan = Nodes();
+        var mem = Alloc.Memory<Point<T>>(path.Length);
+        var span = mem.Span;
         for (int i = 0; i < path.Length; i++)
-            points[i] = nodes[path[i]];
-        return new Polyline<T>(points);
+            span[i] = nodesSpan[path[i]];
+        return new Polyline<T>(mem);
     }
 
     /// <summary>
@@ -121,14 +172,13 @@ public readonly record struct Skeleton<T>
     /// </summary>
     public IReadOnlyList<Polyline<T>> Branches()
     {
-        if (_edges == null || _edges.Length == 0 || _nodes == null || _nodes.Length == 0)
+        if (EdgeCount == 0 || NodeCount == 0)
             return Array.Empty<Polyline<T>>();
 
         var eps = T.CreateTruncating(1e-7);
         var adj = BuildAdjacency(eps);
-        int n = _nodes.Length;
+        int n = NodeCount;
 
-        // Find junction (degree >= 3) and leaf (degree == 1) nodes
         var isEndpoint = new bool[n];
         for (int i = 0; i < n; i++)
             isEndpoint[i] = adj[i].Count != 2;
@@ -162,11 +212,12 @@ public readonly record struct Skeleton<T>
                     cur = nextNode;
                 }
 
-                var nodes = _nodes;
-                var branchPoints = new Point<T>[path.Count];
+                var nodesSpan = Nodes();
+                var mem = Alloc.Memory<Point<T>>(path.Count);
+                var branchSpan = mem.Span;
                 for (int pi = 0; pi < path.Count; pi++)
-                    branchPoints[pi] = nodes[path[pi]];
-                branches.Add(new Polyline<T>(branchPoints));
+                    branchSpan[pi] = nodesSpan[path[pi]];
+                branches.Add(new Polyline<T>(mem));
             }
         }
 
@@ -179,40 +230,78 @@ public readonly record struct Skeleton<T>
     /// </summary>
     public (Skeleton<T> Core, Skeleton<T> Leaves) SplitLeafEdges()
     {
-        if (_edges == null || _edges.Length == 0 || _nodes == null || _nodes.Length == 0)
+        if (EdgeCount == 0 || NodeCount == 0)
             return (this, new Skeleton<T>(Array.Empty<Point<T>>(), Array.Empty<Segment<T>>()));
 
         var eps = T.CreateTruncating(1e-7);
         var adj = BuildAdjacency(eps);
-
-        // Find leaf node indices (degree == 1)
-        var leafNodes = new HashSet<int>();
-        foreach (var (idx, neighbors) in adj)
-        {
-            if (neighbors.Count == 1)
-                leafNodes.Add(idx);
-        }
-
         var cellSize = eps * T.CreateTruncating(2);
         var spatialHash = BuildSpatialHash(cellSize);
 
-        var coreEdges = new List<Segment<T>>();
-        var leafEdges = new List<Segment<T>>();
+        var edgesSpan = Edges();
+        int edgeCount = edgesSpan.Length;
 
-        foreach (var edge in _edges)
+        // Map each edge to its node indices
+        var edgeNodes = new (int a, int b)[edgeCount];
+        for (int i = 0; i < edgeCount; i++)
         {
-            int a = FindNodeHashed(edge.Start, eps, cellSize, spatialHash);
-            int b = FindNodeHashed(edge.End, eps, cellSize, spatialHash);
-
-            if (leafNodes.Contains(a) || leafNodes.Contains(b))
-                leafEdges.Add(edge);
-            else
-                coreEdges.Add(edge);
+            edgeNodes[i] = (
+                FindNodeHashed(edgesSpan[i].Start, eps, cellSize, spatialHash),
+                FindNodeHashed(edgesSpan[i].End, eps, cellSize, spatialHash));
         }
 
+        // Build edge lookup: node pair → edge index
+        var edgeLookup = new Dictionary<(int, int), int>();
+        for (int i = 0; i < edgeCount; i++)
+        {
+            var (a, b) = edgeNodes[i];
+            var key = a < b ? (a, b) : (b, a);
+            edgeLookup.TryAdd(key, i);
+        }
+
+        // For each leaf node, trace through degree-2 nodes until junction (degree >= 3)
+        var isLeafEdge = new bool[edgeCount];
+        foreach (var (nodeIdx, neighbors) in adj)
+        {
+            if (neighbors.Count != 1) continue; // not a leaf
+
+            var prev = nodeIdx;
+            var cur = neighbors[0];
+            while (true)
+            {
+                // Mark the edge prev→cur as leaf
+                var key = prev < cur ? (prev, cur) : (cur, prev);
+                if (edgeLookup.TryGetValue(key, out var ei))
+                    isLeafEdge[ei] = true;
+
+                // Stop if cur is a junction (degree >= 3) or another leaf
+                if (adj[cur].Count != 2) break;
+
+                // Continue through the degree-2 node
+                var next = adj[cur][0] == prev ? adj[cur][1] : adj[cur][0];
+                prev = cur;
+                cur = next;
+            }
+        }
+
+        var coreEdges = new List<Segment<T>>();
+        var leafEdges = new List<Segment<T>>();
+        for (int i = 0; i < edgeCount; i++)
+        {
+            if (isLeafEdge[i])
+                leafEdges.Add(edgesSpan[i]);
+            else
+                coreEdges.Add(edgesSpan[i]);
+        }
+
+        var coreMem = Alloc.Memory<Segment<T>>(coreEdges.Count);
+        coreEdges.CopyTo(coreMem.Span);
+        var leafMem = Alloc.Memory<Segment<T>>(leafEdges.Count);
+        leafEdges.CopyTo(leafMem.Span);
+
         return (
-            new Skeleton<T>(_nodes, coreEdges.ToArray()),
-            new Skeleton<T>(_nodes, leafEdges.ToArray()));
+            new Skeleton<T>(_nodes, coreMem),
+            new Skeleton<T>(_nodes, leafMem));
     }
 
     #region Geometry
@@ -222,18 +311,19 @@ public readonly record struct Skeleton<T>
     /// </summary>
     public Rectangle<T> BoundingBox()
     {
-        if (_nodes == null || _nodes.Length == 0)
+        if (NodeCount == 0)
             return new Rectangle<T>(new Point<T>(T.Zero, T.Zero), new Size<T>(T.Zero, T.Zero));
 
-        T minX = _nodes[0].X, minY = _nodes[0].Y;
-        T maxX = _nodes[0].X, maxY = _nodes[0].Y;
+        var nodesSpan = Nodes();
+        T minX = nodesSpan[0].X, minY = nodesSpan[0].Y;
+        T maxX = nodesSpan[0].X, maxY = nodesSpan[0].Y;
 
-        for (int i = 1; i < _nodes.Length; i++)
+        for (int i = 1; i < nodesSpan.Length; i++)
         {
-            if (_nodes[i].X < minX) minX = _nodes[i].X;
-            if (_nodes[i].Y < minY) minY = _nodes[i].Y;
-            if (_nodes[i].X > maxX) maxX = _nodes[i].X;
-            if (_nodes[i].Y > maxY) maxY = _nodes[i].Y;
+            if (nodesSpan[i].X < minX) minX = nodesSpan[i].X;
+            if (nodesSpan[i].Y < minY) minY = nodesSpan[i].Y;
+            if (nodesSpan[i].X > maxX) maxX = nodesSpan[i].X;
+            if (nodesSpan[i].Y > maxY) maxY = nodesSpan[i].Y;
         }
 
         return new Rectangle<T>(minX, minY, maxX - minX, maxY - minY);
@@ -244,28 +334,33 @@ public readonly record struct Skeleton<T>
     /// </summary>
     public Skeleton<T> Scale(T factor)
     {
-        if (_nodes == null || _nodes.Length == 0) return this;
+        if (NodeCount == 0) return this;
 
         var bb = BoundingBox();
         var two = T.One + T.One;
         var cx = bb.X + bb.Width / two;
         var cy = bb.Y + bb.Height / two;
 
-        var newNodes = new Point<T>[_nodes.Length];
-        for (int i = 0; i < _nodes.Length; i++)
-            newNodes[i] = new Point<T>(cx + (_nodes[i].X - cx) * factor, cy + (_nodes[i].Y - cy) * factor);
+        var nodesSpan = Nodes();
+        var edgesSpan = Edges();
 
-        var newEdges = new Segment<T>[_edges.Length];
-        for (int i = 0; i < _edges.Length; i++)
+        var nodesMem = Alloc.Memory<Point<T>>(nodesSpan.Length);
+        var newNodes = nodesMem.Span;
+        for (int i = 0; i < nodesSpan.Length; i++)
+            newNodes[i] = new Point<T>(cx + (nodesSpan[i].X - cx) * factor, cy + (nodesSpan[i].Y - cy) * factor);
+
+        var edgesMem = Alloc.Memory<Segment<T>>(edgesSpan.Length);
+        var newEdges = edgesMem.Span;
+        for (int i = 0; i < edgesSpan.Length; i++)
         {
-            var s = _edges[i].Start;
-            var e = _edges[i].End;
+            var s = edgesSpan[i].Start;
+            var e = edgesSpan[i].End;
             newEdges[i] = new Segment<T>(
                 new Point<T>(cx + (s.X - cx) * factor, cy + (s.Y - cy) * factor),
                 new Point<T>(cx + (e.X - cx) * factor, cy + (e.Y - cy) * factor));
         }
 
-        return new Skeleton<T>(newNodes, newEdges);
+        return new Skeleton<T>(nodesMem, edgesMem);
     }
 
     /// <summary>
@@ -273,19 +368,24 @@ public readonly record struct Skeleton<T>
     /// </summary>
     public Skeleton<T> Rotate(Degree<T> angle, Point<T> origin = default)
     {
-        if (_nodes == null || _nodes.Length == 0) return this;
+        if (NodeCount == 0) return this;
 
-        var newNodes = new Point<T>[_nodes.Length];
-        for (int i = 0; i < _nodes.Length; i++)
-            newNodes[i] = _nodes[i].Rotate(angle, origin);
+        var nodesSpan = Nodes();
+        var edgesSpan = Edges();
 
-        var newEdges = new Segment<T>[_edges.Length];
-        for (int i = 0; i < _edges.Length; i++)
+        var nodesMem = Alloc.Memory<Point<T>>(nodesSpan.Length);
+        var newNodes = nodesMem.Span;
+        for (int i = 0; i < nodesSpan.Length; i++)
+            newNodes[i] = nodesSpan[i].Rotate(angle, origin);
+
+        var edgesMem = Alloc.Memory<Segment<T>>(edgesSpan.Length);
+        var newEdges = edgesMem.Span;
+        for (int i = 0; i < edgesSpan.Length; i++)
             newEdges[i] = new Segment<T>(
-                _edges[i].Start.Rotate(angle, origin),
-                _edges[i].End.Rotate(angle, origin));
+                edgesSpan[i].Start.Rotate(angle, origin),
+                edgesSpan[i].End.Rotate(angle, origin));
 
-        return new Skeleton<T>(newNodes, newEdges);
+        return new Skeleton<T>(nodesMem, edgesMem);
     }
 
     #endregion
@@ -297,14 +397,18 @@ public readonly record struct Skeleton<T>
     /// </summary>
     public static Skeleton<T> operator +(in Skeleton<T> a, in Vector<T> v)
     {
-        if (a._nodes == null) return a;
-        var newNodes = new Point<T>[a._nodes.Length];
-        for (int i = 0; i < a._nodes.Length; i++)
-            newNodes[i] = a._nodes[i] + v;
-        var newEdges = new Segment<T>[a._edges.Length];
-        for (int i = 0; i < a._edges.Length; i++)
-            newEdges[i] = new Segment<T>(a._edges[i].Start + v, a._edges[i].End + v);
-        return new Skeleton<T>(newNodes, newEdges);
+        if (a.NodeCount == 0) return a;
+        var nodesSpan = a.Nodes();
+        var edgesSpan = a.Edges();
+        var nodesMem = Alloc.Memory<Point<T>>(nodesSpan.Length);
+        var newNodes = nodesMem.Span;
+        for (int i = 0; i < nodesSpan.Length; i++)
+            newNodes[i] = nodesSpan[i] + v;
+        var edgesMem = Alloc.Memory<Segment<T>>(edgesSpan.Length);
+        var newEdges = edgesMem.Span;
+        for (int i = 0; i < edgesSpan.Length; i++)
+            newEdges[i] = new Segment<T>(edgesSpan[i].Start + v, edgesSpan[i].End + v);
+        return new Skeleton<T>(nodesMem, edgesMem);
     }
 
     /// <summary>
@@ -312,14 +416,18 @@ public readonly record struct Skeleton<T>
     /// </summary>
     public static Skeleton<T> operator -(in Skeleton<T> a, in Vector<T> v)
     {
-        if (a._nodes == null) return a;
-        var newNodes = new Point<T>[a._nodes.Length];
-        for (int i = 0; i < a._nodes.Length; i++)
-            newNodes[i] = a._nodes[i] - v;
-        var newEdges = new Segment<T>[a._edges.Length];
-        for (int i = 0; i < a._edges.Length; i++)
-            newEdges[i] = new Segment<T>(a._edges[i].Start - v, a._edges[i].End - v);
-        return new Skeleton<T>(newNodes, newEdges);
+        if (a.NodeCount == 0) return a;
+        var nodesSpan = a.Nodes();
+        var edgesSpan = a.Edges();
+        var nodesMem = Alloc.Memory<Point<T>>(nodesSpan.Length);
+        var newNodes = nodesMem.Span;
+        for (int i = 0; i < nodesSpan.Length; i++)
+            newNodes[i] = nodesSpan[i] - v;
+        var edgesMem = Alloc.Memory<Segment<T>>(edgesSpan.Length);
+        var newEdges = edgesMem.Span;
+        for (int i = 0; i < edgesSpan.Length; i++)
+            newEdges[i] = new Segment<T>(edgesSpan[i].Start - v, edgesSpan[i].End - v);
+        return new Skeleton<T>(nodesMem, edgesMem);
     }
 
     /// <summary>
@@ -327,14 +435,18 @@ public readonly record struct Skeleton<T>
     /// </summary>
     public static Skeleton<T> operator *(in Skeleton<T> a, in Size<T> f)
     {
-        if (a._nodes == null) return a;
-        var newNodes = new Point<T>[a._nodes.Length];
-        for (int i = 0; i < a._nodes.Length; i++)
-            newNodes[i] = a._nodes[i] * f;
-        var newEdges = new Segment<T>[a._edges.Length];
-        for (int i = 0; i < a._edges.Length; i++)
-            newEdges[i] = new Segment<T>(a._edges[i].Start * f, a._edges[i].End * f);
-        return new Skeleton<T>(newNodes, newEdges);
+        if (a.NodeCount == 0) return a;
+        var nodesSpan = a.Nodes();
+        var edgesSpan = a.Edges();
+        var nodesMem = Alloc.Memory<Point<T>>(nodesSpan.Length);
+        var newNodes = nodesMem.Span;
+        for (int i = 0; i < nodesSpan.Length; i++)
+            newNodes[i] = nodesSpan[i] * f;
+        var edgesMem = Alloc.Memory<Segment<T>>(edgesSpan.Length);
+        var newEdges = edgesMem.Span;
+        for (int i = 0; i < edgesSpan.Length; i++)
+            newEdges[i] = new Segment<T>(edgesSpan[i].Start * f, edgesSpan[i].End * f);
+        return new Skeleton<T>(nodesMem, edgesMem);
     }
 
     /// <summary>
@@ -342,14 +454,18 @@ public readonly record struct Skeleton<T>
     /// </summary>
     public static Skeleton<T> operator /(in Skeleton<T> a, in Size<T> f)
     {
-        if (a._nodes == null) return a;
-        var newNodes = new Point<T>[a._nodes.Length];
-        for (int i = 0; i < a._nodes.Length; i++)
-            newNodes[i] = a._nodes[i] / f;
-        var newEdges = new Segment<T>[a._edges.Length];
-        for (int i = 0; i < a._edges.Length; i++)
-            newEdges[i] = new Segment<T>(a._edges[i].Start / f, a._edges[i].End / f);
-        return new Skeleton<T>(newNodes, newEdges);
+        if (a.NodeCount == 0) return a;
+        var nodesSpan = a.Nodes();
+        var edgesSpan = a.Edges();
+        var nodesMem = Alloc.Memory<Point<T>>(nodesSpan.Length);
+        var newNodes = nodesMem.Span;
+        for (int i = 0; i < nodesSpan.Length; i++)
+            newNodes[i] = nodesSpan[i] / f;
+        var edgesMem = Alloc.Memory<Segment<T>>(edgesSpan.Length);
+        var newEdges = edgesMem.Span;
+        for (int i = 0; i < edgesSpan.Length; i++)
+            newEdges[i] = new Segment<T>(edgesSpan[i].Start / f, edgesSpan[i].End / f);
+        return new Skeleton<T>(nodesMem, edgesMem);
     }
 
     /// <summary>
@@ -375,15 +491,15 @@ public readonly record struct Skeleton<T>
     public List<Point<T>> Intersections(in Line<T> line)
     {
         var result = new List<Point<T>>();
-        if (_edges == null) return result;
+        var edgesSpan = Edges();
+        if (edgesSpan.Length == 0) return result;
 
-        // Half-plane early-out: if both endpoints are on the same side of the line,
-        // the segment cannot intersect it. This avoids the full intersection math.
         if (line.IsVertical)
         {
             var vx = line.VerticalX;
-            foreach (var edge in _edges)
+            for (int i = 0; i < edgesSpan.Length; i++)
             {
+                var edge = edgesSpan[i];
                 var d1 = edge.Start.X - vx;
                 var d2 = edge.End.X - vx;
                 if (d1 > T.Zero && d2 > T.Zero) continue;
@@ -396,9 +512,9 @@ public readonly record struct Skeleton<T>
         else
         {
             var eq = line.Equation;
-            foreach (var edge in _edges)
+            for (int i = 0; i < edgesSpan.Length; i++)
             {
-                // Signed distance proxy: A*x - y + B (same sign = same side)
+                var edge = edgesSpan[i];
                 var d1 = eq.A * edge.Start.X - edge.Start.Y + eq.B;
                 var d2 = eq.A * edge.End.X - edge.End.Y + eq.B;
                 if (d1 > T.Zero && d2 > T.Zero) continue;
@@ -417,10 +533,10 @@ public readonly record struct Skeleton<T>
     public List<Point<T>> Intersections(in Segment<T> segment)
     {
         var result = new List<Point<T>>();
-        if (_edges == null) return result;
-        foreach (var edge in _edges)
+        var edgesSpan = Edges();
+        for (int i = 0; i < edgesSpan.Length; i++)
         {
-            var hit = Drawing.Intersections.Of(segment, edge);
+            var hit = Drawing.Intersections.Of(segment, edgesSpan[i]);
             if (hit != null) result.Add(hit.Value);
         }
         return result;
@@ -432,10 +548,10 @@ public readonly record struct Skeleton<T>
     public List<Point<T>> Intersections(in Circle<T> circle)
     {
         var result = new List<Point<T>>();
-        if (_edges == null) return result;
-        foreach (var edge in _edges)
+        var edgesSpan = Edges();
+        for (int i = 0; i < edgesSpan.Length; i++)
         {
-            var chord = Drawing.Intersections.Of(edge, circle);
+            var chord = Drawing.Intersections.Of(edgesSpan[i], circle);
             if (chord != null)
             {
                 result.Add(chord.Value.Start);
@@ -451,11 +567,13 @@ public readonly record struct Skeleton<T>
     public List<Point<T>> Intersections(in Triangle<T> triangle)
     {
         var result = new List<Point<T>>();
-        if (_edges == null) return result;
-        foreach (var edge in _edges)
+        var edgesSpan = Edges();
+        for (int i = 0; i < edgesSpan.Length; i++)
         {
-            var hits = Drawing.Intersections.Of(edge, triangle);
-            result.AddRange(hits);
+            var hits = Drawing.Intersections.Of(edgesSpan[i], triangle);
+            var hitsSpan = hits.Span;
+            for (int j = 0; j < hitsSpan.Length; j++)
+                result.Add(hitsSpan[j]);
         }
         return result;
     }
@@ -466,11 +584,13 @@ public readonly record struct Skeleton<T>
     public List<Point<T>> Intersections(in Rectangle<T> rect)
     {
         var result = new List<Point<T>>();
-        if (_edges == null) return result;
-        foreach (var edge in _edges)
+        var edgesSpan = Edges();
+        for (int i = 0; i < edgesSpan.Length; i++)
         {
-            var hits = Drawing.Intersections.Of(edge, rect);
-            result.AddRange(hits);
+            var hits = Drawing.Intersections.Of(edgesSpan[i], rect);
+            var hitsSpan = hits.Span;
+            for (int j = 0; j < hitsSpan.Length; j++)
+                result.Add(hitsSpan[j]);
         }
         return result;
     }
@@ -481,11 +601,13 @@ public readonly record struct Skeleton<T>
     public List<Point<T>> Intersections(in Polygon<T> polygon)
     {
         var result = new List<Point<T>>();
-        if (_edges == null) return result;
-        foreach (var edge in _edges)
+        var edgesSpan = Edges();
+        for (int i = 0; i < edgesSpan.Length; i++)
         {
-            var hits = Drawing.Intersections.Of(edge, polygon);
-            result.AddRange(hits);
+            var hits = Drawing.Intersections.Of(edgesSpan[i], polygon);
+            var hitsSpan = hits.Span;
+            for (int j = 0; j < hitsSpan.Length; j++)
+                result.Add(hitsSpan[j]);
         }
         return result;
     }
@@ -496,11 +618,13 @@ public readonly record struct Skeleton<T>
     public List<Point<T>> Intersections(in Polyline<T> polyline)
     {
         var result = new List<Point<T>>();
-        if (_edges == null) return result;
-        foreach (var edge in _edges)
+        var edgesSpan = Edges();
+        for (int i = 0; i < edgesSpan.Length; i++)
         {
-            var hits = Drawing.Intersections.Of(edge, polyline);
-            result.AddRange(hits);
+            var hits = Drawing.Intersections.Of(edgesSpan[i], polyline);
+            var hitsSpan = hits.Span;
+            for (int j = 0; j < hitsSpan.Length; j++)
+                result.Add(hitsSpan[j]);
         }
         return result;
     }
@@ -509,11 +633,12 @@ public readonly record struct Skeleton<T>
 
     private Dictionary<(int, int), List<int>> BuildSpatialHash(T cellSize)
     {
-        int n = _nodes.Length;
+        var nodesSpan = Nodes();
+        int n = nodesSpan.Length;
         var spatialHash = new Dictionary<(int, int), List<int>>();
         for (int i = 0; i < n; i++)
         {
-            var key = QuantizePoint(_nodes[i], cellSize);
+            var key = QuantizePoint(nodesSpan[i], cellSize);
             if (!spatialHash.TryGetValue(key, out var list))
             {
                 list = new List<int>();
@@ -527,15 +652,17 @@ public readonly record struct Skeleton<T>
     private Dictionary<int, List<int>> BuildAdjacency(T eps)
     {
         var adj = new Dictionary<int, List<int>>();
-        int n = _nodes.Length;
+        int n = NodeCount;
         for (int i = 0; i < n; i++)
             adj[i] = new List<int>();
 
         var cellSize = eps * T.CreateTruncating(2);
         var spatialHash = BuildSpatialHash(cellSize);
 
-        foreach (var edge in _edges)
+        var edgesSpan = Edges();
+        for (int ei = 0; ei < edgesSpan.Length; ei++)
         {
+            var edge = edgesSpan[ei];
             int a = FindNodeHashed(edge.Start, eps, cellSize, spatialHash);
             int b = FindNodeHashed(edge.End, eps, cellSize, spatialHash);
             if (a < 0 || b < 0 || a == b) continue;
@@ -556,8 +683,8 @@ public readonly record struct Skeleton<T>
     private int FindNodeHashed(Point<T> point, T eps, T cellSize, Dictionary<(int, int), List<int>> spatialHash)
     {
         var center = QuantizePoint(point, cellSize);
+        var nodesSpan = Nodes();
 
-        // Check 3x3 neighborhood to handle points near cell boundaries
         for (int dx = -1; dx <= 1; dx++)
         for (int dy = -1; dy <= 1; dy++)
         {
@@ -565,7 +692,7 @@ public readonly record struct Skeleton<T>
             if (!spatialHash.TryGetValue(key, out var candidates)) continue;
             foreach (var i in candidates)
             {
-                if (T.Abs(_nodes[i].X - point.X) < eps && T.Abs(_nodes[i].Y - point.Y) < eps)
+                if (T.Abs(nodesSpan[i].X - point.X) < eps && T.Abs(nodesSpan[i].Y - point.Y) < eps)
                     return i;
             }
         }

@@ -529,15 +529,17 @@ public struct Matrix<T> : IFormattable
     }
     
     /// <summary>
-    /// Transforms an array of points using this matrix.
+    /// Transforms a span of points using this matrix and returns a new memory buffer.
     /// </summary>
-    /// <param name="points">The array of points to transform.</param>
-    /// <returns>The array of transformed points.</returns>
-    public Point<T>[] Transform(Point<T>[] points)
+    /// <param name="points">The span of points to transform.</param>
+    /// <returns>A new memory buffer containing the transformed points.</returns>
+    public ReadOnlyMemory<Point<T>> Transform(ReadOnlySpan<Point<T>> points)
     {
+        var result = Alloc.Memory<Point<T>>(points.Length);
+        var resultSpan = result.Span;
         for (int i = 0; i < points.Length; i++)
-            points[i] = Transform(points[i]);
-        return points;
+            resultSpan[i] = Transform(points[i]);
+        return result;
     }
 
     /// <summary>
@@ -551,13 +553,17 @@ public struct Matrix<T> : IFormattable
     }
 
     /// <summary>
-    /// Transforms an array of vectors using this matrix.
+    /// Transforms a span of vectors using this matrix and returns a new memory buffer.
     /// </summary>
-    /// <param name="vectors">The array of vectors to transform.</param>
-    public void Transform(Vector<T>[] vectors)
+    /// <param name="vectors">The span of vectors to transform.</param>
+    /// <returns>A new memory buffer containing the transformed vectors.</returns>
+    public ReadOnlyMemory<Vector<T>> Transform(ReadOnlySpan<Vector<T>> vectors)
     {
+        var result = Alloc.Memory<Vector<T>>(vectors.Length);
+        var resultSpan = result.Span;
         for (int i = 0; i < vectors.Length; i++)
-            vectors[i] = Transform(vectors[i]);
+            resultSpan[i] = Transform(vectors[i]);
+        return result;
     }
 
     /// <summary>

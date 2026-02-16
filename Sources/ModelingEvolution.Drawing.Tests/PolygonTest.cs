@@ -365,14 +365,14 @@ public class PolygonTest
     {
         var polygon = new Polygon<float>(ReadOnlyMemory<Point<float>>.Empty);
         polygon.Count.Should().Be(0);
-        polygon.Span.Length.Should().Be(0);
+        polygon.AsSpan().Length.Should().Be(0);
     }
 
     [Fact]
     public void Span_ReturnsCorrectData()
     {
         var polygon = new Polygon<float>(new Point<float>(1, 2), new Point<float>(3, 4));
-        var span = polygon.Span;
+        var span = polygon.AsSpan();
 
         span.Length.Should().Be(2);
         span[0].Should().Be(new Point<float>(1, 2));
@@ -380,13 +380,13 @@ public class PolygonTest
     }
 
     [Fact]
-    public void Memory_ReturnsCorrectData()
+    public void AsSpan_ReturnsCorrectData()
     {
         var polygon = new Polygon<float>(new Point<float>(1, 2), new Point<float>(3, 4));
-        var memory = polygon.Memory;
+        var span = polygon.AsSpan();
 
-        memory.Length.Should().Be(2);
-        memory.Span[0].Should().Be(new Point<float>(1, 2));
+        span.Length.Should().Be(2);
+        span[0].Should().Be(new Point<float>(1, 2));
     }
 
     [Fact]
@@ -421,7 +421,7 @@ public class PolygonTest
     }
 
     [Fact]
-    public void ConstructFromReadOnlyMemory_NonZeroOffset_SpanAndMemoryConsistent()
+    public void ConstructFromReadOnlyMemory_NonZeroOffset_SpanAndCountConsistent()
     {
         var buffer = new Point<float>[]
         {
@@ -429,12 +429,12 @@ public class PolygonTest
         };
         var polygon = new Polygon<float>(buffer.AsMemory(2, 3));
 
-        polygon.Span.Length.Should().Be(3);
-        polygon.Span[0].Should().Be(new Point<float>(2, 2));
-        polygon.Span[2].Should().Be(new Point<float>(4, 4));
+        polygon.AsSpan().Length.Should().Be(3);
+        polygon.AsSpan()[0].Should().Be(new Point<float>(2, 2));
+        polygon.AsSpan()[2].Should().Be(new Point<float>(4, 4));
 
-        polygon.Memory.Length.Should().Be(3);
-        polygon.Memory.Span[0].Should().Be(new Point<float>(2, 2));
+        polygon.Count.Should().Be(3);
+        polygon.AsSpan()[0].Should().Be(new Point<float>(2, 2));
     }
 
     [Fact]
@@ -526,142 +526,6 @@ public class PolygonTest
 
     #endregion
 
-    #region MemoryPool overloads
-
-    [Fact]
-    public void Add_WithPool_ReturnsNewPolygonAndOwner()
-    {
-        var polygon = new Polygon<float>(new Point<float>(0, 0), new Point<float>(1, 0));
-        var pool = MemoryPool<Point<float>>.Shared;
-
-        var result = polygon.Add(new Point<float>(1, 1), pool, out var owner);
-        using (owner)
-        {
-            result.Count.Should().Be(3);
-            result[2].Should().Be(new Point<float>(1, 1));
-            polygon.Count.Should().Be(2);
-        }
-    }
-
-    [Fact]
-    public void InsertAt_WithPool_ReturnsNewPolygonAndOwner()
-    {
-        var polygon = new Polygon<float>(new Point<float>(0, 0), new Point<float>(2, 0));
-        var pool = MemoryPool<Point<float>>.Shared;
-
-        var result = polygon.InsertAt(1, new Point<float>(1, 0), pool, out var owner);
-        using (owner)
-        {
-            result.Count.Should().Be(3);
-            result[1].Should().Be(new Point<float>(1, 0));
-        }
-    }
-
-    [Fact]
-    public void RemoveAt_WithPool_ReturnsNewPolygonAndOwner()
-    {
-        var polygon = new Polygon<float>(
-            new Point<float>(0, 0), new Point<float>(1, 0), new Point<float>(2, 0));
-        var pool = MemoryPool<Point<float>>.Shared;
-
-        var result = polygon.RemoveAt(1, pool, out var owner);
-        using (owner)
-        {
-            result.Count.Should().Be(2);
-            result[0].Should().Be(new Point<float>(0, 0));
-            result[1].Should().Be(new Point<float>(2, 0));
-        }
-    }
-
-    [Fact]
-    public void MemoryPool_MultipleRents_AllProduceValidPolygons()
-    {
-        var pool = MemoryPool<Point<float>>.Shared;
-        var owners = new List<IMemoryOwner<Point<float>>>();
-        var polygons = new List<Polygon<float>>();
-
-        try
-        {
-            // Rent multiple buffers of different sizes to stress the pool
-            for (int i = 0; i < 10; i++)
-            {
-                int len = 3 + i * 2;
-                var owner = pool.Rent(len);
-                owners.Add(owner);
-
-                var mem = owner.Memory.Slice(0, len);
-                var span = mem.Span;
-                for (int j = 0; j < len; j++)
-                    span[j] = new Point<float>(j, j * 10);
-
-                var polygon = new Polygon<float>(mem);
-                polygons.Add(polygon);
-
-                polygon.Count.Should().Be(len, $"rent #{i} with len={len}");
-                polygon[0].Should().Be(new Point<float>(0, 0));
-                polygon[len - 1].Should().Be(new Point<float>(len - 1, (len - 1) * 10));
-            }
-        }
-        finally
-        {
-            foreach (var o in owners) o.Dispose();
-        }
-    }
-
-    [Fact]
-    public void MemoryPool_RentReturnRent_StillWorks()
-    {
-        var pool = MemoryPool<Point<float>>.Shared;
-
-        // Rent-return-rent cycle to force pool reuse
-        for (int cycle = 0; cycle < 5; cycle++)
-        {
-            var owner = pool.Rent(10);
-            var mem = owner.Memory.Slice(0, 4);
-            var span = mem.Span;
-            span[0] = new Point<float>(1, 2);
-            span[1] = new Point<float>(3, 4);
-            span[2] = new Point<float>(5, 6);
-            span[3] = new Point<float>(7, 8);
-
-            var polygon = new Polygon<float>(mem);
-            polygon.Count.Should().Be(4, $"cycle #{cycle}");
-            polygon[0].Should().Be(new Point<float>(1, 2));
-            polygon[3].Should().Be(new Point<float>(7, 8));
-
-            owner.Dispose();
-        }
-    }
-
-    [Fact]
-    public void MemoryPool_SequentialAddOperations_AllValid()
-    {
-        var pool = MemoryPool<Point<float>>.Shared;
-        var polygon = new Polygon<float>(new Point<float>(0, 0), new Point<float>(1, 0));
-        var owners = new List<IMemoryOwner<Point<float>>>();
-
-        try
-        {
-            // Chain multiple pool-backed Add operations
-            for (int i = 0; i < 8; i++)
-            {
-                polygon = polygon.Add(new Point<float>(i + 2, i), pool, out var owner);
-                owners.Add(owner);
-                polygon.Count.Should().Be(3 + i, $"after add #{i}");
-            }
-
-            polygon.Count.Should().Be(10);
-            polygon[0].Should().Be(new Point<float>(0, 0));
-            polygon[9].Should().Be(new Point<float>(9, 7));
-        }
-        finally
-        {
-            foreach (var o in owners) o.Dispose();
-        }
-    }
-
-    #endregion
-
     #region Equality
 
     [Fact]
@@ -701,7 +565,7 @@ public class PolygonTest
     {
         Polygon<float> polygon = default;
         polygon.Count.Should().Be(0);
-        polygon.Span.Length.Should().Be(0);
+        polygon.AsSpan().Length.Should().Be(0);
     }
 
     [Fact]

@@ -1,4 +1,3 @@
-using System.Buffers;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text.Json.Serialization;
@@ -14,56 +13,55 @@ namespace ModelingEvolution.Drawing;
 [JsonConverter(typeof(PolylineJsonConverterFactory))]
 [ProtoContract]
 [Svg.SvgExporter(typeof(PolylineSvgExporterFactory))]
-public readonly record struct Polyline<T> : IBoundingBox<T>
+public readonly record struct Polyline<T> : IBoundingBox<T>, IPoolable<Polyline<T>, Lease<Point<T>>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
     IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {
+    internal readonly ReadOnlyMemory<Point<T>> _points;
+
     [ProtoMember(1)]
-    internal readonly Point<T>[] _points;
-
-    [ProtoMember(2)]
-    internal readonly int _length;
-
-    [ProtoMember(3)]
-    internal readonly int _offset;
+    private Point<T>[] ProtoPoints
+    {
+        get
+        {
+            if (_points.Length == 0) return Array.Empty<Point<T>>();
+            if (MemoryMarshal.TryGetArray(_points, out var seg)
+                && seg.Offset == 0 && seg.Count == seg.Array!.Length)
+                return seg.Array;
+            return _points.ToArray();
+        }
+        init => _points = value ?? ReadOnlyMemory<Point<T>>.Empty;
+    }
 
     /// <summary>
     /// Gets the number of vertices in this polyline.
     /// </summary>
     [JsonIgnore]
-    public int Count => _points != null
-        ? (_length > 0 ? _length : _points.Length)
-        : 0;
+    public int Count => _points.Length;
 
     /// <summary>
-    /// Gets a read-only span over the polyline's vertices.
+    /// Returns a read-only span over the polyline's vertices.
+    /// Hoist the result before loops — this is a method call, not a field access.
     /// </summary>
-    public ReadOnlySpan<Point<T>> Span => _points != null
-        ? (_length > 0 ? _points.AsSpan(_offset, _length) : _points.AsSpan())
-        : ReadOnlySpan<Point<T>>.Empty;
-
-    /// <summary>
-    /// Gets a ReadOnlyMemory over the polyline's vertices.
-    /// </summary>
-    public ReadOnlyMemory<Point<T>> Memory => _points != null
-        ? (_length > 0 ? new ReadOnlyMemory<Point<T>>(_points, _offset, _length) : _points.AsMemory())
-        : ReadOnlyMemory<Point<T>>.Empty;
+    public ReadOnlySpan<Point<T>> AsSpan() => _points.Span;
 
     /// <summary>
     /// Gets the vertex at the specified index.
     /// </summary>
-    public Point<T> this[int index] => Span[index];
+    public Point<T> this[int index] => _points.Span[index];
 
     /// <summary>
-    /// Gets a read-only list of all vertices. For high-performance code, prefer Span instead.
+    /// Gets a read-only list of all vertices. For high-performance code, prefer AsSpan() instead.
     /// </summary>
     public IReadOnlyList<Point<T>> Points
     {
         get
         {
-            if (_points == null) return Array.Empty<Point<T>>();
-            if (_offset == 0 && (_length == 0 || _length == _points.Length)) return _points;
-            return Span.ToArray();
+            if (_points.Length == 0) return Array.Empty<Point<T>>();
+            if (MemoryMarshal.TryGetArray(_points, out var seg)
+                && seg.Offset == 0 && seg.Count == seg.Array!.Length)
+                return seg.Array;
+            return _points.ToArray();
         }
     }
 
@@ -71,13 +69,13 @@ public readonly record struct Polyline<T> : IBoundingBox<T>
     /// Gets the first vertex of the polyline.
     /// </summary>
     [JsonIgnore]
-    public Point<T> Start => Span[0];
+    public Point<T> Start => _points.Span[0];
 
     /// <summary>
     /// Gets the last vertex of the polyline.
     /// </summary>
     [JsonIgnore]
-    public Point<T> End => Span[^1];
+    public Point<T> End => _points.Span[^1];
 
     #region Constructors
 
@@ -86,32 +84,15 @@ public readonly record struct Polyline<T> : IBoundingBox<T>
     /// </summary>
     public Polyline()
     {
-        _points = Array.Empty<Point<T>>();
-        _offset = 0;
-        _length = 0;
+        _points = ReadOnlyMemory<Point<T>>.Empty;
     }
 
     /// <summary>
-    /// Initializes a new polyline wrapping a ReadOnlyMemory of points. Zero-copy — requires array-backed memory.
+    /// Initializes a new polyline wrapping a ReadOnlyMemory of points. Zero-copy.
     /// </summary>
     public Polyline(ReadOnlyMemory<Point<T>> memory)
     {
-        if (memory.Length == 0)
-        {
-            _points = Array.Empty<Point<T>>();
-            _offset = 0;
-            _length = 0;
-            return;
-        }
-
-        if (!MemoryMarshal.TryGetArray(memory, out ArraySegment<Point<T>> segment))
-            throw new ArgumentException(
-                "Memory must be backed by an array. " +
-                "Use MemoryPool<T>.Shared or pass a Point<T>[] directly.", nameof(memory));
-
-        _points = segment.Array!;
-        _offset = segment.Offset;
-        _length = segment.Count;
+        _points = memory;
     }
 
     /// <summary>
@@ -120,8 +101,6 @@ public readonly record struct Polyline<T> : IBoundingBox<T>
     public Polyline(params Point<T>[] points)
     {
         _points = points;
-        _offset = 0;
-        _length = points.Length;
     }
 
     /// <summary>
@@ -129,17 +108,13 @@ public readonly record struct Polyline<T> : IBoundingBox<T>
     /// </summary>
     public Polyline(IList<Point<T>> points)
     {
-        _offset = 0;
         if (points is Point<T>[] arr)
-        {
             _points = arr;
-            _length = arr.Length;
-        }
         else
         {
-            _points = new Point<T>[points.Count];
-            points.CopyTo(_points, 0);
-            _length = _points.Length;
+            var tmp = new Point<T>[points.Count];
+            points.CopyTo(tmp, 0);
+            _points = tmp;
         }
     }
 
@@ -148,11 +123,10 @@ public readonly record struct Polyline<T> : IBoundingBox<T>
     /// </summary>
     public Polyline(IReadOnlyList<T> coords)
     {
-        _points = new Point<T>[coords.Count / 2];
-        _offset = 0;
+        var tmp = new Point<T>[coords.Count / 2];
         for (int i = 0; i < coords.Count; i += 2)
-            _points[i / 2] = new Point<T>(coords[i], coords[i + 1]);
-        _length = _points.Length;
+            tmp[i / 2] = new Point<T>(coords[i], coords[i + 1]);
+        _points = tmp;
     }
 
     #endregion
@@ -164,7 +138,7 @@ public readonly record struct Polyline<T> : IBoundingBox<T>
     /// </summary>
     public T Length()
     {
-        var span = Span;
+        var span = AsSpan();
         int n = span.Length;
         if (n < 2) return T.Zero;
 
@@ -183,7 +157,7 @@ public readonly record struct Polyline<T> : IBoundingBox<T>
     /// </summary>
     public Rectangle<T> BoundingBox()
     {
-        var span = Span;
+        var span = AsSpan();
         if (span.Length == 0)
             return new Rectangle<T>(new Point<T>(T.Zero, T.Zero), new Size<T>(T.Zero, T.Zero));
 
@@ -206,26 +180,48 @@ public readonly record struct Polyline<T> : IBoundingBox<T>
     /// </summary>
     public Polyline<T> Reverse()
     {
-        var span = Span;
-        var reversed = new Point<T>[span.Length];
+        var span = AsSpan();
+        var mem = Alloc.Memory<Point<T>>(span.Length);
+        var reversed = mem.Span;
         for (int i = 0; i < span.Length; i++)
             reversed[i] = span[span.Length - 1 - i];
-        return new Polyline<T>(reversed);
+        return new Polyline<T>(mem);
+    }
+
+    /// <summary>
+    /// Densifies the polyline by inserting points along each edge so that consecutive points
+    /// are at most 1 unit apart.
+    /// </summary>
+    public Polyline<T> Densify()
+    {
+        if (Count < 2) return this;
+        return new Polyline<T>(Densification.Densify(AsSpan()));
+    }
+
+    /// <summary>
+    /// Computes a PCA-based rigid alignment that maps this polyline onto the target point cloud.
+    /// </summary>
+    /// <param name="target">The target point cloud to align to.</param>
+    /// <param name="densify">If true, densifies this polyline before alignment for uniform point spacing.</param>
+    public AlignmentResult<T> AlignTo(ReadOnlySpan<Point<T>> target, bool densify = false)
+    {
+        var source = densify ? Densify().AsSpan() : AsSpan();
+        return Alignment.Pca(source, target);
     }
 
     /// <summary>
     /// Returns the edges of this polyline as segments. Open — yields n-1 segments with no wrap-around.
     /// </summary>
-    public Segment<T>[] Edges()
+    public ReadOnlyMemory<Segment<T>> Edges()
     {
-        var span = Span;
+        var span = AsSpan();
         int n = span.Length;
-        if (n < 2) return Array.Empty<Segment<T>>();
-
-        var edges = new Segment<T>[n - 1];
+        if (n < 2) return ReadOnlyMemory<Segment<T>>.Empty;
+        var mem = Alloc.Memory<Segment<T>>(n - 1);
+        var edges = mem.Span;
         for (int i = 0; i < n - 1; i++)
             edges[i] = new Segment<T>(span[i], span[i + 1]);
-        return edges;
+        return mem;
     }
 
     /// <summary>
@@ -233,17 +229,18 @@ public readonly record struct Polyline<T> : IBoundingBox<T>
     /// </summary>
     public Polyline<T> Scale(T factor)
     {
-        var span = Span;
+        var span = AsSpan();
         if (span.Length == 0) return this;
 
         // Scale around the midpoint of bounding box
         var bb = BoundingBox();
         var cx = bb.X + bb.Width / (T.One + T.One);
         var cy = bb.Y + bb.Height / (T.One + T.One);
-        var points = new Point<T>[span.Length];
+        var mem = Alloc.Memory<Point<T>>(span.Length);
+        var points = mem.Span;
         for (int i = 0; i < span.Length; i++)
             points[i] = new Point<T>(cx + (span[i].X - cx) * factor, cy + (span[i].Y - cy) * factor);
-        return new Polyline<T>(points);
+        return new Polyline<T>(mem);
     }
 
     /// <summary>
@@ -265,11 +262,12 @@ public readonly record struct Polyline<T> : IBoundingBox<T>
     /// </summary>
     public static Polyline<T> operator *(in Polyline<T> a, in Size<T> f)
     {
-        var span = a.Span;
-        var points = new Point<T>[span.Length];
+        var span = a.AsSpan();
+        var mem = Alloc.Memory<Point<T>>(span.Length);
+        var points = mem.Span;
         for (int i = 0; i < span.Length; i++)
             points[i] = span[i] * f;
-        return new Polyline<T>(points);
+        return new Polyline<T>(mem);
     }
 
     /// <summary>
@@ -277,11 +275,12 @@ public readonly record struct Polyline<T> : IBoundingBox<T>
     /// </summary>
     public static Polyline<T> operator /(in Polyline<T> a, in Size<T> f)
     {
-        var span = a.Span;
-        var points = new Point<T>[span.Length];
+        var span = a.AsSpan();
+        var mem = Alloc.Memory<Point<T>>(span.Length);
+        var points = mem.Span;
         for (int i = 0; i < span.Length; i++)
             points[i] = span[i] / f;
-        return new Polyline<T>(points);
+        return new Polyline<T>(mem);
     }
 
     /// <summary>
@@ -292,11 +291,12 @@ public readonly record struct Polyline<T> : IBoundingBox<T>
     /// <returns>A new rotated polyline.</returns>
     public Polyline<T> Rotate(Degree<T> angle, Point<T> origin = default)
     {
-        var span = Span;
-        var points = new Point<T>[span.Length];
+        var span = AsSpan();
+        var mem = Alloc.Memory<Point<T>>(span.Length);
+        var points = mem.Span;
         for (int i = 0; i < span.Length; i++)
             points[i] = span[i].Rotate(angle, origin);
-        return new Polyline<T>(points);
+        return new Polyline<T>(mem);
     }
 
     /// <summary>
@@ -316,11 +316,12 @@ public readonly record struct Polyline<T> : IBoundingBox<T>
     /// </summary>
     public static Polyline<T> operator -(in Polyline<T> a, in Vector<T> f)
     {
-        var span = a.Span;
-        var points = new Point<T>[span.Length];
+        var span = a.AsSpan();
+        var mem = Alloc.Memory<Point<T>>(span.Length);
+        var points = mem.Span;
         for (int i = 0; i < span.Length; i++)
             points[i] = span[i] - f;
-        return new Polyline<T>(points);
+        return new Polyline<T>(mem);
     }
 
     /// <summary>
@@ -328,11 +329,12 @@ public readonly record struct Polyline<T> : IBoundingBox<T>
     /// </summary>
     public static Polyline<T> operator +(in Polyline<T> a, in Vector<T> f)
     {
-        var span = a.Span;
-        var points = new Point<T>[span.Length];
+        var span = a.AsSpan();
+        var mem = Alloc.Memory<Point<T>>(span.Length);
+        var points = mem.Span;
         for (int i = 0; i < span.Length; i++)
             points[i] = span[i] + f;
-        return new Polyline<T>(points);
+        return new Polyline<T>(mem);
     }
 
     #endregion
@@ -340,13 +342,13 @@ public readonly record struct Polyline<T> : IBoundingBox<T>
     #region Equality
 
     /// <inheritdoc />
-    public bool Equals(Polyline<T> other) => Span.SequenceEqual(other.Span);
+    public bool Equals(Polyline<T> other) => AsSpan().SequenceEqual(other.AsSpan());
 
     /// <inheritdoc />
     public override int GetHashCode()
     {
         var hash = new System.HashCode();
-        var span = Span;
+        var span = AsSpan();
         for (int i = 0; i < span.Length; i++)
             hash.Add(span[i]);
         return hash.ToHashCode();
@@ -354,11 +356,25 @@ public readonly record struct Polyline<T> : IBoundingBox<T>
 
     #endregion
 
+    /// <summary>
+    /// Detaches this polyline's backing memory from the given scope and returns a lease.
+    /// The caller becomes responsible for disposing the lease to return memory to the pool.
+    /// </summary>
+    public Lease<Point<T>> DetachFrom(AllocationScope scope)
+    {
+        if (!MemoryMarshal.TryGetArray(_points, out var seg))
+            throw new InvalidOperationException("Cannot detach non-array-backed memory.");
+        var owner = scope.UntrackMemory(new Memory<Point<T>>(seg.Array!, seg.Offset, seg.Count));
+        return new Lease<Point<T>> { _owner = owner };
+    }
+
     internal Point<T>[] AsArray()
     {
-        if (_points == null) return Array.Empty<Point<T>>();
-        if (_offset == 0 && (_length == 0 || _length == _points.Length)) return _points;
-        return Span.ToArray();
+        if (_points.Length == 0) return Array.Empty<Point<T>>();
+        if (MemoryMarshal.TryGetArray(_points, out var seg)
+            && seg.Offset == 0 && seg.Count == seg.Array!.Length)
+            return seg.Array;
+        return _points.ToArray();
     }
 
     /// <inheritdoc />

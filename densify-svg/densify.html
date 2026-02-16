@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8">
+<title>Densify — ModelingEvolution.Drawing</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f0f2f5; color: #1d1d1f; }
+
+.hero { background: linear-gradient(135deg, #1a2e1a 0%, #163e16 50%, #0f600f 100%); color: #fff; padding: 40px 32px 32px; }
+.hero h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+.hero p { color: #a0d0a0; font-size: 15px; }
+
+.container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+.legend { display: flex; gap: 24px; margin-bottom: 24px; justify-content: center; flex-wrap: wrap; }
+.legend .item { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
+.legend .dot { width: 12px; height: 12px; border-radius: 50%; }
+
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 16px; }
+.card { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08); transition: box-shadow 0.2s, transform 0.2s; }
+.card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.15); transform: translateY(-2px); }
+.card-header { padding: 10px 16px; font-size: 14px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f0f0f0; }
+.card-header .meta { color: #999; font-weight: 400; font-size: 12px; }
+.card-body { padding: 16px; display: flex; align-items: center; justify-content: center; background: #fafbfc; cursor: pointer; }
+.card-body img { width: 100%; height: auto; object-fit: contain; }
+
+.overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:1000; cursor:pointer; align-items:center; justify-content:center; }
+.overlay.active { display:flex; }
+.overlay img { width:90vw; height:90vh; object-fit:contain; background:#fff; border-radius:8px; padding:20px; }
+</style>
+</head><body>
+
+<div class="hero">
+    <h1>Densify()</h1>
+    <p>ModelingEvolution.Drawing &mdash; Places points along shape edges at most 1 unit apart</p>
+</div>
+
+<div class="overlay" id="overlay" onclick="this.classList.remove('active')"><img id="overlay-img"></div>
+
+<div class="container">
+    <div class="legend">
+        <div class="item"><div class="dot" style="background:#e8edff; border:1px solid #4466aa"></div> Original shape (blue)</div>
+        <div class="item"><div class="dot" style="background:#dd3333"></div> Densified points (red)</div>
+    </div>
+    <div class="cards">
+        <div class="card">
+            <div class="card-header">
+                <span>Polygon</span>
+                <span class="meta">30 points</span>
+            </div>
+            <div class="card-body"><img src="polygon.svg" alt="Polygon"></div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span>Triangle</span>
+                <span class="meta">24 points</span>
+            </div>
+            <div class="card-body"><img src="triangle.svg" alt="Triangle"></div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span>Rectangle</span>
+                <span class="meta">34 points</span>
+            </div>
+            <div class="card-body"><img src="rectangle.svg" alt="Rectangle"></div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span>Circle</span>
+                <span class="meta">32 points</span>
+            </div>
+            <div class="card-body"><img src="circle.svg" alt="Circle"></div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span>Segment</span>
+                <span class="meta">12 points</span>
+            </div>
+            <div class="card-body"><img src="segment.svg" alt="Segment"></div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span>Polyline</span>
+                <span class="meta">22 points</span>
+            </div>
+            <div class="card-body"><img src="polyline.svg" alt="Polyline"></div>
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span>Path (Bezier)</span>
+                <span class="meta">17 points</span>
+            </div>
+            <div class="card-body"><img src="path-bezier.svg" alt="Path (Bezier)"></div>
+        </div>
+    </div>
+</div>
+<script>
+document.querySelectorAll('.card-body img').forEach(img => {
+    img.addEventListener('click', () => {
+        document.getElementById('overlay-img').src = img.src;
+        document.getElementById('overlay').classList.add('active');
+    });
+});
+</script>
+</body></html>

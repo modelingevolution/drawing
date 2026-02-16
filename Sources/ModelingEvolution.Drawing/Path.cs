@@ -165,10 +165,9 @@ public readonly record struct Path<T> : IParsable<Path<T>>
             // Also include extremum points for more accurate bounds if available
             if (TryGetExtremumPoints(segment, out var extremumPoints))
             {
-                foreach (var point in extremumPoints)
-                {
-                    UpdateBounds(point, ref minX, ref minY, ref maxX, ref maxY);
-                }
+                var epSpan = extremumPoints.Span;
+                for (int ei = 0; ei < epSpan.Length; ei++)
+                    UpdateBounds(epSpan[ei], ref minX, ref minY, ref maxX, ref maxY);
             }
         }
 
@@ -189,7 +188,7 @@ public readonly record struct Path<T> : IParsable<Path<T>>
     /// <summary>
     /// Tries to get extremum points for a Bezier segment.
     /// </summary>
-    private static bool TryGetExtremumPoints(BezierCurve<T> segment, out Point<T>[] extremumPoints)
+    private static bool TryGetExtremumPoints(BezierCurve<T> segment, out ReadOnlyMemory<Point<T>> extremumPoints)
     {
         try
         {
@@ -198,7 +197,7 @@ public readonly record struct Path<T> : IParsable<Path<T>>
         }
         catch
         {
-            extremumPoints = Array.Empty<Point<T>>();
+            extremumPoints = ReadOnlyMemory<Point<T>>.Empty;
             return false;
         }
     }
@@ -432,6 +431,72 @@ public readonly record struct Path<T> : IParsable<Path<T>>
     }
 
     /// <summary>
+    /// Densifies the path by placing points along the curve at most 1 unit apart (arc-length based).
+    /// </summary>
+    public Polyline<T> Densify()
+    {
+        if (IsEmpty) return new Polyline<T>();
+
+        // 1. Oversample each Bezier into a dense polyline
+        var samples = new List<Point<T>>();
+        foreach (var segment in Segments)
+        {
+            var ctrlLen = segment.Start.DistanceTo(segment.C0)
+                        + segment.C0.DistanceTo(segment.C1)
+                        + segment.C1.DistanceTo(segment.End);
+            int oversamples = int.Max(20, int.CreateChecked(T.Ceiling(ctrlLen)) * 4);
+            for (int i = 0; i < oversamples; i++)
+            {
+                var t = T.CreateTruncating(i) / T.CreateTruncating(oversamples);
+                var pt = segment.Evaluate(t);
+                if (samples.Count == 0 || !IsApproximatelyEqual(samples[^1], pt))
+                    samples.Add(pt);
+            }
+        }
+        var last = Segments[^1].Evaluate(T.One);
+        if (samples.Count == 0 || !IsApproximatelyEqual(samples[^1], last))
+            samples.Add(last);
+
+        // 2. Walk samples, emit a point every 1 unit of arc length
+        var result = new List<Point<T>> { samples[0] };
+        var accum = T.Zero;
+        for (int i = 1; i < samples.Count; i++)
+        {
+            var prev = samples[i - 1];
+            var cur = samples[i];
+            var d = prev.DistanceTo(cur);
+            accum += d;
+            while (accum >= T.One)
+            {
+                // Interpolate back to find the exact 1-unit point
+                var overshoot = accum - T.One;
+                var frac = (d - overshoot) / d;
+                var emitPt = new Point<T>(
+                    prev.X + (cur.X - prev.X) * frac,
+                    prev.Y + (cur.Y - prev.Y) * frac);
+                result.Add(emitPt);
+                accum -= T.One;
+            }
+        }
+        // Always include the final point
+        if (!IsApproximatelyEqual(result[^1], samples[^1]))
+            result.Add(samples[^1]);
+
+        var mem = Alloc.Memory<Point<T>>(result.Count);
+        result.CopyTo(mem.Span);
+        return new Polyline<T>(mem);
+    }
+
+    /// <summary>
+    /// Computes a PCA-based rigid alignment that maps this path (densified) onto the target point cloud.
+    /// </summary>
+    /// <param name="target">The target point cloud to align to.</param>
+    public AlignmentResult<T> AlignTo(ReadOnlySpan<Point<T>> target)
+    {
+        return Alignment.Pca(Densify().AsSpan(), target);
+    }
+
+    /// <summary>
     /// Rotates the path around the specified origin by the given angle.
     /// </summary>
     public Path<T> Rotate(Degree<T> angle, Point<T> origin = default)
@@ -521,8 +586,10 @@ public readonly record struct Path<T> : IParsable<Path<T>>
             var crossings = segment.FindEdgeCrossings(rect);
 
             // Build intervals: [0, t1], [t1, t2], ..., [tn, 1]
+            var crossingsSpan = crossings.Span;
             var boundaries = new List<T>(crossings.Length + 2) { T.Zero };
-            boundaries.AddRange(crossings);
+            for (int ci = 0; ci < crossingsSpan.Length; ci++)
+                boundaries.Add(crossingsSpan[ci]);
             boundaries.Add(T.One);
 
             for (int i = 0; i < boundaries.Count - 1; i++)

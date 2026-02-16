@@ -16,15 +16,15 @@ internal static class VoronoiSkeletonAlgorithm
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
     {
-        var span = polygon.Span;
+        var span = polygon.AsSpan();
         int n = span.Length;
-        if (n < 3) return new Skeleton<T>(Array.Empty<Point<T>>(), Array.Empty<Segment<T>>());
+        if (n < 3) return new Skeleton<T>(ReadOnlyMemory<Point<T>>.Empty, ReadOnlyMemory<Segment<T>>.Empty);
 
         // Step 1: Densify boundary
         var samples = DensifyBoundary(span);
 
         // Step 2: Delaunay triangulation of samples
-        var dt = DelaunayTriangulation<T>.Create(samples.AsSpan());
+        var dt = DelaunayTriangulation<T>.Create(samples.Span);
 
         // Step 3: Voronoi dual edges
         var voronoiEdges = dt.VoronoiEdges();
@@ -32,7 +32,7 @@ internal static class VoronoiSkeletonAlgorithm
         // Step 4: Filter — keep only edges with both endpoints inside polygon
         var poly = polygon;
         var eps = T.CreateTruncating(1e-6);
-        var filteredEdges = new List<Segment<T>>();
+        var filteredEdges = new PooledList<Segment<T>>(n * 2);
         foreach (var edge in voronoiEdges)
         {
             if (poly.Contains(edge.Start) && poly.Contains(edge.End))
@@ -63,17 +63,18 @@ internal static class VoronoiSkeletonAlgorithm
 
         // Collect unique nodes
         var nodeSet = new HashSet<(double, double)>();
-        var nodeList = new List<Point<T>>();
-        foreach (var edge in prunedEdges)
+        var nodeList = new PooledList<Point<T>>(n);
+        var prunedSpan = prunedEdges.AsSpan();
+        for (int i = 0; i < prunedSpan.Length; i++)
         {
-            AddNode(nodeSet, nodeList, edge.Start);
-            AddNode(nodeSet, nodeList, edge.End);
+            AddNode(nodeSet, ref nodeList, prunedSpan[i].Start);
+            AddNode(nodeSet, ref nodeList, prunedSpan[i].End);
         }
 
-        return new Skeleton<T>(nodeList.ToArray(), prunedEdges.ToArray());
+        return new Skeleton<T>(nodeList.ToReadOnlyMemory(), prunedEdges.ToReadOnlyMemory());
     }
 
-    private static Point<T>[] DensifyBoundary<T>(ReadOnlySpan<Point<T>> vertices)
+    private static ReadOnlyMemory<Point<T>> DensifyBoundary<T>(ReadOnlySpan<Point<T>> vertices)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>
     {
@@ -94,7 +95,7 @@ internal static class VoronoiSkeletonAlgorithm
         if (spacing <= T.CreateTruncating(1e-10))
             spacing = T.CreateTruncating(0.01);
 
-        var samples = new List<Point<T>>();
+        var samples = new PooledList<Point<T>>(n * 5);
         for (int i = 0; i < n; i++)
         {
             var start = vertices[i];
@@ -111,7 +112,7 @@ internal static class VoronoiSkeletonAlgorithm
             }
         }
 
-        return samples.ToArray();
+        return samples.ToReadOnlyMemory();
     }
 
     /// <summary>
@@ -119,7 +120,7 @@ internal static class VoronoiSkeletonAlgorithm
     /// is below the threshold. Repeats until stable, since pruning a branch can
     /// expose new leaf nodes.
     /// </summary>
-    private static List<Segment<T>> IterativePruneDangling<T>(List<Segment<T>> edges, T threshold)
+    private static PooledList<Segment<T>> IterativePruneDangling<T>(PooledList<Segment<T>> edges, T threshold)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>
     {
@@ -130,12 +131,14 @@ internal static class VoronoiSkeletonAlgorithm
 
         for (int pass = 0; pass < maxPasses; pass++)
         {
+            var curSpan = current.AsSpan();
+
             // Build adjacency: node → list of edge indices
             var adj = new Dictionary<(double, double), List<int>>();
-            for (int i = 0; i < current.Count; i++)
+            for (int i = 0; i < curSpan.Length; i++)
             {
-                var sk = RoundKey(current[i].Start);
-                var ek = RoundKey(current[i].End);
+                var sk = RoundKey(curSpan[i].Start);
+                var ek = RoundKey(curSpan[i].End);
                 if (!adj.TryGetValue(sk, out var ls)) { ls = new List<int>(); adj[sk] = ls; }
                 ls.Add(i);
                 if (!adj.TryGetValue(ek, out var le)) { le = new List<int>(); adj[ek] = le; }
@@ -181,11 +184,11 @@ internal static class VoronoiSkeletonAlgorithm
                     if (nextEdgeIdx < 0) break;
 
                     branchEdges.Add(nextEdgeIdx);
-                    branchLen += current[nextEdgeIdx].Length;
+                    branchLen += curSpan[nextEdgeIdx].Length;
 
                     // Find the other end of this edge
-                    var sk = RoundKey(current[nextEdgeIdx].Start);
-                    var ek = RoundKey(current[nextEdgeIdx].End);
+                    var sk = RoundKey(curSpan[nextEdgeIdx].Start);
+                    var ek = RoundKey(curSpan[nextEdgeIdx].End);
                     var otherNode = sk == currentNode ? ek : sk;
 
                     if (visited.Contains(otherNode)) break; // cycle
@@ -208,13 +211,14 @@ internal static class VoronoiSkeletonAlgorithm
 
             if (edgesToRemove.Count == 0) break;
 
-            var next = new List<Segment<T>>(current.Count - edgesToRemove.Count);
-            for (int i = 0; i < current.Count; i++)
+            var next = new PooledList<Segment<T>>(curSpan.Length - edgesToRemove.Count);
+            for (int i = 0; i < curSpan.Length; i++)
             {
                 if (!edgesToRemove.Contains(i))
-                    next.Add(current[i]);
+                    next.Add(curSpan[i]);
             }
 
+            current.Dispose();
             current = next;
         }
 
@@ -228,7 +232,7 @@ internal static class VoronoiSkeletonAlgorithm
         return (Math.Round(Convert.ToDouble(pt.X), 7), Math.Round(Convert.ToDouble(pt.Y), 7));
     }
 
-    private static void AddNode<T>(HashSet<(double, double)> nodeSet, List<Point<T>> nodeList, Point<T> pt)
+    private static void AddNode<T>(HashSet<(double, double)> nodeSet, ref PooledList<Point<T>> nodeList, Point<T> pt)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>
     {

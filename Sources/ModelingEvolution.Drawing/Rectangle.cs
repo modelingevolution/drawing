@@ -143,10 +143,10 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>, 
     /// <returns>An array of rectangles representing the tiles.</returns>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when overlap percentage is not in range [0, 1).</exception>
     /// <exception cref="InvalidOperationException">Thrown when the tile count exceeds maximum allowable array size.</exception>
-    public Rectangle<T>[] ComputeTiles( Size<T> tileSize, T overlapPercentage = default)
+    public ReadOnlyMemory<Rectangle<T>> ComputeTiles( Size<T> tileSize, T overlapPercentage = default)
     {
         if (tileSize.Width <= T.Zero || tileSize.Height <= T.Zero || Width <= T.Zero || Height <= T.Zero)
-            return Array.Empty<Rectangle<T>>();
+            return ReadOnlyMemory<Rectangle<T>>.Empty;
         if (overlapPercentage < T.Zero || overlapPercentage >= T.One)
             throw new ArgumentOutOfRangeException(nameof(overlapPercentage), "Overlap percentage must be in the range [0, 1).");
 
@@ -163,7 +163,8 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>, 
         if (numTilesX > T.CreateChecked(int.MaxValue) || numTilesY > T.CreateChecked(int.MaxValue))
             throw new InvalidOperationException("Tile count exceeds maximum allowable array size.");
 
-        var result = new Rectangle<T>[totalTiles];
+        var result = Alloc.Memory<Rectangle<T>>(totalTiles);
+        var resultSpan = result.Span;
         // Generate tiles
         int index = 0;
         for (T y = T.Zero; y < numTilesY; y++)
@@ -179,7 +180,7 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>, 
                 if (tileY + tileSize.Height > Bottom)
                     tileY = Bottom - tileSize.Height;
                 // Create and add the tile
-                result[index++] = new Rectangle<T>(tileX, tileY, tileSize.Width, tileSize.Height);
+                resultSpan[index++] = new Rectangle<T>(tileX, tileY, tileSize.Width, tileSize.Height);
             }
         }
         return result;
@@ -595,6 +596,34 @@ public struct Rectangle<T> : IEquatable<Rectangle<T>>, IParsable<Rectangle<T>>, 
     {
         var two = T.One + T.One;
         return two * (width + height);
+    }
+
+    /// <summary>
+    /// Densifies the rectangle by placing points along each edge at most 1 unit apart.
+    /// </summary>
+    public readonly Polygon<T> Densify()
+    {
+        return new Polygon<T>(
+            new Point<T>(x, y),
+            new Point<T>(x + width, y),
+            new Point<T>(x + width, y + height),
+            new Point<T>(x, y + height)).Densify();
+    }
+
+    /// <summary>
+    /// Computes a PCA-based rigid alignment that maps this rectangle onto the target point cloud.
+    /// </summary>
+    /// <param name="target">The target point cloud to align to.</param>
+    /// <param name="densify">If true, densifies this rectangle before alignment for uniform point spacing.</param>
+    public readonly AlignmentResult<T> AlignTo(ReadOnlySpan<Point<T>> target, bool densify = false)
+    {
+        var poly = new Polygon<T>(
+            new Point<T>(x, y),
+            new Point<T>(x + width, y),
+            new Point<T>(x + width, y + height),
+            new Point<T>(x, y + height));
+        var source = densify ? poly.Densify().AsSpan() : poly.AsSpan();
+        return Alignment.Pca(source, target);
     }
 
     /// <summary>

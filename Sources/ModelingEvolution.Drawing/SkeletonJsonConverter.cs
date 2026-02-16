@@ -119,27 +119,23 @@ public class SkeletonJsonConverter<T> : JsonConverter<Skeleton<T>>
 
         writer.WritePropertyName("nodes");
         writer.WriteStartArray();
-        if (value._nodes != null)
+        var nodesSpan = value.Nodes();
+        for (int i = 0; i < nodesSpan.Length; i++)
         {
-            foreach (var node in value._nodes)
-            {
-                _writeNumber(writer, node.X);
-                _writeNumber(writer, node.Y);
-            }
+            _writeNumber(writer, nodesSpan[i].X);
+            _writeNumber(writer, nodesSpan[i].Y);
         }
         writer.WriteEndArray();
 
         writer.WritePropertyName("edges");
         writer.WriteStartArray();
-        if (value._edges != null)
+        var edgesSpan = value.Edges();
+        for (int i = 0; i < edgesSpan.Length; i++)
         {
-            foreach (var edge in value._edges)
-            {
-                _writeNumber(writer, edge.Start.X);
-                _writeNumber(writer, edge.Start.Y);
-                _writeNumber(writer, edge.End.X);
-                _writeNumber(writer, edge.End.Y);
-            }
+            _writeNumber(writer, edgesSpan[i].Start.X);
+            _writeNumber(writer, edgesSpan[i].Start.Y);
+            _writeNumber(writer, edgesSpan[i].End.X);
+            _writeNumber(writer, edgesSpan[i].End.Y);
         }
         writer.WriteEndArray();
 

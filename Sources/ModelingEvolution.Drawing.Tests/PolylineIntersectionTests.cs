@@ -70,15 +70,16 @@ public class PolylineIntersectionTests
         var seg = new Segment<float>(new Point<float>(5, -1), new Point<float>(5, 1));
         var hits = Intersections.Of(seg, LShape);
         hits.Length.Should().Be(1);
-        hits[0].X.Should().BeApproximately(5f, Tol);
-        hits[0].Y.Should().BeApproximately(0f, Tol);
+        var hitsSpan = hits.Span;
+        hitsSpan[0].X.Should().BeApproximately(5f, Tol);
+        hitsSpan[0].Y.Should().BeApproximately(0f, Tol);
     }
 
     [Fact]
     public void SegmentXPolyline_Miss()
     {
         var seg = new Segment<float>(new Point<float>(20, 20), new Point<float>(30, 30));
-        Intersections.Of(seg, LShape).Should().BeEmpty();
+        Intersections.Of(seg, LShape).Span.ToArray().Should().BeEmpty();
     }
 
     [Fact]
@@ -107,7 +108,7 @@ public class PolylineIntersectionTests
     public void CircleXPolyline_Miss()
     {
         var circle = new Circle<float>(new Point<float>(5, 5), 0.5f);
-        Intersections.Of(circle, LShape).Should().BeEmpty();
+        Intersections.Of(circle, LShape).Span.ToArray().Should().BeEmpty();
     }
 
     [Fact]
@@ -203,8 +204,9 @@ public class PolylineIntersectionTests
         var b = new Polyline<float>(new Point<float>(0, 10), new Point<float>(10, 0));
         var hits = Intersections.Of(a, b);
         hits.Length.Should().Be(1);
-        hits[0].X.Should().BeApproximately(5f, Tol);
-        hits[0].Y.Should().BeApproximately(5f, Tol);
+        var hitsSpan = hits.Span;
+        hitsSpan[0].X.Should().BeApproximately(5f, Tol);
+        hitsSpan[0].Y.Should().BeApproximately(5f, Tol);
     }
 
     [Fact]
@@ -212,7 +214,7 @@ public class PolylineIntersectionTests
     {
         var a = new Polyline<float>(new Point<float>(0, 0), new Point<float>(10, 0));
         var b = new Polyline<float>(new Point<float>(0, 5), new Point<float>(10, 5));
-        Intersections.Of(a, b).Should().BeEmpty();
+        Intersections.Of(a, b).Span.ToArray().Should().BeEmpty();
     }
 
     [Fact]
@@ -234,7 +236,7 @@ public class PolylineIntersectionTests
     {
         var empty = new Polyline<float>();
         var seg = new Segment<float>(new Point<float>(0, 0), new Point<float>(10, 10));
-        Intersections.Of(seg, empty).Should().BeEmpty();
+        Intersections.Of(seg, empty).Span.ToArray().Should().BeEmpty();
     }
 
     [Fact]
@@ -242,7 +244,7 @@ public class PolylineIntersectionTests
     {
         var single = new Polyline<float>(new Point<float>(5, 5));
         var seg = new Segment<float>(new Point<float>(0, 0), new Point<float>(10, 10));
-        Intersections.Of(seg, single).Should().BeEmpty();
+        Intersections.Of(seg, single).Span.ToArray().Should().BeEmpty();
     }
 
     [Fact]

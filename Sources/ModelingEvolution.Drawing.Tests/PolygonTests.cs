@@ -75,7 +75,7 @@ public class PolygonTests
     {
         var edges = Square.Edges();
         edges.Length.Should().Be(4);
-        edges[0].Length.Should().BeApproximately(10, 1e-9);
+        edges.Span[0].Length.Should().BeApproximately(10, 1e-9);
     }
 
     [Fact]

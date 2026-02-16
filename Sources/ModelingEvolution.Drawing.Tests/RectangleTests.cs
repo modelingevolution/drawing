@@ -18,8 +18,7 @@ namespace ModelingEvolution.Drawing.Tests
             // Act
             var result = rectangle.ComputeTiles(tileSize);
             // Assert
-            Assert.NotNull(result);
-            Assert.Empty(result);
+            Assert.Equal(0, result.Length);
         }
         [Fact]
         public void ComputeTiles_ReturnsEmptyArray_WhenRectangleSizeIsZero()
@@ -30,8 +29,7 @@ namespace ModelingEvolution.Drawing.Tests
             // Act
             var result = rectangle.ComputeTiles(tileSize);
             // Assert
-            Assert.NotNull(result);
-            Assert.Empty(result);
+            Assert.Equal(0, result.Length);
         }
         [Fact]
         public void ComputeTiles_ReturnsCorrectNumberOfTiles_WithNoOverlap()
@@ -68,8 +66,10 @@ namespace ModelingEvolution.Drawing.Tests
             var result = rectangle.ComputeTiles(tileSize);
             // Assert
             Assert.NotNull(result);
-            foreach (var tile in result)
+            var resultSpan = result.Span;
+            for (int i = 0; i < resultSpan.Length; i++)
             {
+                var tile = resultSpan[i];
                 Assert.True(tile.Right <= rectangle.Right);
                 Assert.True(tile.Bottom <= rectangle.Bottom);
             }
@@ -87,15 +87,15 @@ namespace ModelingEvolution.Drawing.Tests
             Assert.NotNull(tiles);
             Assert.Equal(3, tiles.Length); // Expect 3 tiles due to overlap
                                            // Validate intersections
-
-            var intersection = tiles[0] & tiles[1];
+            var tilesSpan = tiles.Span;
+            var intersection = tilesSpan[0] & tilesSpan[1];
             Assert.False(intersection.IsEmpty); // Ensure there is an overlap
             Assert.Equal(30, intersection.Width); // 50% of tile width (60 * 0.5)
             Assert.Equal(50, intersection.Height); // Full height of the tiles
 
-            intersection = tiles[1] & tiles[2];
+            intersection = tilesSpan[1] & tilesSpan[2];
             Assert.False(intersection.IsEmpty); // Ensure there is an overlap
-            Assert.Equal(50, intersection.Width); 
+            Assert.Equal(50, intersection.Width);
             Assert.Equal(50, intersection.Height); // Full height of the tiles
 
         }
@@ -112,13 +112,13 @@ namespace ModelingEvolution.Drawing.Tests
             Assert.NotNull(tiles);
             Assert.Equal(3, tiles.Length); // Expect 3 tiles due to overlap
                                            // Validate intersections
-
-            var intersection = tiles[0] & tiles[1];
+            var tilesSpan = tiles.Span;
+            var intersection = tilesSpan[0] & tilesSpan[1];
             Assert.False(intersection.IsEmpty); // Ensure there is an overlap
             Assert.Equal(50, intersection.Width); // Full width of the tiles
             Assert.Equal(30, intersection.Height); // 50% of tile height (60 * 0.5)
-            
-            intersection = tiles[1] & tiles[2];
+
+            intersection = tilesSpan[1] & tilesSpan[2];
             Assert.False(intersection.IsEmpty); // Ensure there is an overlap
             Assert.Equal(50, intersection.Width); // Full width of the tiles
             Assert.Equal(50, intersection.Height); // 50% of tile height (60 * 0.5)

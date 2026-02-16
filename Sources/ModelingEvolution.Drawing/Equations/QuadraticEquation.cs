@@ -1,4 +1,4 @@
-﻿using System.Numerics;
+using System.Numerics;
 
 namespace ModelingEvolution.Drawing.Equations;
 
@@ -48,31 +48,40 @@ public readonly record struct QuadraticEquation<T>
     /// Gets the discriminant of the quadratic equation (B² - 4AC).
     /// </summary>
     public T Discriminant => B * B - T.CreateTruncating(4) * A * C;
-    
+
     /// <summary>
     /// Calculates the x-intercepts (zeros) of this quadratic equation.
     /// </summary>
-    /// <returns>An array of x-values where the equation equals zero.</returns>
-    public T[] ZeroPoints()
+    /// <returns>The x-values where the equation equals zero.</returns>
+    public ReadOnlyMemory<T> ZeroPoints()
     {
-        if (A == T.Zero) 
-            return new []{new LinearEquation<T>(B, C).ComputeZeroPoint()};
+        if (A == T.Zero)
+        {
+            var mem = Alloc.Memory<T>(1);
+            mem.Span[0] = new LinearEquation<T>(B, C).ComputeZeroPoint();
+            return mem;
+        }
 
         T discriminant = Discriminant;
         switch (discriminant)
         {
-            // No real roots
             case < 0:
-                return Array.Empty<T>();
+                return ReadOnlyMemory<T>.Empty;
             case 0:
-                // One real root
-                return new[] { -B / (A+A) };
+            {
+                var mem = Alloc.Memory<T>(1);
+                mem.Span[0] = -B / (A + A);
+                return mem;
+            }
             default:
             {
-                // Two real roots
-                T root1 = (-B + T.Sqrt(discriminant)) / (A+A);
-                T root2 = (-B - T.Sqrt(discriminant)) / (A+A);
-                return new[] { root1, root2 };
+                T root1 = (-B + T.Sqrt(discriminant)) / (A + A);
+                T root2 = (-B - T.Sqrt(discriminant)) / (A + A);
+                var mem = Alloc.Memory<T>(2);
+                var span = mem.Span;
+                span[0] = root1;
+                span[1] = root2;
+                return mem;
             }
         }
     }
@@ -109,32 +118,35 @@ public readonly record struct QuadraticEquation<T>
     /// Finds the intersection points between this quadratic equation and a linear equation.
     /// </summary>
     /// <param name="linearEq">The linear equation to intersect with.</param>
-    /// <returns>An array of intersection points (0, 1, or 2 points).</returns>
-    public Point<T>[] Intersect(LinearEquation<T> linearEq)
+    /// <returns>The intersection points (0, 1, or 2 points).</returns>
+    public ReadOnlyMemory<Point<T>> Intersect(LinearEquation<T> linearEq)
     {
         T a = A;
-        T b = B - linearEq.A; // (b - m)
-        T c = C - linearEq.B; // (c - n)
+        T b = B - linearEq.A;
+        T c = C - linearEq.B;
 
-        // Calculate the discriminant
         T discriminant = b * b - T.CreateTruncating(4) * a * c;
 
         switch (discriminant)
         {
-            // Solve the quadratic equation
             case < 0:
-                // No real roots
-                return Array.Empty<Point<T>>();
+                return ReadOnlyMemory<Point<T>>.Empty;
             case 0:
-                // One real root
-                var x = -b / (a+a);
-                return new[] { new Point<T>(x, Compute(x)) };
+            {
+                var x = -b / (a + a);
+                var mem = Alloc.Memory<Point<T>>(1);
+                mem.Span[0] = new Point<T>(x, Compute(x));
+                return mem;
+            }
             default:
             {
-                // Two real roots
-                T root1 = (-b + T.Sqrt(discriminant)) / (a+a);
-                T root2 = (-b - T.Sqrt(discriminant)) / (a+a);
-                return new[] { new Point<T>(root1, Compute(root1)), new Point<T>(root2, Compute(root2)) };
+                T root1 = (-b + T.Sqrt(discriminant)) / (a + a);
+                T root2 = (-b - T.Sqrt(discriminant)) / (a + a);
+                var mem = Alloc.Memory<Point<T>>(2);
+                var span = mem.Span;
+                span[0] = new Point<T>(root1, Compute(root1));
+                span[1] = new Point<T>(root2, Compute(root2));
+                return mem;
             }
         }
     }

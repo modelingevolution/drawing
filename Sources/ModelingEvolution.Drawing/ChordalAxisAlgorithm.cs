@@ -15,9 +15,9 @@ internal static class ChordalAxisAlgorithm
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
         IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
     {
-        var span = polygon.Span;
+        var span = polygon.AsSpan();
         int n = span.Length;
-        if (n < 3) return new Skeleton<T>(Array.Empty<Point<T>>(), Array.Empty<Segment<T>>());
+        if (n < 3) return new Skeleton<T>(ReadOnlyMemory<Point<T>>.Empty, ReadOnlyMemory<Segment<T>>.Empty);
 
         // Step 1: CDT of polygon vertices
         var dt = DelaunayTriangulation<T>.Create(span);
@@ -35,7 +35,7 @@ internal static class ChordalAxisAlgorithm
 
         var triangles = dt.Triangles;
         if (triangles.Count == 0)
-            return new Skeleton<T>(Array.Empty<Point<T>>(), Array.Empty<Segment<T>>());
+            return new Skeleton<T>(ReadOnlyMemory<Point<T>>.Empty, ReadOnlyMemory<Segment<T>>.Empty);
 
         // Build polygon edge set for boundary detection (using CDT point indices)
         var boundaryEdges = new HashSet<(int, int)>();
@@ -48,18 +48,19 @@ internal static class ChordalAxisAlgorithm
 
         var two = T.CreateTruncating(2);
         var three = T.CreateTruncating(3);
-        var skeletonEdges = new List<Segment<T>>();
+        var skeletonEdges = new PooledList<Segment<T>>(n);
         var nodeSet = new HashSet<(double, double)>();
-        var nodeList = new List<Point<T>>();
+        var nodeList = new PooledList<Point<T>>(n);
         var pts = dt.Points;
 
+        var internalEdgeMidpoints = new PooledList<Point<T>>(3);
         for (int t = 0; t < triangles.Count; t++)
         {
             var tri = triangles[t];
             int[] verts = { tri.A, tri.B, tri.C };
 
             // Find internal edges (shared with another triangle, not on polygon boundary)
-            var internalEdgeMidpoints = new List<Point<T>>();
+            internalEdgeMidpoints.Clear();
             for (int e = 0; e < 3; e++)
             {
                 int ea = verts[e];
@@ -88,14 +89,14 @@ internal static class ChordalAxisAlgorithm
                     // Terminal: connect midpoint of internal edge to opposite vertex
                     var mid = internalEdgeMidpoints[0];
                     Point<T> opposite = FindOppositeVertex(pts, tri, mid, two);
-                    AddEdge(skeletonEdges, nodeSet, nodeList, mid, opposite);
+                    AddEdge(ref skeletonEdges, nodeSet, ref nodeList, mid, opposite);
                     break;
                 }
 
                 case 2:
                 {
                     // Sleeve: connect midpoints of the two internal edges
-                    AddEdge(skeletonEdges, nodeSet, nodeList,
+                    AddEdge(ref skeletonEdges, nodeSet, ref nodeList,
                         internalEdgeMidpoints[0], internalEdgeMidpoints[1]);
                     break;
                 }
@@ -107,14 +108,16 @@ internal static class ChordalAxisAlgorithm
                         (pts[tri.A].X + pts[tri.B].X + pts[tri.C].X) / three,
                         (pts[tri.A].Y + pts[tri.B].Y + pts[tri.C].Y) / three);
 
-                    foreach (var mid in internalEdgeMidpoints)
-                        AddEdge(skeletonEdges, nodeSet, nodeList, centroid, mid);
+                    var midSpan = internalEdgeMidpoints.AsSpan();
+                    for (int m = 0; m < midSpan.Length; m++)
+                        AddEdge(ref skeletonEdges, nodeSet, ref nodeList, centroid, midSpan[m]);
                     break;
                 }
             }
         }
 
-        return new Skeleton<T>(nodeList.ToArray(), skeletonEdges.ToArray());
+        internalEdgeMidpoints.Dispose();
+        return new Skeleton<T>(nodeList.ToReadOnlyMemory(), skeletonEdges.ToReadOnlyMemory());
     }
 
     private static Point<T> Midpoint<T>(Point<T> a, Point<T> b, T two)
@@ -152,17 +155,17 @@ internal static class ChordalAxisAlgorithm
             (pts[tri.A].Y + pts[tri.B].Y + pts[tri.C].Y) / three);
     }
 
-    private static void AddEdge<T>(List<Segment<T>> edges, HashSet<(double, double)> nodeSet,
-        List<Point<T>> nodeList, Point<T> a, Point<T> b)
+    private static void AddEdge<T>(ref PooledList<Segment<T>> edges, HashSet<(double, double)> nodeSet,
+        ref PooledList<Point<T>> nodeList, Point<T> a, Point<T> b)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>,
         ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
     {
-        AddNode(nodeSet, nodeList, a);
-        AddNode(nodeSet, nodeList, b);
+        AddNode(nodeSet, ref nodeList, a);
+        AddNode(nodeSet, ref nodeList, b);
         edges.Add(new Segment<T>(a, b));
     }
 
-    private static void AddNode<T>(HashSet<(double, double)> nodeSet, List<Point<T>> nodeList, Point<T> pt)
+    private static void AddNode<T>(HashSet<(double, double)> nodeSet, ref PooledList<Point<T>> nodeList, Point<T> pt)
         where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>,
         ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
     {

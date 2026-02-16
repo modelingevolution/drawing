@@ -37,33 +37,37 @@ public readonly record struct CircleEquation<T>
     /// </summary>
     /// <param name="line">The linear equation to intersect with.</param>
     /// <returns>An array of intersection points (0, 1, or 2 points).</returns>
-    public Point<T>[] Intersect(LinearEquation<T> line)
+    public ReadOnlyMemory<Point<T>> Intersect(LinearEquation<T> line)
     {
-        // Transform the line to the circle's local coordinate system
         var transformedB = line.B - Center.Y + line.A * Center.X;
 
-        // Quadratic coefficients
         var a = T.One + T.Pow(line.A, t2);
         var b = t2 * (line.A * transformedB);
         var c = T.Pow(transformedB, t2) - T.Pow(Radius, t2);
 
-        // Calculate the discriminant
         var discriminant = b * b - t4 * a * c;
 
         if (discriminant < T.Zero)
-        {
-            // No real intersection
-            return Array.Empty<Point<T>>();
-        }
+            return ReadOnlyMemory<Point<T>>.Empty;
 
-        // Calculate x coordinates of intersection points
         var x1 = (-b + T.Sqrt(discriminant)) / (t2 * a);
-        var x2 = (-b - T.Sqrt(discriminant)) / (t2 * a);
-
-        // Calculate y coordinates of intersection points
         var y1 = line.A * x1 + line.B;
-        var y2 = line.A * x2 + line.B;
 
-        return discriminant > T.Zero ? new[] { new Point<T>(x1 + Center.X, y1), new Point<T>(x2 + Center.X, y2) } : new[] { new Point<T>(x1 + Center.X, y1) };
+        if (discriminant > T.Zero)
+        {
+            var x2 = (-b - T.Sqrt(discriminant)) / (t2 * a);
+            var y2 = line.A * x2 + line.B;
+            var mem = Alloc.Memory<Point<T>>(2);
+            var span = mem.Span;
+            span[0] = new Point<T>(x1 + Center.X, y1);
+            span[1] = new Point<T>(x2 + Center.X, y2);
+            return mem;
+        }
+        else
+        {
+            var mem = Alloc.Memory<Point<T>>(1);
+            mem.Span[0] = new Point<T>(x1 + Center.X, y1);
+            return mem;
+        }
     }
 }

@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="173" viewBox="-2.00 -15.33 14.00 17.33">
+<rect x="-2.00" y="-15.33" width="14.00" height="17.33" fill="white"/>
+<g transform="scale(1,-1)">
+<polyline points="0,0 5,10 10,0" fill="none" stroke="#999999" stroke-width="0.06" stroke-dasharray="2,1"/>
+<circle cx="0" cy="0" r="0.12" fill="#888888"/>
+<circle cx="5" cy="10" r="0.12" fill="#888888"/>
+<circle cx="10" cy="0" r="0.12" fill="#888888"/>
+<path d="M0,0 C5,13.333333015441895 5,13.333333015441895 10,0" fill="none" stroke="#dd3333" stroke-width="0.15"/>
+<line x1="0" y1="0" x2="5" y2="13.333333015441895" stroke="#dd3333" stroke-width="0.06"/>
+<line x1="10" y1="0" x2="5" y2="13.333333015441895" stroke="#dd3333" stroke-width="0.06"/>
+<polygon points="5,13.033332824707031 5.300000190734863,13.333333015441895 5,13.633333206176758 4.699999809265137,13.333333015441895" fill="#dd3333"/>
+<polygon points="5,13.033332824707031 5.300000190734863,13.333333015441895 5,13.633333206176758 4.699999809265137,13.333333015441895" fill="#dd3333"/>
+<circle cx="0" cy="0" r="0.18" fill="#000000"/>
+<circle cx="10" cy="0" r="0.18" fill="#000000"/>
+</g>
+</svg>

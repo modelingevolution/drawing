@@ -122,7 +122,7 @@ public class SkeletonValidationTests
                 $"{algo} should produce at least 1 edge for {shapeName}");
 
             // All skeleton node positions should be within bounding box (with small margin)
-            foreach (var node in skeleton.Nodes.ToArray())
+            foreach (var node in skeleton.Nodes().ToArray())
             {
                 node.X.Should().BeGreaterThanOrEqualTo(bbox.Left - 2,
                     $"{algo} node X should be >= bbox.Left for {shapeName}");

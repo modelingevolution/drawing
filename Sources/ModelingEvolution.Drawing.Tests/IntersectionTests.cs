@@ -270,7 +270,7 @@ public class IntersectionTests
         var tri = new Triangle<float>(new Point<float>(0, 0), new Point<float>(10, 0), new Point<float>(5, 10));
         var seg = new Segment<float>(new Point<float>(5, -1), new Point<float>(5, 11));
         var pts = Intersections.Of(seg, tri);
-        pts.Should().HaveCount(2);
+        pts.Span.ToArray().Should().HaveCount(2);
     }
 
     [Fact]
@@ -278,7 +278,7 @@ public class IntersectionTests
     {
         var tri = new Triangle<float>(new Point<float>(0, 0), new Point<float>(10, 0), new Point<float>(5, 10));
         var seg = new Segment<float>(new Point<float>(20, 0), new Point<float>(20, 10));
-        Intersections.Of(seg, tri).Should().BeEmpty();
+        Intersections.Of(seg, tri).Span.ToArray().Should().BeEmpty();
     }
 
     // ─────────────────────────────────────────────
@@ -291,7 +291,7 @@ public class IntersectionTests
         var rect = new Rectangle<float>(0, 0, 10, 10);
         var seg = new Segment<float>(new Point<float>(5, -1), new Point<float>(5, 11));
         var pts = Intersections.Of(seg, rect);
-        pts.Should().HaveCount(2);
+        pts.Span.ToArray().Should().HaveCount(2);
     }
 
     [Fact]
@@ -299,7 +299,7 @@ public class IntersectionTests
     {
         var rect = new Rectangle<float>(0, 0, 10, 10);
         var seg = new Segment<float>(new Point<float>(20, 0), new Point<float>(20, 10));
-        Intersections.Of(seg, rect).Should().BeEmpty();
+        Intersections.Of(seg, rect).Span.ToArray().Should().BeEmpty();
     }
 
     // ─────────────────────────────────────────────
@@ -314,7 +314,7 @@ public class IntersectionTests
             new Point<float>(10, 10), new Point<float>(0, 10));
         var seg = new Segment<float>(new Point<float>(5, -1), new Point<float>(5, 11));
         var pts = Intersections.Of(seg, poly);
-        pts.Should().HaveCount(2);
+        pts.Span.ToArray().Should().HaveCount(2);
     }
 
     // ─────────────────────────────────────────────
@@ -390,7 +390,7 @@ public class IntersectionTests
         var circle = new Circle<float>(new Point<float>(5, 5), 4f);
         var tri = new Triangle<float>(new Point<float>(0, 0), new Point<float>(10, 0), new Point<float>(5, 10));
         var pts = Intersections.Of(circle, tri);
-        pts.Should().HaveCountGreaterThan(0);
+        pts.Span.ToArray().Should().HaveCountGreaterThan(0);
     }
 
     [Fact]
@@ -398,7 +398,7 @@ public class IntersectionTests
     {
         var circle = new Circle<float>(new Point<float>(50, 50), 1f);
         var tri = new Triangle<float>(new Point<float>(0, 0), new Point<float>(10, 0), new Point<float>(5, 10));
-        Intersections.Of(circle, tri).Should().BeEmpty();
+        Intersections.Of(circle, tri).Span.ToArray().Should().BeEmpty();
     }
 
     // ─────────────────────────────────────────────
@@ -411,7 +411,7 @@ public class IntersectionTests
         var circle = new Circle<float>(new Point<float>(5, 5), 6f);
         var rect = new Rectangle<float>(0, 0, 10, 10);
         var pts = Intersections.Of(circle, rect);
-        pts.Should().HaveCountGreaterThan(0);
+        pts.Span.ToArray().Should().HaveCountGreaterThan(0);
     }
 
     [Fact]
@@ -419,7 +419,7 @@ public class IntersectionTests
     {
         var circle = new Circle<float>(new Point<float>(50, 50), 1f);
         var rect = new Rectangle<float>(0, 0, 10, 10);
-        Intersections.Of(circle, rect).Should().BeEmpty();
+        Intersections.Of(circle, rect).Span.ToArray().Should().BeEmpty();
     }
 
     // ─────────────────────────────────────────────
@@ -434,7 +434,7 @@ public class IntersectionTests
             new Point<float>(0, 0), new Point<float>(10, 0),
             new Point<float>(10, 10), new Point<float>(0, 10));
         var pts = Intersections.Of(circle, poly);
-        pts.Should().HaveCountGreaterThan(0);
+        pts.Span.ToArray().Should().HaveCountGreaterThan(0);
     }
 
     // ─────────────────────────────────────────────
@@ -447,7 +447,7 @@ public class IntersectionTests
         var t1 = new Triangle<float>(new Point<float>(0, 0), new Point<float>(10, 0), new Point<float>(5, 10));
         var t2 = new Triangle<float>(new Point<float>(0, 5), new Point<float>(10, 5), new Point<float>(5, -5));
         var pts = Intersections.Of(t1, t2);
-        pts.Should().HaveCountGreaterThan(0);
+        pts.Span.ToArray().Should().HaveCountGreaterThan(0);
     }
 
     [Fact]
@@ -455,7 +455,7 @@ public class IntersectionTests
     {
         var t1 = new Triangle<float>(new Point<float>(0, 0), new Point<float>(3, 0), new Point<float>(1.5f, 3));
         var t2 = new Triangle<float>(new Point<float>(10, 10), new Point<float>(13, 10), new Point<float>(11.5f, 13));
-        Intersections.Of(t1, t2).Should().BeEmpty();
+        Intersections.Of(t1, t2).Span.ToArray().Should().BeEmpty();
     }
 
     // ─────────────────────────────────────────────
@@ -468,7 +468,7 @@ public class IntersectionTests
         var tri = new Triangle<float>(new Point<float>(5, -1), new Point<float>(5, 11), new Point<float>(15, 5));
         var rect = new Rectangle<float>(0, 0, 10, 10);
         var pts = Intersections.Of(tri, rect);
-        pts.Should().HaveCountGreaterThan(0);
+        pts.Span.ToArray().Should().HaveCountGreaterThan(0);
     }
 
     [Fact]
@@ -476,7 +476,7 @@ public class IntersectionTests
     {
         var tri = new Triangle<float>(new Point<float>(20, 20), new Point<float>(25, 20), new Point<float>(22, 25));
         var rect = new Rectangle<float>(0, 0, 10, 10);
-        Intersections.Of(tri, rect).Should().BeEmpty();
+        Intersections.Of(tri, rect).Span.ToArray().Should().BeEmpty();
     }
 
     // ─────────────────────────────────────────────
@@ -491,7 +491,7 @@ public class IntersectionTests
             new Point<float>(0, 0), new Point<float>(10, 0),
             new Point<float>(10, 10), new Point<float>(0, 10));
         var pts = Intersections.Of(tri, poly);
-        pts.Should().HaveCountGreaterThan(0);
+        pts.Span.ToArray().Should().HaveCountGreaterThan(0);
     }
 
     // ─────────────────────────────────────────────
@@ -504,7 +504,7 @@ public class IntersectionTests
         var r1 = new Rectangle<float>(0, 0, 10, 10);
         var r2 = new Rectangle<float>(5, 5, 10, 10);
         var pts = Intersections.Of(r1, r2);
-        pts.Should().HaveCount(2); // two edge crossing points
+        pts.Span.ToArray().Should().HaveCount(2); // two edge crossing points
     }
 
     [Fact]
@@ -512,7 +512,7 @@ public class IntersectionTests
     {
         var r1 = new Rectangle<float>(0, 0, 5, 5);
         var r2 = new Rectangle<float>(10, 10, 5, 5);
-        Intersections.Of(r1, r2).Should().BeEmpty();
+        Intersections.Of(r1, r2).Span.ToArray().Should().BeEmpty();
     }
 
     // ─────────────────────────────────────────────
@@ -527,7 +527,7 @@ public class IntersectionTests
             new Point<float>(5, -1), new Point<float>(15, 5),
             new Point<float>(5, 11));
         var pts = Intersections.Of(rect, poly);
-        pts.Should().HaveCountGreaterThan(0);
+        pts.Span.ToArray().Should().HaveCountGreaterThan(0);
     }
 
     // ─────────────────────────────────────────────
@@ -544,7 +544,7 @@ public class IntersectionTests
             new Point<float>(5, 5), new Point<float>(15, 5),
             new Point<float>(15, 15), new Point<float>(5, 15));
         var pts = Intersections.Of(p1, p2);
-        pts.Should().HaveCount(2);
+        pts.Span.ToArray().Should().HaveCount(2);
     }
 
     [Fact]
@@ -556,7 +556,7 @@ public class IntersectionTests
         var p2 = new Polygon<float>(
             new Point<float>(10, 10), new Point<float>(15, 10),
             new Point<float>(15, 15), new Point<float>(10, 15));
-        Intersections.Of(p1, p2).Should().BeEmpty();
+        Intersections.Of(p1, p2).Span.ToArray().Should().BeEmpty();
     }
 
     // ─────────────────────────────────────────────

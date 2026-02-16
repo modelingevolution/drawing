@@ -24,7 +24,8 @@ public class CubicTests
     {
         QuadraticEquation<float> eq = new QuadraticEquation<float>(-0.178f, 3.953f, -1.923f-v);
         var r = eq.ZeroPoints();
-        testOutputHelper.WriteLine($"{r[0]}, {r[1]}");
+        var rSpan = r.Span;
+        testOutputHelper.WriteLine($"{rSpan[0]}, {rSpan[1]}");
     }
 }
 

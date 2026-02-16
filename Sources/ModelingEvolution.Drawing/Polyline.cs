@@ -244,6 +244,89 @@ public readonly record struct Polyline<T> : IBoundingBox<T>, IPoolable<Polyline<
     }
 
     /// <summary>
+    /// Simplifies this polyline using the Ramer-Douglas-Peucker algorithm.
+    /// Removes points closer than <paramref name="epsilon"/> to the line between their neighbors.
+    /// </summary>
+    public Polyline<T> Simplify(T epsilon)
+    {
+        var span = AsSpan();
+        if (span.Length < 3) return this;
+
+        var epsSq = epsilon * epsilon;
+        Span<bool> keep = span.Length <= 1024 ? stackalloc bool[span.Length] : new bool[span.Length];
+        keep[0] = true;
+        keep[span.Length - 1] = true;
+
+        // Iterative stack-based RDP
+        int stackSize = span.Length * 2;
+        Span<int> stack = stackSize <= 1024 ? stackalloc int[stackSize] : new int[stackSize];
+        int top = 0;
+        stack[top++] = 0;
+        stack[top++] = span.Length - 1;
+
+        while (top >= 2)
+        {
+            int end = stack[--top];
+            int start = stack[--top];
+
+            var maxDistSq = T.Zero;
+            int maxIdx = start;
+
+            var ax = span[start].X;
+            var ay = span[start].Y;
+            var dx = span[end].X - ax;
+            var dy = span[end].Y - ay;
+            var lenSq = dx * dx + dy * dy;
+
+            for (int i = start + 1; i < end; i++)
+            {
+                T distSq;
+                if (lenSq < T.CreateTruncating(1e-18))
+                {
+                    var px = span[i].X - ax;
+                    var py = span[i].Y - ay;
+                    distSq = px * px + py * py;
+                }
+                else
+                {
+                    // Perpendicular distance squared = (cross product)^2 / lenSq
+                    var cross = (span[i].X - ax) * dy - (span[i].Y - ay) * dx;
+                    distSq = cross * cross / lenSq;
+                }
+
+                if (distSq > maxDistSq)
+                {
+                    maxDistSq = distSq;
+                    maxIdx = i;
+                }
+            }
+
+            if (maxDistSq > epsSq)
+            {
+                keep[maxIdx] = true;
+                stack[top++] = start;
+                stack[top++] = maxIdx;
+                stack[top++] = maxIdx;
+                stack[top++] = end;
+            }
+        }
+
+        int count = 0;
+        for (int i = 0; i < span.Length; i++)
+            if (keep[i]) count++;
+
+        if (count == span.Length) return this;
+
+        var mem = Alloc.Memory<Point<T>>(count);
+        var dst = mem.Span;
+        int idx = 0;
+        for (int i = 0; i < span.Length; i++)
+            if (keep[i]) dst[idx++] = span[i];
+
+        return new Polyline<T>(mem);
+    }
+
+    /// <summary>
     /// Finds all segments where the given infinite line intersects this polyline.
     /// </summary>
     public IReadOnlyList<Segment<T>> Intersections(Line<T> line) => Drawing.Intersections.Of(line, this);

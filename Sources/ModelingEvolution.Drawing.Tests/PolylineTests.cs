@@ -254,6 +254,71 @@ public class PolylineTests
     }
 
     // ─────────────────────────────────────────────
+    // Simplify (Ramer-Douglas-Peucker)
+    // ─────────────────────────────────────────────
+
+    [Fact]
+    public void Simplify_StraightLine_RemovesCollinearPoints()
+    {
+        // 5 collinear points → should reduce to 2 endpoints
+        var pl = new Polyline<float>(
+            new Point<float>(0, 0),
+            new Point<float>(2, 0),
+            new Point<float>(5, 0),
+            new Point<float>(7, 0),
+            new Point<float>(10, 0));
+        var simplified = pl.Simplify(0.1f);
+        simplified.Count.Should().Be(2);
+        simplified[0].Should().Be(new Point<float>(0, 0));
+        simplified[1].Should().Be(new Point<float>(10, 0));
+    }
+
+    [Fact]
+    public void Simplify_LShape_KeepsCorner()
+    {
+        var pl = new Polyline<float>(
+            new Point<float>(0, 0),
+            new Point<float>(10, 0),
+            new Point<float>(10, 10));
+        var simplified = pl.Simplify(1f);
+        simplified.Count.Should().Be(3);
+    }
+
+    [Fact]
+    public void Simplify_SmallDeviation_RemovedByLargeEpsilon()
+    {
+        // Point deviates by 0.5 from the straight line
+        var pl = new Polyline<float>(
+            new Point<float>(0, 0),
+            new Point<float>(5, 0.5f),
+            new Point<float>(10, 0));
+        pl.Simplify(0.3f).Count.Should().Be(3);  // 0.5 > 0.3 → kept
+        pl.Simplify(1f).Count.Should().Be(2);     // 0.5 < 1.0 → removed
+    }
+
+    [Fact]
+    public void Simplify_TwoPoints_ReturnsSelf()
+    {
+        var pl = new Polyline<float>(new Point<float>(0, 0), new Point<float>(10, 0));
+        var simplified = pl.Simplify(1f);
+        simplified.Count.Should().Be(2);
+    }
+
+    [Fact]
+    public void Simplify_PreservesEndpoints()
+    {
+        var pl = new Polyline<float>(
+            new Point<float>(0, 0),
+            new Point<float>(3, 0.1f),
+            new Point<float>(7, -0.1f),
+            new Point<float>(10, 0));
+        var simplified = pl.Simplify(5f);
+        simplified.Count.Should().Be(2);
+        simplified[0].Should().Be(new Point<float>(0, 0));
+        simplified[1].Should().Be(new Point<float>(10, 0));
+    }
+
+    // ─────────────────────────────────────────────
     // Points list
     // ─────────────────────────────────────────────
 

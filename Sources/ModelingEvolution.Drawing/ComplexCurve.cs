@@ -144,7 +144,14 @@ public readonly record struct ComplexCurve<T> : IBoundingBox<T>, IParsable<Compl
     /// Delegates to <see cref="BezierCurve{T}.Densify"/> for Bezier segments
     /// and <see cref="Densification.Densify{T}"/> for polyline segments.
     /// </summary>
-    public Polyline<T> Densify()
+    public Polyline<T> Densify() => Densify(T.One);
+
+    /// <summary>
+    /// Densifies this curve by placing points along it at most <paramref name="unit"/> apart.
+    /// Delegates to <see cref="BezierCurve{T}.Densify"/> for Bezier segments
+    /// and <see cref="Densification.Densify{T}"/> for polyline segments.
+    /// </summary>
+    public Polyline<T> Densify(T unit)
     {
         if (_data.IsEmpty) return new Polyline<T>();
 
@@ -152,9 +159,9 @@ public readonly record struct ComplexCurve<T> : IBoundingBox<T>, IParsable<Compl
         foreach (var seg in this)
         {
             if (seg.IsBezier)
-                builder.AddRange(seg.AsBezier().Densify());
+                builder.AddRange(seg.AsBezier().Densify(unit));
             else
-                builder.AddRange(Densification.Densify(seg.AsPoints()));
+                builder.AddRange(Densification.Densify(seg.AsPoints(), unit));
         }
         return builder.Build();
     }

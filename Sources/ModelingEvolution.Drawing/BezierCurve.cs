@@ -524,8 +524,14 @@ public readonly record struct BezierCurve<T> : IEnumerable<Point<T>>, IBoundingB
     /// <summary>
     /// Densifies this Bezier curve by placing points along it at most 1 unit apart (arc-length based).
     /// </summary>
-    public ReadOnlyMemory<Point<T>> Densify()
+    public ReadOnlyMemory<Point<T>> Densify() => Densify(T.One);
+
+    /// <summary>
+    /// Densifies this Bezier curve by placing points along it at most <paramref name="unit"/> apart (arc-length based).
+    /// </summary>
+    public ReadOnlyMemory<Point<T>> Densify(T unit)
     {
+        var s = unit;
         var ctrlLen = Start.DistanceTo(C0) + C0.DistanceTo(C1) + C1.DistanceTo(End);
         int oversamples = int.Max(20, int.CreateChecked(T.Ceiling(ctrlLen)) * 4);
 
@@ -539,7 +545,7 @@ public readonly record struct BezierCurve<T> : IEnumerable<Point<T>>, IBoundingB
                 samples.Add(pt);
         }
 
-        // Walk samples, emit a point every 1 unit of arc length
+        // Walk samples, emit a point every s units of arc length
         var result = new List<Point<T>> { samples[0] };
         var accum = T.Zero;
         for (int i = 1; i < samples.Count; i++)
@@ -548,14 +554,14 @@ public readonly record struct BezierCurve<T> : IEnumerable<Point<T>>, IBoundingB
             var cur = samples[i];
             var d = prev.DistanceTo(cur);
             accum += d;
-            while (accum >= T.One)
+            while (accum >= s)
             {
-                var overshoot = accum - T.One;
+                var overshoot = accum - s;
                 var frac = (d - overshoot) / d;
                 result.Add(new Point<T>(
                     prev.X + (cur.X - prev.X) * frac,
                     prev.Y + (cur.Y - prev.Y) * frac));
-                accum -= T.One;
+                accum -= s;
             }
         }
         if (!ApproxEqual(result[^1], samples[^1]))

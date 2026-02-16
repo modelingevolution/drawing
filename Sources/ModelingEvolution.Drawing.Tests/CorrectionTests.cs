@@ -25,6 +25,7 @@ public class CorrectionTests
     private static readonly ComplexCurve<float> PerturbedTpl = PerturbBezierControlPoints(SharedTemplate, 5f, new Random(42));
     private static readonly ComplexCurve<float> ShiftedTpl = ShiftPolylineEdges(SharedTemplate, 3f, new Random(200));
     private static readonly ComplexCurve<float> ShiftedPerturbedTpl = PerturbBezierControlPoints(ShiftedTpl, 4f, new Random(42));
+    private static readonly ComplexCurve<float> DensifiedTpl = BuildPolylineCurve(SharedTemplate.Densify(0.5f).AsSpan().ToArray());
 
     private static NoiseEntry[] GenerateNoise(int count, float noiseMag, float dropoutFraction, Random rng)
     {
@@ -604,6 +605,94 @@ public class CorrectionTests
             "correction should produce non-zero changes since shape was perturbed");
     }
 
+    [Fact]
+    public void RoundedRect_DensifiedPolyline_NoNoise()
+    {
+        var template = DensifiedTpl;
+        // Zero noise, no dropout — just rotation + translation
+        var zeroNoise = new NoiseEntry[2000];
+        Array.Fill(zeroNoise, new NoiseEntry(0f, false));
+        var measured = DensifyAndPerturb(SharedTemplate, zeroNoise, Tx, Ty, AngleDeg);
+
+        var result = template.ComputeCorrections(measured);
+
+        var recoveredDeg = (float)(double)(Degree<float>)result.Alignment.Angle;
+        _output.WriteLine($"Applied angle: {AngleDeg}deg, Recovered: {recoveredDeg:F2}deg");
+        _output.WriteLine($"Translation: ({result.Alignment.Translation.X:F2}, {result.Alignment.Translation.Y:F2})");
+        _output.WriteLine($"Total residual: {result.TotalResidualError:F4}");
+
+        var correctedInTemplateSpace = result.CorrectedCurve
+            - result.Alignment.Translation
+            - result.Alignment.Angle;
+
+        var maxShapeDev = MaxShapeDeviation(template, correctedInTemplateSpace);
+        _output.WriteLine($"Max shape deviation (template space): {maxShapeDev:F4}");
+        // With zero noise, this should be near zero
+        maxShapeDev.Should().BeLessThan(1f,
+            "zero-noise correction should produce near-zero deviation");
+    }
+
+    [Fact]
+    public void RoundedRect_DensifiedPolyline_Unmodified()
+    {
+        var template = DensifiedTpl;
+        var measured = DensifyAndPerturb(SharedTemplate, SharedNoise, Tx, Ty, AngleDeg);
+        measured = SmoothPolyline(measured);
+
+        var result = template.ComputeCorrections(measured);
+
+        var recoveredDeg = (float)(double)(Degree<float>)result.Alignment.Angle;
+        _output.WriteLine($"Applied angle: {AngleDeg}deg, Recovered: {recoveredDeg:F2}deg");
+        _output.WriteLine($"Translation: ({result.Alignment.Translation.X:F2}, {result.Alignment.Translation.Y:F2})");
+        _output.WriteLine($"Total residual: {result.TotalResidualError:F4}");
+
+        RenderCorrectionSvg("densified-unmodified", template, measured, result);
+
+        var angleDiff = MathF.Abs(recoveredDeg - AngleDeg) % 180f;
+        if (angleDiff > 90f) angleDiff = 180f - angleDiff;
+        angleDiff.Should().BeLessThan(5f,
+            "recovered rotation should be close to applied angle");
+
+        // Pure polyline template → single polyline segment in result
+        result.CorrectedCurve.SegmentCount.Should().Be(1);
+
+        var correctedInTemplateSpace = result.CorrectedCurve
+            - result.Alignment.Translation
+            - result.Alignment.Angle;
+
+        var maxShapeDev = MaxShapeDeviation(template, correctedInTemplateSpace);
+        _output.WriteLine($"Max shape deviation (template space): {maxShapeDev:F4}");
+        maxShapeDev.Should().BeLessThan(5f,
+            "corrected curve should be near original template");
+    }
+
+    [Fact]
+    public void RoundedRect_DensifiedPolyline_Perturbed()
+    {
+        var template = DensifiedTpl;
+        var measured = DensifyAndPerturb(PerturbedTpl, SharedNoise, Tx, Ty, AngleDeg);
+        measured = SmoothPolyline(measured);
+
+        var result = template.ComputeCorrections(measured);
+
+        var recoveredDeg = (float)(double)(Degree<float>)result.Alignment.Angle;
+        _output.WriteLine($"Applied angle: {AngleDeg}deg, Recovered: {recoveredDeg:F2}deg");
+        _output.WriteLine($"Translation: ({result.Alignment.Translation.X:F2}, {result.Alignment.Translation.Y:F2})");
+        _output.WriteLine($"Total residual: {result.TotalResidualError:F4}");
+
+        var perturbedInMeasured = PerturbedTpl
+            + Degree<float>.Create(AngleDeg)
+            + new Vector<float>(Tx, Ty);
+        RenderCorrectionSvg("densified-perturbed", template, measured, result, perturbedInMeasured, PerturbedTpl);
+
+        var angleDiff = MathF.Abs(recoveredDeg - AngleDeg) % 180f;
+        if (angleDiff > 90f) angleDiff = 180f - angleDiff;
+        angleDiff.Should().BeLessThan(15f,
+            "recovered rotation should be close to applied angle (relaxed for perturbation)");
+
+        result.CorrectedCurve.SegmentCount.Should().Be(1);
+    }
+
     /// <summary>
     /// Perturbs Bezier corners while maintaining C1 continuity.
     /// Moving an endpoint also moves its anchored control point and the shared
@@ -1146,6 +1235,8 @@ public class CorrectionTests
         var polyshiftPerturbedStats = ReadStats("polyshift-perturbed");
         var smoothedUnmodifiedStats = ReadStats("smoothed-unmodified");
         var smoothedPerturbedStats = ReadStats("smoothed-perturbed");
+        var densifiedUnmodifiedStats = ReadStats("densified-unmodified");
+        var densifiedPerturbedStats = ReadStats("densified-perturbed");
 
         var sb = new StringBuilder();
         sb.AppendLine("""
@@ -1271,6 +1362,31 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 """);
         if (!string.IsNullOrEmpty(smoothedPerturbedStats))
             sb.AppendLine($"            <div class=\"card-stats\">{smoothedPerturbedStats}</div>");
+        sb.AppendLine("""
+        </div>
+""");
+        // Densified polyline cards
+        sb.AppendLine("""
+        <div class="card">
+            <div class="card-header">
+                <span>Densified Polyline — Unmodified</span>
+                <span class="meta">template densified (unit=3) | smoothed (window=3) | noise=1.0 | rot=12deg</span>
+            </div>
+            <div class="card-body"><img src="densified-unmodified.svg" alt="Densified Unmodified"></div>
+""");
+        if (!string.IsNullOrEmpty(densifiedUnmodifiedStats))
+            sb.AppendLine($"            <div class=\"card-stats\">{densifiedUnmodifiedStats}</div>");
+        sb.AppendLine("""
+        </div>
+        <div class="card">
+            <div class="card-header">
+                <span>Densified Polyline — Perturbed Key Points</span>
+                <span class="meta">template densified (unit=3) | 2 corners perturbed +-5 | smoothed (window=3) | noise=1.0 | rot=12deg</span>
+            </div>
+            <div class="card-body"><img src="densified-perturbed.svg" alt="Densified Perturbed"></div>
+""");
+        if (!string.IsNullOrEmpty(densifiedPerturbedStats))
+            sb.AppendLine($"            <div class=\"card-stats\">{densifiedPerturbedStats}</div>");
         sb.AppendLine("""
         </div>
     </div>

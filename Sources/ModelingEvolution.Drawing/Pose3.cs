@@ -97,7 +97,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// <summary>
     /// Gets or sets the rotation around X axis in degrees.
     /// </summary>
-    public T Rx
+    public Degree<T> Rx
     {
         readonly get => _rotation.Rx;
         set => _rotation.Rx = value;
@@ -106,7 +106,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// <summary>
     /// Gets or sets the rotation around Y axis in degrees.
     /// </summary>
-    public T Ry
+    public Degree<T> Ry
     {
         readonly get => _rotation.Ry;
         set => _rotation.Ry = value;
@@ -115,7 +115,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// <summary>
     /// Gets or sets the rotation around Z axis in degrees.
     /// </summary>
-    public T Rz
+    public Degree<T> Rz
     {
         readonly get => _rotation.Rz;
         set => _rotation.Rz = value;
@@ -217,12 +217,12 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
 
     /// <summary>
     /// Creates a pose from three points defining a surface plane using the right-hand rule.
-    /// Z direction is determined by (b-a) × (c-a). Reversing point order reverses Z direction.
+    /// Z direction is determined by (b-a) x (c-a). Reversing point order reverses Z direction.
     /// </summary>
     /// <param name="a">First point - becomes the origin, also defines X-axis direction with b.</param>
     /// <param name="b">Second point - defines X-axis direction from a.</param>
-    /// <param name="c">Third point - completes the plane; a→b→c order determines Z via right-hand rule.</param>
-    /// <returns>A pose where origin is at a, X-axis along a→b, Z-axis per right-hand rule.</returns>
+    /// <param name="c">Third point - completes the plane; a-b-c order determines Z via right-hand rule.</param>
+    /// <returns>A pose where origin is at a, X-axis along a-b, Z-axis per right-hand rule.</returns>
     /// <exception cref="ArgumentException">Thrown when points a, b, c are collinear.</exception>
     public static Pose3<T> FromSurface(Point3<T> a, Point3<T> b, Point3<T> c)
     {
@@ -232,7 +232,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
         var ab = b - a;
         var ac = c - a;
 
-        // Plane normal via right-hand rule: Z = (b-a) × (c-a)
+        // Plane normal via right-hand rule: Z = (b-a) x (c-a)
         var zAxis = Vector3<T>.Cross(ab, ac);
         var normalLength = zAxis.Length;
 
@@ -241,10 +241,10 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
 
         zAxis = zAxis / normalLength; // Normalize
 
-        // X-axis along edge a→b, normalized
+        // X-axis along edge a-b, normalized
         var xAxis = ab.Normalize();
 
-        // Y-axis completes right-hand system: Y = Z × X
+        // Y-axis completes right-hand system: Y = Z x X
         var yAxis = Vector3<T>.Cross(zAxis, xAxis);
 
         // Convert orthonormal basis to Euler angles (ZYX convention)
@@ -296,10 +296,10 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
         // Z-axis points toward h
         var zAxis = d > T.Zero ? normal : -normal;
 
-        // X-axis along edge a→b, normalized
+        // X-axis along edge a-b, normalized
         var xAxis = ab.Normalize();
 
-        // Y-axis completes right-hand system: Y = Z × X
+        // Y-axis completes right-hand system: Y = Z x X
         var yAxis = Vector3<T>.Cross(zAxis, xAxis);
 
         // Convert orthonormal basis to Euler angles (ZYX convention)
@@ -314,17 +314,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// </summary>
     private static Rotation3<T> RotationFromAxes(Vector3<T> xAxis, Vector3<T> yAxis, Vector3<T> zAxis)
     {
-        // We want Rotation3 R such that R.Rotate(e_i) = axis_i
-        // This requires extracting Euler angles from the TRANSPOSE of matrix [X|Y|Z]
-        // R^T[i,j] = R[j,i], so:
-        //   R^T[0,2] = xAxis.Z
-        //   R^T[1,2] = yAxis.Z
-        //   R^T[2,2] = zAxis.Z
-        //   R^T[0,1] = xAxis.Y
-        //   R^T[0,0] = xAxis.X
-
         var one = T.One;
-        var rad2Deg = T.CreateTruncating(180) / T.Pi;
         var epsilon = T.CreateTruncating(1e-6);
 
         // Clamp to [-1, 1] to avoid NaN from asin
@@ -345,12 +335,16 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
         }
         else
         {
-            // Gimbal lock - pitch is ±90°
+            // Gimbal lock - pitch is +/-90 deg
             rx = T.Atan2(-zAxis.Y, yAxis.Y);
             rz = T.Zero;
         }
 
-        return new Rotation3<T>(rx * rad2Deg, ry * rad2Deg, rz * rad2Deg);
+        // rx, ry, rz are in radians — convert via Radian<T> → Degree<T>
+        return new Rotation3<T>(
+            (Degree<T>)Radian<T>.FromRadian(rx),
+            (Degree<T>)Radian<T>.FromRadian(ry),
+            (Degree<T>)Radian<T>.FromRadian(rz));
     }
 
     #endregion
@@ -361,7 +355,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
         new(tuple.x, tuple.y, tuple.z, tuple.rx, tuple.ry, tuple.rz);
 
     public static implicit operator (T x, T y, T z, T rx, T ry, T rz)(Pose3<T> pose) =>
-        (pose.X, pose.Y, pose.Z, pose.Rx, pose.Ry, pose.Rz);
+        (pose.X, pose.Y, pose.Z, (T)pose.Rx, (T)pose.Ry, (T)pose.Rz);
 
     /// <summary>
     /// Deconstructs into position and rotation.
@@ -380,9 +374,9 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
         x = X;
         y = Y;
         z = Z;
-        rx = Rx;
-        ry = Ry;
-        rz = Rz;
+        rx = (T)Rx;
+        ry = (T)Ry;
+        rz = (T)Rz;
     }
 
     #endregion
@@ -394,7 +388,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     public override readonly int GetHashCode() => HashCode.Combine(_position, _rotation);
 
     public override readonly string ToString() =>
-        $"{{X={X}, Y={Y}, Z={Z}, Rx={Rx}, Ry={Ry}, Rz={Rz}}}";
+        $"{{X={X}, Y={Y}, Z={Z}, Rx={(T)Rx}, Ry={(T)Ry}, Rz={(T)Rz}}}";
 
     #endregion
 

@@ -11,20 +11,20 @@ public class SpeedTests
     public void From_CreatesSpeed()
     {
         var s = Speed<float>.From(10f);
-        s.Value.Should().BeApproximately(10f, Tol);
+        ((float)s).Should().BeApproximately(10f, Tol);
     }
 
     [Fact]
     public void Zero_IsZero()
     {
-        Speed<float>.Zero.Value.Should().Be(0f);
+        ((float)Speed<float>.Zero).Should().Be(0f);
     }
 
     [Fact]
     public void ImplicitConversion_FromT()
     {
         Speed<float> s = 42f;
-        s.Value.Should().BeApproximately(42f, Tol);
+        ((float)s).Should().BeApproximately(42f, Tol);
     }
 
     [Fact]
@@ -39,7 +39,7 @@ public class SpeedTests
     {
         var a = Speed<float>.From(10f);
         var b = Speed<float>.From(5f);
-        (a + b).Value.Should().BeApproximately(15f, Tol);
+        ((float)(a + b)).Should().BeApproximately(15f, Tol);
     }
 
     [Fact]
@@ -47,29 +47,29 @@ public class SpeedTests
     {
         var a = Speed<float>.From(10f);
         var b = Speed<float>.From(3f);
-        (a - b).Value.Should().BeApproximately(7f, Tol);
+        ((float)(a - b)).Should().BeApproximately(7f, Tol);
     }
 
     [Fact]
     public void Negation()
     {
         var s = Speed<float>.From(10f);
-        (-s).Value.Should().BeApproximately(-10f, Tol);
+        ((float)(-s)).Should().BeApproximately(-10f, Tol);
     }
 
     [Fact]
     public void MultiplyByScalar()
     {
         var s = Speed<float>.From(5f);
-        (s * 3f).Value.Should().BeApproximately(15f, Tol);
-        (3f * s).Value.Should().BeApproximately(15f, Tol);
+        ((float)(s * 3f)).Should().BeApproximately(15f, Tol);
+        ((float)(3f * s)).Should().BeApproximately(15f, Tol);
     }
 
     [Fact]
     public void DivideByScalar()
     {
         var s = Speed<float>.From(15f);
-        (s / 3f).Value.Should().BeApproximately(5f, Tol);
+        ((float)(s / 3f)).Should().BeApproximately(5f, Tol);
     }
 
     [Fact]
@@ -90,7 +90,7 @@ public class SpeedTests
     public void Abs_ReturnsPositive()
     {
         var s = Speed<float>.From(-10f);
-        s.Abs().Value.Should().BeApproximately(10f, Tol);
+        ((float)s.Abs()).Should().BeApproximately(10f, Tol);
     }
 
     [Fact]
@@ -117,7 +117,7 @@ public class SpeedTests
     {
         var s = Speed<float>.From(42.5f);
         Speed<float>.TryParse("42.5", null, out var parsed).Should().BeTrue();
-        parsed.Value.Should().BeApproximately(42.5f, Tol);
+        ((float)parsed).Should().BeApproximately(42.5f, Tol);
     }
 
     [Fact]

@@ -15,12 +15,10 @@ namespace ModelingEvolution.Drawing;
 public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
-    private T _rx; // Roll - rotation around X axis
-    private T _ry; // Pitch - rotation around Y axis
-    private T _rz; // Yaw - rotation around Z axis
+    private Degree<T> _rx; // Roll - rotation around X axis
+    private Degree<T> _ry; // Pitch - rotation around Y axis
+    private Degree<T> _rz; // Yaw - rotation around Z axis
 
-    private static readonly T Deg2Rad = T.Pi / T.CreateTruncating(180);
-    private static readonly T Rad2Deg = T.CreateTruncating(180) / T.Pi;
     private static readonly T Two = T.CreateTruncating(2);
 
     /// <summary>
@@ -34,7 +32,7 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     /// <param name="rx">Roll - rotation around X axis in degrees.</param>
     /// <param name="ry">Pitch - rotation around Y axis in degrees.</param>
     /// <param name="rz">Yaw - rotation around Z axis in degrees.</param>
-    public Rotation3(T rx, T ry, T rz)
+    public Rotation3(Degree<T> rx, Degree<T> ry, Degree<T> rz)
     {
         _rx = rx;
         _ry = ry;
@@ -44,8 +42,7 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     /// <summary>
     /// Gets or sets Roll (rotation around X axis) in degrees.
     /// </summary>
-    [ProtoMember(1)]
-    public T Rx
+    public Degree<T> Rx
     {
         readonly get => _rx;
         set => _rx = value;
@@ -54,8 +51,7 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     /// <summary>
     /// Gets or sets Pitch (rotation around Y axis) in degrees.
     /// </summary>
-    [ProtoMember(2)]
-    public T Ry
+    public Degree<T> Ry
     {
         readonly get => _ry;
         set => _ry = value;
@@ -64,17 +60,38 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     /// <summary>
     /// Gets or sets Yaw (rotation around Z axis) in degrees.
     /// </summary>
-    [ProtoMember(3)]
-    public T Rz
+    public Degree<T> Rz
     {
         readonly get => _rz;
+        set => _rz = value;
+    }
+
+    // Protobuf shadow properties — serialize as raw T for wire compatibility
+    [ProtoMember(1)]
+    private T ProtoRx
+    {
+        readonly get => (T)_rx;
+        set => _rx = value;
+    }
+
+    [ProtoMember(2)]
+    private T ProtoRy
+    {
+        readonly get => (T)_ry;
+        set => _ry = value;
+    }
+
+    [ProtoMember(3)]
+    private T ProtoRz
+    {
+        readonly get => (T)_rz;
         set => _rz = value;
     }
 
     /// <summary>
     /// Gets a value indicating whether this rotation is identity (no rotation).
     /// </summary>
-    public readonly bool IsIdentity => _rx == T.Zero && _ry == T.Zero && _rz == T.Zero;
+    public readonly bool IsIdentity => _rx == Degree<T>.Zero && _ry == Degree<T>.Zero && _rz == Degree<T>.Zero;
 
     /// <summary>
     /// Creates a rotation from degrees.
@@ -84,12 +101,12 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     /// <summary>
     /// Creates a rotation from radians.
     /// </summary>
-    public static Rotation3<T> FromRadians(T rx, T ry, T rz) => new(rx * Rad2Deg, ry * Rad2Deg, rz * Rad2Deg);
+    public static Rotation3<T> FromRadians(Radian<T> rx, Radian<T> ry, Radian<T> rz) => new((Degree<T>)rx, (Degree<T>)ry, (Degree<T>)rz);
 
     /// <summary>
     /// Gets the rotation angles in radians.
     /// </summary>
-    public readonly (T rx, T ry, T rz) ToRadians() => (_rx * Deg2Rad, _ry * Deg2Rad, _rz * Deg2Rad);
+    public readonly (Radian<T> rx, Radian<T> ry, Radian<T> rz) ToRadians() => ((Radian<T>)_rx, (Radian<T>)_ry, (Radian<T>)_rz);
 
     /// <summary>
     /// Converts to a quaternion representation.
@@ -97,9 +114,9 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     public readonly Quaternion<T> ToQuaternion()
     {
         var (rx, ry, rz) = ToRadians();
-        var halfRx = rx / Two;
-        var halfRy = ry / Two;
-        var halfRz = rz / Two;
+        var halfRx = (T)rx / Two;
+        var halfRy = (T)ry / Two;
+        var halfRz = (T)rz / Two;
 
         var cx = T.Cos(halfRx);
         var sx = T.Sin(halfRx);
@@ -129,7 +146,7 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
 
         if (T.Abs(sinp) >= gimbalThreshold)
         {
-            // Gimbal lock: Ry ≈ ±90°. Rx and Rz share one degree of freedom.
+            // Gimbal lock: Ry ~ +/-90 deg. Rx and Rz share one degree of freedom.
             // Convention: set Rz = 0, recover Rx from rotation matrix R[0][1], R[0][2].
             ry = T.CopySign(T.Pi / Two, sinp);
             rz = T.Zero;
@@ -155,7 +172,11 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
             rz = T.Atan2(sinyCosp, cosyCosp);
         }
 
-        return new Rotation3<T>(rx * Rad2Deg, ry * Rad2Deg, rz * Rad2Deg);
+        // rx, ry, rz are in radians — wrap in Radian<T> then implicit-convert to Degree<T>
+        return new Rotation3<T>(
+            (Degree<T>)Radian<T>.FromRadian(rx),
+            (Degree<T>)Radian<T>.FromRadian(ry),
+            (Degree<T>)Radian<T>.FromRadian(rz));
     }
 
     /// <summary>
@@ -209,7 +230,7 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     public Rotation3<U> Truncating<U>()
         where U : INumber<U>, ITrigonometricFunctions<U>, IRootFunctions<U>, IFloatingPoint<U>, ISignedNumber<U>, IFloatingPointIeee754<U>, IMinMaxValue<U>
     {
-        return new Rotation3<U>(U.CreateTruncating(_rx), U.CreateTruncating(_ry), U.CreateTruncating(_rz));
+        return new Rotation3<U>(_rx.Truncate<U>(), _ry.Truncate<U>(), _rz.Truncate<U>());
     }
 
     #region Operators
@@ -224,7 +245,7 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     #region Conversions
 
     public static implicit operator Rotation3<T>((T rx, T ry, T rz) tuple) => new(tuple.rx, tuple.ry, tuple.rz);
-    public static implicit operator (T rx, T ry, T rz)(Rotation3<T> r) => (r._rx, r._ry, r._rz);
+    public static implicit operator (T rx, T ry, T rz)(Rotation3<T> r) => ((T)r._rx, (T)r._ry, (T)r._rz);
 
     /// <summary>
     /// Converts a rotation to a unit vector (versor) representing the direction
@@ -239,7 +260,7 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     public readonly bool Equals(Rotation3<T> other) => this == other;
     public override readonly bool Equals([NotNullWhen(true)] object? obj) => obj is Rotation3<T> r && Equals(r);
     public override readonly int GetHashCode() => HashCode.Combine(_rx, _ry, _rz);
-    public override readonly string ToString() => $"{{Rx={_rx}, Ry={_ry}, Rz={_rz}}}";
+    public override readonly string ToString() => $"{{Rx={(T)_rx}, Ry={(T)_ry}, Rz={(T)_rz}}}";
 
     #endregion
 

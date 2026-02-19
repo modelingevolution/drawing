@@ -56,9 +56,9 @@ public class Trajectory3JsonConverter<T> : JsonConverter<Trajectory3<T>>
             _writeNumber(writer, wp.Pose.X);
             _writeNumber(writer, wp.Pose.Y);
             _writeNumber(writer, wp.Pose.Z);
-            _writeNumber(writer, wp.Pose.Rx);
-            _writeNumber(writer, wp.Pose.Ry);
-            _writeNumber(writer, wp.Pose.Rz);
+            _writeNumber(writer, (T)wp.Pose.Rx);
+            _writeNumber(writer, (T)wp.Pose.Ry);
+            _writeNumber(writer, (T)wp.Pose.Rz);
             _writeNumber(writer, wp.Time);
         }
         writer.WriteEndArray();

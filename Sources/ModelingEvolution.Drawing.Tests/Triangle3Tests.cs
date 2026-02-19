@@ -162,8 +162,8 @@ public class Triangle3Tests
         // Check that Z-axis of pose points along (0,0,1)
         var rotation = pose.Rotation;
         // For a horizontal surface, Rx and Ry should be near 0
-        rotation.Rx.Should().BeApproximately(0, 1);
-        rotation.Ry.Should().BeApproximately(0, 1);
+        ((double)rotation.Rx).Should().BeApproximately(0, 1);
+        ((double)rotation.Ry).Should().BeApproximately(0, 1);
     }
 
     #endregion

@@ -55,9 +55,9 @@ public class PosePath3JsonConverter<T> : JsonConverter<PosePath3<T>>
             _writeNumber(writer, pose.X);
             _writeNumber(writer, pose.Y);
             _writeNumber(writer, pose.Z);
-            _writeNumber(writer, pose.Rx);
-            _writeNumber(writer, pose.Ry);
-            _writeNumber(writer, pose.Rz);
+            _writeNumber(writer, (T)pose.Rx);
+            _writeNumber(writer, (T)pose.Ry);
+            _writeNumber(writer, (T)pose.Rz);
         }
         writer.WriteEndArray();
     }

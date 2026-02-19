@@ -35,7 +35,7 @@ public readonly record struct Velocity3<T>
     /// Creates a velocity from a direction and speed.
     /// </summary>
     public static Velocity3<T> From(Vector3<T> direction, Speed<T> speed)
-        => new(direction.Normalize() * speed.Value);
+        => new(direction.Normalize() * (T)speed);
 
     /// <summary>Gets the X component.</summary>
     public T X => _vector.X;

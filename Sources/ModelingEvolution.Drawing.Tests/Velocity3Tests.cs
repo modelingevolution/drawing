@@ -20,7 +20,7 @@ public class Velocity3Tests
     public void Speed_IsMagnitude()
     {
         var v = new Velocity3<float>(3, 4, 0);
-        v.Speed.Value.Should().BeApproximately(5f, Tol);
+        ((float)v.Speed).Should().BeApproximately(5f, Tol);
     }
 
     [Fact]
@@ -80,6 +80,6 @@ public class Velocity3Tests
     public void Zero_IsZero()
     {
         var v = Velocity3<float>.Zero;
-        v.Speed.Value.Should().BeApproximately(0f, Tol);
+        ((float)v.Speed).Should().BeApproximately(0f, Tol);
     }
 }

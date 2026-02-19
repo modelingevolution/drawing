@@ -32,11 +32,6 @@ public readonly record struct Speed<T> : IComparisonOperators<Speed<T>, Speed<T>
     public static Speed<T> From(T value) => new(value);
 
     /// <summary>
-    /// Gets the underlying numeric value.
-    /// </summary>
-    public T Value => _val;
-
-    /// <summary>
     /// Implicitly converts a numeric value to a speed.
     /// </summary>
     public static implicit operator Speed<T>(T src) => new(src);

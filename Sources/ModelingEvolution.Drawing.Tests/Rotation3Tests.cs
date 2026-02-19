@@ -76,9 +76,12 @@ public class Rotation3Tests
     [Fact]
     public void Rotation3_FromRadians_ConvertsToInternal()
     {
-        var rotation = Rotation3<double>.FromRadians(Math.PI / 2, 0, 0);
+        var rotation = Rotation3<double>.FromRadians(
+            Radian<double>.FromRadian(Math.PI / 2),
+            Radian<double>.FromRadian(0),
+            Radian<double>.FromRadian(0));
 
-        rotation.Rx.Should().BeApproximately(90, Tolerance);
+        ((double)rotation.Rx).Should().BeApproximately(90, Tolerance);
     }
 
     [Fact]
@@ -88,9 +91,9 @@ public class Rotation3Tests
 
         var (rx, ry, rz) = rotation.ToRadians();
 
-        rx.Should().BeApproximately(Math.PI / 2, Tolerance);
-        ry.Should().BeApproximately(Math.PI, Tolerance);
-        rz.Should().BeApproximately(3 * Math.PI / 2, Tolerance);
+        ((double)rx).Should().BeApproximately(Math.PI / 2, Tolerance);
+        ((double)ry).Should().BeApproximately(Math.PI, Tolerance);
+        ((double)rz).Should().BeApproximately(3 * Math.PI / 2, Tolerance);
     }
 
     #endregion
@@ -118,9 +121,9 @@ public class Rotation3Tests
         var quaternion = original.ToQuaternion();
         var backToRotation = Rotation3<double>.FromQuaternion(quaternion);
 
-        backToRotation.Rx.Should().BeApproximately(original.Rx, 1e-6);
-        backToRotation.Ry.Should().BeApproximately(original.Ry, 1e-6);
-        backToRotation.Rz.Should().BeApproximately(original.Rz, 1e-6);
+        ((double)backToRotation.Rx).Should().BeApproximately((double)original.Rx, 1e-6);
+        ((double)backToRotation.Ry).Should().BeApproximately((double)original.Ry, 1e-6);
+        ((double)backToRotation.Rz).Should().BeApproximately((double)original.Rz, 1e-6);
     }
 
     #endregion
@@ -230,7 +233,7 @@ public class Rotation3Tests
 
         var result = Rotation3<double>.Slerp(a, b, 0);
 
-        result.Rx.Should().BeApproximately(0, 1e-6);
+        ((double)result.Rx).Should().BeApproximately(0, 1e-6);
     }
 
     [Fact]
@@ -241,7 +244,7 @@ public class Rotation3Tests
 
         var result = Rotation3<double>.Slerp(a, b, 1);
 
-        result.Rx.Should().BeApproximately(90, 1e-6);
+        ((double)result.Rx).Should().BeApproximately(90, 1e-6);
     }
 
     [Fact]
@@ -252,7 +255,7 @@ public class Rotation3Tests
 
         var result = Rotation3<double>.Slerp(a, b, 0.5);
 
-        result.Rx.Should().BeApproximately(45, 1e-6);
+        ((double)result.Rx).Should().BeApproximately(45, 1e-6);
     }
 
     #endregion

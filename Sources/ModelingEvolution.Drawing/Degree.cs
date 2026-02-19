@@ -191,15 +191,6 @@ public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree
         return new Degree<T>(tmp);
     }
 
-    /// <summary>
-    /// Gets the underlying numeric value of this degree measurement.
-    /// </summary>
-    /// <returns>The numeric value in degrees.</returns>
-    public T GetValue()
-    {
-        return _val; 
-    }
-    
 
     /// <summary>
     /// Compares this degree value to another degree value.

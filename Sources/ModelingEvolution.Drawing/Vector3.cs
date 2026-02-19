@@ -171,7 +171,6 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     public Rotation3<T> RotationTo(Vector3<T> target)
     {
         var epsilon = T.CreateTruncating(1e-6);
-        var rad2Deg = T.CreateTruncating(180) / T.Pi;
 
         var from = Normalize();
         var to = target.Normalize();
@@ -206,7 +205,6 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     /// </summary>
     private static Rotation3<T> RotationFromAxisAngle(Vector3<T> axis, T angleRadians)
     {
-        var rad2Deg = T.CreateTruncating(180) / T.Pi;
         var halfAngle = angleRadians / T.CreateTruncating(2);
         var s = T.Sin(halfAngle);
         var c = T.Cos(halfAngle);
@@ -233,7 +231,11 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
         var cosYaw = T.One - T.CreateTruncating(2) * (qy * qy + qz * qz);
         var rz = T.Atan2(sinYaw, cosYaw);
 
-        return new Rotation3<T>(rx * rad2Deg, ry * rad2Deg, rz * rad2Deg);
+        // rx, ry, rz are in radians — convert via Radian<T> → Degree<T>
+        return new Rotation3<T>(
+            (Degree<T>)Radian<T>.FromRadian(rx),
+            (Degree<T>)Radian<T>.FromRadian(ry),
+            (Degree<T>)Radian<T>.FromRadian(rz));
     }
 
     /// <summary>
@@ -343,8 +345,6 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
         var y = v._y / len;
         var z = v._z / len;
 
-        var rad2Deg = T.CreateTruncating(180) / T.Pi;
-
         // For ZYX quaternion order, rotation is applied as: Rz(Ry(Rx(v)))
         // Starting with +Z = (0, 0, 1), after Rx then Ry then Rz (with rz=0):
         // x = cos(rx)*sin(ry)
@@ -353,16 +353,17 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
         //
         // Therefore: rx = -asin(y), ry = atan2(x, z)
 
-        // Roll (rotation around X) - determines Y component
-        var rx = T.Asin(T.Clamp(-y, -T.One, T.One)) * rad2Deg;
+        // Roll (rotation around X) - determines Y component (result in radians)
+        var rx = T.Asin(T.Clamp(-y, -T.One, T.One));
 
-        // Pitch (rotation around Y) - determines X/Z ratio
-        var ry = T.Atan2(x, z) * rad2Deg;
+        // Pitch (rotation around Y) - determines X/Z ratio (result in radians)
+        var ry = T.Atan2(x, z);
 
         // Yaw (rotation around Z) - not needed for direction, set to 0
-        var rz = T.Zero;
-
-        return new Rotation3<T>(rx, ry, rz);
+        return new Rotation3<T>(
+            (Degree<T>)Radian<T>.FromRadian(rx),
+            (Degree<T>)Radian<T>.FromRadian(ry),
+            Degree<T>.Zero);
     }
 
     #endregion

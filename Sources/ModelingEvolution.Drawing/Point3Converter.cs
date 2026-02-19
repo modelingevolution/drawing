@@ -144,9 +144,9 @@ public abstract class Rotation3Converter<T> : JsonConverter<Rotation3<T>>
     public override void Write(Utf8JsonWriter writer, Rotation3<T> value, JsonSerializerOptions options)
     {
         writer.WriteStartArray();
-        WriteValue(writer, value.Rx);
-        WriteValue(writer, value.Ry);
-        WriteValue(writer, value.Rz);
+        WriteValue(writer, (T)value.Rx);
+        WriteValue(writer, (T)value.Ry);
+        WriteValue(writer, (T)value.Rz);
         writer.WriteEndArray();
     }
 }
@@ -208,9 +208,9 @@ public abstract class Pose3Converter<T> : JsonConverter<Pose3<T>>
         WriteValue(writer, value.X);
         WriteValue(writer, value.Y);
         WriteValue(writer, value.Z);
-        WriteValue(writer, value.Rx);
-        WriteValue(writer, value.Ry);
-        WriteValue(writer, value.Rz);
+        WriteValue(writer, (T)value.Rx);
+        WriteValue(writer, (T)value.Ry);
+        WriteValue(writer, (T)value.Rz);
         writer.WriteEndArray();
     }
 }

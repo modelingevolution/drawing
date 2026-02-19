@@ -19,6 +19,7 @@ public struct Quaternion<T> : IEquatable<Quaternion<T>>
     private T _z;
 
     private static readonly T Two = T.CreateTruncating(2);
+    private static readonly T SlerpThreshold = T.One - T.CreateTruncating(1e-6);
 
     /// <summary>
     /// Represents the identity quaternion (no rotation).
@@ -166,7 +167,9 @@ public struct Quaternion<T> : IEquatable<Quaternion<T>>
         }
 
         // If quaternions are very close, use linear interpolation
-        if (dot > T.One - T.Epsilon)
+        // Note: T.Epsilon is the smallest representable positive value (e.g. 1.4e-45 for float),
+        // NOT machine epsilon. We need a practical threshold to avoid division by sin(~0).
+        if (dot > SlerpThreshold)
         {
             return new Quaternion<T>(
                 a._w + t * (b._w - a._w),

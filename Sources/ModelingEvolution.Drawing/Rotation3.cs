@@ -122,20 +122,38 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     public static Rotation3<T> FromQuaternion(Quaternion<T> q)
     {
         // Extract Euler angles from quaternion (ZYX order)
-        var sinrCosp = Two * (q.W * q.X + q.Y * q.Z);
-        var cosrCosp = T.One - Two * (q.X * q.X + q.Y * q.Y);
-        var rx = T.Atan2(sinrCosp, cosrCosp);
-
         var sinp = Two * (q.W * q.Y - q.Z * q.X);
-        T ry;
-        if (T.Abs(sinp) >= T.One)
-            ry = T.CopySign(T.Pi / Two, sinp); // Use 90 degrees if out of range
+        T rx, ry, rz;
+
+        var gimbalThreshold = T.One - T.CreateTruncating(1e-6);
+
+        if (T.Abs(sinp) >= gimbalThreshold)
+        {
+            // Gimbal lock: Ry ≈ ±90°. Rx and Rz share one degree of freedom.
+            // Convention: set Rz = 0, recover Rx from rotation matrix R[0][1], R[0][2].
+            ry = T.CopySign(T.Pi / Two, sinp);
+            rz = T.Zero;
+
+            var r01 = Two * (q.X * q.Y - q.W * q.Z);
+            var r02 = Two * (q.X * q.Z + q.W * q.Y);
+
+            rx = sinp > T.Zero
+                ? T.Atan2(r01, r02)
+                : T.Atan2(-r01, -r02);
+        }
         else
+        {
+            // Normal case
+            var sinrCosp = Two * (q.W * q.X + q.Y * q.Z);
+            var cosrCosp = T.One - Two * (q.X * q.X + q.Y * q.Y);
+            rx = T.Atan2(sinrCosp, cosrCosp);
+
             ry = T.Asin(sinp);
 
-        var sinyCosp = Two * (q.W * q.Z + q.X * q.Y);
-        var cosyCosp = T.One - Two * (q.Y * q.Y + q.Z * q.Z);
-        var rz = T.Atan2(sinyCosp, cosyCosp);
+            var sinyCosp = Two * (q.W * q.Z + q.X * q.Y);
+            var cosyCosp = T.One - Two * (q.Y * q.Y + q.Z * q.Z);
+            rz = T.Atan2(sinyCosp, cosyCosp);
+        }
 
         return new Rotation3<T>(rx * Rad2Deg, ry * Rad2Deg, rz * Rad2Deg);
     }

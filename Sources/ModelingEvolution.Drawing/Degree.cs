@@ -30,7 +30,7 @@ public static class Degree
 /// </summary>
 /// <typeparam name="T">The numeric type that supports trigonometric functions.</typeparam>
 [DebuggerDisplay("{_val}")]
-public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree<T>, bool>, IComparable<Degree<T>>, IComparable 
+public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree<T>, bool>, IComparable<Degree<T>>, IComparable, IFormattable
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>
 {
     /// <summary>
@@ -221,5 +221,16 @@ public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree
     public override string ToString()
     {
         return $"{_val}\u00b0";
+    }
+
+    /// <summary>
+    /// Formats this degree value using the specified format and provider.
+    /// The format string is applied to the underlying numeric value; the degree symbol is appended.
+    /// </summary>
+    public string ToString(string? format, IFormatProvider? formatProvider = null)
+    {
+        if (_val is IFormattable f)
+            return f.ToString(format, formatProvider) + "\u00b0";
+        return ToString();
     }
 }

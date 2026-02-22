@@ -255,6 +255,46 @@ public class Joints6Tests
         a.IsWithin(b, Degree<double>.Create(1.0)).Should().BeFalse();
     }
 
+    [Fact]
+    public void IsBetween_AllWithinRange_ReturnsTrue()
+    {
+        var value = MakeJoints(10, 20, 30, 40, 50, 60);
+        var min = MakeJoints(0, 10, 20, 30, 40, 50);
+        var max = MakeJoints(20, 30, 40, 50, 60, 70);
+
+        value.IsBetween(min, max).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsBetween_OnBoundary_ReturnsTrue()
+    {
+        var value = MakeJoints(0, 10, 20, 30, 40, 50);
+        var min = MakeJoints(0, 10, 20, 30, 40, 50);
+        var max = MakeJoints(20, 30, 40, 50, 60, 70);
+
+        value.IsBetween(min, max).Should().BeTrue();
+    }
+
+    [Fact]
+    public void IsBetween_OneJointBelow_ReturnsFalse()
+    {
+        var value = MakeJoints(-1, 20, 30, 40, 50, 60);
+        var min = MakeJoints(0, 10, 20, 30, 40, 50);
+        var max = MakeJoints(20, 30, 40, 50, 60, 70);
+
+        value.IsBetween(min, max).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsBetween_OneJointAbove_ReturnsFalse()
+    {
+        var value = MakeJoints(10, 20, 30, 40, 50, 71);
+        var min = MakeJoints(0, 10, 20, 30, 40, 50);
+        var max = MakeJoints(20, 30, 40, 50, 60, 70);
+
+        value.IsBetween(min, max).Should().BeFalse();
+    }
+
     #endregion
 
     #region ToArray / FromArray / CopyTo / FromSpan

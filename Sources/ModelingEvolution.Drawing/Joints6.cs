@@ -187,6 +187,20 @@ public struct Joints6<T> : IEquatable<Joints6<T>>, IParsable<Joints6<T>>, IForma
     public readonly bool IsWithin(Joints6<T> other, Degree<T> tolerance) => MaxAbsDelta(other) <= tolerance;
 
     /// <summary>
+    /// Returns true if every joint angle is between the corresponding min and max values (inclusive).
+    /// </summary>
+    /// <param name="min">The minimum allowed angles per joint.</param>
+    /// <param name="max">The maximum allowed angles per joint.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly bool IsBetween(Joints6<T> min, Joints6<T> max) =>
+        _j1 >= min._j1 && _j1 <= max._j1 &&
+        _j2 >= min._j2 && _j2 <= max._j2 &&
+        _j3 >= min._j3 && _j3 <= max._j3 &&
+        _j4 >= min._j4 && _j4 <= max._j4 &&
+        _j5 >= min._j5 && _j5 <= max._j5 &&
+        _j6 >= min._j6 && _j6 <= max._j6;
+
+    /// <summary>
     /// Copies the joint angles into a new array of Degree{T}.
     /// </summary>
     public readonly Degree<T>[] ToArray() => [_j1, _j2, _j3, _j4, _j5, _j6];

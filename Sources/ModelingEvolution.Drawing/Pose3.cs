@@ -51,6 +51,16 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     }
 
     /// <summary>
+    /// Initializes a new pose with the specified position and rotation angles in degrees.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public Pose3(T x, T y, T z, Degree<T> rx, Degree<T> ry, Degree<T> rz)
+    {
+        _position = new Point3<T>(x, y, z);
+        _rotation = new Rotation3<T>(rx, ry, rz);
+    }
+
+    /// <summary>
     /// Gets or sets the position component.
     /// </summary>
     [ProtoMember(1)]

@@ -267,6 +267,22 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
 
     #endregion
 
+    /// <summary>
+    /// Converts this Euler rotation to a 3×3 rotation matrix (ZYX convention).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly Matrix3x3<T> ToMatrix3x3() => Matrix3x3<T>.RotationZYX(_rx, _ry, _rz);
+
+    /// <summary>
+    /// Creates a rotation from a 3×3 rotation matrix by extracting ZYX Euler angles.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Rotation3<T> FromMatrix3x3(Matrix3x3<T> m)
+    {
+        var (rx, ry, rz) = m.ToEulerZYX();
+        return new Rotation3<T>(rx, ry, rz);
+    }
+
     #region Conversions
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]

@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using ProtoBuf;
 
 namespace ModelingEvolution.Drawing;
@@ -29,6 +30,7 @@ public struct Point3<T> : IEquatable<Point3<T>>, IParsable<Point3<T>>
     /// <summary>
     /// Initializes a new instance of the Point3 struct with the specified coordinates.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Point3(T x, T y, T z)
     {
         _x = x;
@@ -39,6 +41,7 @@ public struct Point3<T> : IEquatable<Point3<T>>, IParsable<Point3<T>>
     /// <summary>
     /// Initializes a new instance of the Point3 struct from a System.Numerics.Vector3.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Point3(System.Numerics.Vector3 vector)
     {
         _x = T.CreateTruncating(vector.X);
@@ -52,7 +55,9 @@ public struct Point3<T> : IEquatable<Point3<T>>, IParsable<Point3<T>>
     [ProtoMember(1)]
     public T X
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         readonly get => _x;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set => _x = value;
     }
 
@@ -62,7 +67,9 @@ public struct Point3<T> : IEquatable<Point3<T>>, IParsable<Point3<T>>
     [ProtoMember(2)]
     public T Y
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         readonly get => _y;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set => _y = value;
     }
 
@@ -72,7 +79,9 @@ public struct Point3<T> : IEquatable<Point3<T>>, IParsable<Point3<T>>
     [ProtoMember(3)]
     public T Z
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         readonly get => _z;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set => _z = value;
     }
 
@@ -80,7 +89,11 @@ public struct Point3<T> : IEquatable<Point3<T>>, IParsable<Point3<T>>
     /// Gets a value indicating whether this point is at the origin.
     /// </summary>
     [Browsable(false)]
-    public readonly bool IsEmpty => _x == T.Zero && _y == T.Zero && _z == T.Zero;
+    public readonly bool IsEmpty
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => _x == T.Zero && _y == T.Zero && _z == T.Zero;
+    }
 
     /// <summary>
     /// Generates a random point within a unit cube [0,1]^3.
@@ -107,6 +120,7 @@ public struct Point3<T> : IEquatable<Point3<T>>, IParsable<Point3<T>>
     /// <summary>
     /// Calculates the midpoint between two points.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Point3<T> Middle(Point3<T> a, Point3<T> b)
     {
         return new Point3<T>((a._x + b._x) / Two, (a._y + b._y) / Two, (a._z + b._z) / Two);
@@ -115,6 +129,7 @@ public struct Point3<T> : IEquatable<Point3<T>>, IParsable<Point3<T>>
     /// <summary>
     /// Calculates the Euclidean distance between two points.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T Distance(Point3<T> a, Point3<T> b)
     {
         var dx = b._x - a._x;
@@ -126,6 +141,7 @@ public struct Point3<T> : IEquatable<Point3<T>>, IParsable<Point3<T>>
     /// <summary>
     /// Calculates the squared distance between two points (more efficient than Distance).
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T DistanceSquared(Point3<T> a, Point3<T> b)
     {
         var dx = b._x - a._x;
@@ -137,6 +153,7 @@ public struct Point3<T> : IEquatable<Point3<T>>, IParsable<Point3<T>>
     /// <summary>
     /// Linearly interpolates between two points.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Point3<T> Lerp(Point3<T> a, Point3<T> b, T t)
     {
         return new Point3<T>(
@@ -156,28 +173,42 @@ public struct Point3<T> : IEquatable<Point3<T>>, IParsable<Point3<T>>
 
     #region Operators
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Point3<T> operator +(Point3<T> pt, Vector3<T> v) => new(pt._x + v.X, pt._y + v.Y, pt._z + v.Z);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Point3<T> operator -(Point3<T> pt, Vector3<T> v) => new(pt._x - v.X, pt._y - v.Y, pt._z - v.Z);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector3<T> operator -(Point3<T> a, Point3<T> b) => new(a._x - b._x, a._y - b._y, a._z - b._z);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Point3<T> operator *(Point3<T> pt, T scalar) => new(pt._x * scalar, pt._y * scalar, pt._z * scalar);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Point3<T> operator /(Point3<T> pt, T scalar) => new(pt._x / scalar, pt._y / scalar, pt._z / scalar);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Pose3<T> operator +(Point3<T> pt, Rotation3<T> r) => new(pt, r);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator ==(Point3<T> a, Point3<T> b) => a._x == b._x && a._y == b._y && a._z == b._z;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator !=(Point3<T> a, Point3<T> b) => !(a == b);
 
     #endregion
 
     #region Conversions
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator Vector3<T>(Point3<T> pt) => new(pt._x, pt._y, pt._z);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static explicit operator Point3<T>(Vector3<T> v) => new(v.X, v.Y, v.Z);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator Point3<T>((T x, T y, T z) tuple) => new(tuple.x, tuple.y, tuple.z);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator (T x, T y, T z)(Point3<T> pt) => (pt._x, pt._y, pt._z);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static explicit operator System.Numerics.Vector3(Point3<T> pt) =>
         new(float.CreateTruncating(pt._x), float.CreateTruncating(pt._y), float.CreateTruncating(pt._z));
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static explicit operator Point3<T>(System.Numerics.Vector3 v) =>
         new(T.CreateTruncating(v.X), T.CreateTruncating(v.Y), T.CreateTruncating(v.Z));
 
@@ -185,8 +216,11 @@ public struct Point3<T> : IEquatable<Point3<T>>, IParsable<Point3<T>>
 
     #region Equality & Formatting
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly bool Equals(Point3<T> other) => this == other;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override readonly bool Equals([NotNullWhen(true)] object? obj) => obj is Point3<T> pt && Equals(pt);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override readonly int GetHashCode() => HashCode.Combine(_x, _y, _z);
 
     public override readonly string ToString() => $"{{X={_x}, Y={_y}, Z={_z}}}";

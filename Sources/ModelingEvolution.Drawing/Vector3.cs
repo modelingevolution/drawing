@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
 using ProtoBuf;
 
@@ -41,6 +42,7 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     /// <summary>
     /// Initializes a new instance of the Vector3 struct with the specified components.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Vector3(T x, T y, T z)
     {
         _x = x;
@@ -54,7 +56,9 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     [ProtoMember(1)]
     public T X
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _x;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set => _x = value;
     }
 
@@ -64,7 +68,9 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     [ProtoMember(2)]
     public T Y
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _y;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set => _y = value;
     }
 
@@ -74,7 +80,9 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     [ProtoMember(3)]
     public T Z
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _z;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         set => _z = value;
     }
 
@@ -82,22 +90,32 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     /// Gets the length (magnitude) of this vector.
     /// </summary>
     [JsonIgnore]
-    public T Length => T.Sqrt(LengthSquared);
+    public T Length
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => T.Sqrt(LengthSquared);
+    }
 
     /// <summary>
     /// Gets the squared length of this vector.
     /// </summary>
     [JsonIgnore]
-    public T LengthSquared => _x * _x + _y * _y + _z * _z;
+    public T LengthSquared
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => _x * _x + _y * _y + _z * _z;
+    }
 
     /// <summary>
     /// Creates a vector from the specified components.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector3<T> From(T x, T y, T z) => new(x, y, z);
 
     /// <summary>
     /// Creates a vector with all components set to the same value.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector3<T> From(T s) => new(s, s, s);
 
     /// <summary>
@@ -117,6 +135,7 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     /// <summary>
     /// Returns a normalized (unit) vector in the same direction as this vector.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Vector3<T> Normalize()
     {
         T ls = LengthSquared;
@@ -131,6 +150,7 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     /// <summary>
     /// Negates this vector (reverses its direction).
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public void Negate()
     {
         _x = -_x;
@@ -141,11 +161,13 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     /// <summary>
     /// Calculates the dot product of two vectors.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T Dot(Vector3<T> a, Vector3<T> b) => a._x * b._x + a._y * b._y + a._z * b._z;
 
     /// <summary>
     /// Calculates the cross product of two vectors.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector3<T> Cross(Vector3<T> a, Vector3<T> b) => new(
         a._y * b._z - a._z * b._y,
         a._z * b._x - a._x * b._z,
@@ -154,6 +176,7 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     /// <summary>
     /// Calculates the angle between two vectors in radians.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T AngleBetween(Vector3<T> a, Vector3<T> b)
     {
         T cosTheta = Dot(a, b) / (a.Length * b.Length);
@@ -241,6 +264,7 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     /// <summary>
     /// Calculates the projection of this vector onto another vector.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Vector3<T> ProjectOnto(Vector3<T> direction)
     {
         T dot = Dot(this, direction);
@@ -251,6 +275,7 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     /// <summary>
     /// Linearly interpolates between two vectors.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector3<T> Lerp(Vector3<T> a, Vector3<T> b, T t) => a + (b - a) * t;
 
     /// <summary>
@@ -267,42 +292,52 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     /// <summary>
     /// Adds two 3D vectors together.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector3<T> operator +(Vector3<T> a, Vector3<T> b) => new(a._x + b._x, a._y + b._y, a._z + b._z);
     /// <summary>
     /// Subtracts one 3D vector from another.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector3<T> operator -(Vector3<T> a, Vector3<T> b) => new(a._x - b._x, a._y - b._y, a._z - b._z);
     /// <summary>
     /// Negates a 3D vector (reverses its direction).
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector3<T> operator -(Vector3<T> v) => new(-v._x, -v._y, -v._z);
     /// <summary>
     /// Multiplies a 3D vector by a scalar.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector3<T> operator *(Vector3<T> v, T scalar) => new(v._x * scalar, v._y * scalar, v._z * scalar);
     /// <summary>
     /// Multiplies a scalar by a 3D vector.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector3<T> operator *(T scalar, Vector3<T> v) => new(v._x * scalar, v._y * scalar, v._z * scalar);
     /// <summary>
     /// Divides a 3D vector by a scalar.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Vector3<T> operator /(Vector3<T> v, T scalar) => new(v._x / scalar, v._y / scalar, v._z / scalar);
     /// <summary>
     /// Computes the dot product of two 3D vectors.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T operator *(Vector3<T> a, Vector3<T> b) => Dot(a, b);
     /// <summary>
     /// Combines a 3D vector (as position) with a rotation to create a pose.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Pose3<T> operator +(Vector3<T> v, Rotation3<T> r) => new((Point3<T>)v, r);
     /// <summary>
     /// Determines whether two 3D vectors are equal.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator ==(Vector3<T> a, Vector3<T> b) => a._x == b._x && a._y == b._y && a._z == b._z;
     /// <summary>
     /// Determines whether two 3D vectors are not equal.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator !=(Vector3<T> a, Vector3<T> b) => !(a == b);
 
     #endregion
@@ -312,21 +347,25 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     /// <summary>
     /// Implicitly converts a tuple to a Vector3.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator Vector3<T>((T x, T y, T z) tuple) => new(tuple.x, tuple.y, tuple.z);
     /// <summary>
     /// Implicitly converts a Vector3 to a tuple.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator (T x, T y, T z)(Vector3<T> v) => (v._x, v._y, v._z);
 
     /// <summary>
     /// Explicitly converts a generic Vector3 to a System.Numerics.Vector3 (float precision).
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static explicit operator System.Numerics.Vector3(Vector3<T> v) =>
         new(float.CreateTruncating(v._x), float.CreateTruncating(v._y), float.CreateTruncating(v._z));
 
     /// <summary>
     /// Explicitly converts a System.Numerics.Vector3 to a generic Vector3.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static explicit operator Vector3<T>(System.Numerics.Vector3 v) =>
         new(T.CreateTruncating(v.X), T.CreateTruncating(v.Y), T.CreateTruncating(v.Z));
 
@@ -373,14 +412,17 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     /// <summary>
     /// Determines whether the specified vector is equal to this vector.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Equals(Vector3<T> other) => this == other;
     /// <summary>
     /// Determines whether the specified object is equal to this vector.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override bool Equals(object? obj) => obj is Vector3<T> v && Equals(v);
     /// <summary>
     /// Returns the hash code for this vector.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override int GetHashCode() => HashCode.Combine(_x, _y, _z);
 
     /// <summary>

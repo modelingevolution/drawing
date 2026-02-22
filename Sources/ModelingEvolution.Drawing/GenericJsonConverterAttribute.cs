@@ -193,3 +193,29 @@ public class Pose3JsonConverterAttribute : JsonConverterAttribute
         })();
     }
 }
+
+/// <summary>
+/// JSON converter attribute for Joints6{T} types that serializes as [j1, j2, j3, j4, j5, j6] array.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Property | AttributeTargets.Field)]
+public class Joints6JsonConverterAttribute : JsonConverterAttribute
+{
+    private readonly ConcurrentDictionary<Type, Func<JsonConverter>> typeFactory = new();
+
+    /// <inheritdoc />
+    public override JsonConverter CreateConverter(Type typeToConvert)
+    {
+        return typeFactory.GetOrAdd(typeToConvert, x =>
+        {
+            Func<JsonConverter> f = null;
+            var genericArg = typeToConvert.GetGenericArguments()[0];
+            if (genericArg == typeof(float))
+                f = () => new Joints6ConverterF();
+            else if (genericArg == typeof(double))
+                f = () => new Joints6ConverterD();
+            else throw new NotSupportedException();
+
+            return f;
+        })();
+    }
+}

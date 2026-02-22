@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace ModelingEvolution.Drawing;
 
@@ -43,13 +44,16 @@ public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree
     /// </summary>
     /// <param name="src">The numeric value representing degrees.</param>
     /// <returns>A degree instance with the specified value.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator Degree<T>(T src) => new(src);
     /// <summary>
     /// Creates a new degree instance with the specified value.
     /// </summary>
     /// <param name="degrees">The angle value in degrees.</param>
     /// <returns>A new degree instance.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Degree<T> Create(T degrees) => new Degree<T>(degrees);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private Degree(T value)
     {
         _val = value;
@@ -72,6 +76,7 @@ public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree
     /// </summary>
     /// <param name="src">The degree value to convert.</param>
     /// <returns>The underlying numeric value.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static explicit operator T(Degree<T> src)
     {
         return src._val;
@@ -87,8 +92,10 @@ public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree
     /// </summary>
     /// <param name="a">The degree value to negate.</param>
     /// <returns>The negated degree value.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Degree<T> operator -(Degree<T> a) => new Degree<T>(-a._val);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Degree<T> operator -(Degree<T> a, Degree<T> b)
     {
         return new Degree<T>(a._val - b._val);
@@ -99,6 +106,7 @@ public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree
     /// <param name="a">The first degree value.</param>
     /// <param name="b">The second degree value to add.</param>
     /// <returns>The sum of the two degree values.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Degree<T> operator +(Degree<T> a, Degree<T> b)
     {
         return new Degree<T>(a._val + b._val);
@@ -107,26 +115,31 @@ public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree
     /// <summary>
     /// Multiplies a degree value by a scalar.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Degree<T> operator *(Degree<T> a, T scalar) => new Degree<T>(a._val * scalar);
 
     /// <summary>
     /// Multiplies a degree value by a scalar.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Degree<T> operator *(T scalar, Degree<T> a) => new Degree<T>(scalar * a._val);
 
     /// <summary>
     /// Divides a degree value by a scalar.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Degree<T> operator /(Degree<T> a, T scalar) => new Degree<T>(a._val / scalar);
 
     /// <summary>
     /// Returns the absolute value of this degree.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Degree<T> Abs() => new Degree<T>(T.Abs(_val));
 
     /// <summary>
     /// Normalizes this angle to the range (-180, 180].
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Degree<T> Normalize()
     {
         var half = T.CreateTruncating(180);
@@ -143,6 +156,7 @@ public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree
     /// <param name="first">The first degree value to compare.</param>
     /// <param name="second">The second degree value to compare.</param>
     /// <returns>true if the first value is less than or equal to the second; otherwise, false.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator <=(Degree<T> first, Degree<T> second)
     {
         return first._val <= second._val;
@@ -153,6 +167,7 @@ public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree
     /// <param name="first">The first degree value to compare.</param>
     /// <param name="second">The second degree value to compare.</param>
     /// <returns>true if the first value is greater than or equal to the second; otherwise, false.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator >=(Degree<T> first, Degree<T> second)
     {
         return first._val >= second._val;
@@ -164,6 +179,7 @@ public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree
     /// <param name="first">The first degree value to compare.</param>
     /// <param name="second">The second degree value to compare.</param>
     /// <returns>true if the first value is less than the second; otherwise, false.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator <(Degree<T> first, Degree<T> second)
     {
         return first._val < second._val;
@@ -175,6 +191,7 @@ public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree
     /// <param name="first">The first degree value to compare.</param>
     /// <param name="second">The second degree value to compare.</param>
     /// <returns>true if the first value is greater than the second; otherwise, false.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator >(Degree<T> first, Degree<T> second)
     {
         return first._val > second._val;
@@ -185,6 +202,7 @@ public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree
     /// </summary>
     /// <param name="src">The radian value to convert.</param>
     /// <returns>The equivalent degree value.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator Degree<T>(Radian<T> src)
     {
         var tmp = (T)src / T.Pi * T.CreateChecked(180);
@@ -197,6 +215,7 @@ public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree
     /// </summary>
     /// <param name="other">The other degree value to compare to.</param>
     /// <returns>A value indicating the relative order of the compared values.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int CompareTo(Degree<T> other)
     {
         return _val.CompareTo(other._val);
@@ -208,6 +227,7 @@ public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree
     /// <param name="obj">The object to compare to.</param>
     /// <returns>A value indicating the relative order of the compared values.</returns>
     /// <exception cref="ArgumentException">Thrown when the object is not of type Degree{T}.</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int CompareTo(object? obj)
     {
         if (ReferenceEquals(null, obj)) return 1;

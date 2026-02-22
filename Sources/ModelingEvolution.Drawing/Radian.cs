@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace ModelingEvolution.Drawing;
 
@@ -39,6 +40,7 @@ public readonly record struct Radian<T>: IComparisonOperators<Radian<T>, Radian<
     /// </summary>
     public static Radian<T> Zero { get; } = new Radian<T>();
     internal readonly T _val;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private Radian(T value)
     {
         _val = value;
@@ -62,6 +64,7 @@ public readonly record struct Radian<T>: IComparisonOperators<Radian<T>, Radian<
     /// </summary>
     /// <param name="radians">The angle value in radians.</param>
     /// <returns>A new radian instance.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Radian<T> FromRadian(T radians) => new Radian<T>(radians);
 
     /// <summary>
@@ -70,6 +73,7 @@ public readonly record struct Radian<T>: IComparisonOperators<Radian<T>, Radian<
     /// <param name="first">The first radian value to compare.</param>
     /// <param name="second">The second radian value to compare.</param>
     /// <returns>true if the first value is less than or equal to the second; otherwise, false.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator <=(Radian<T> first, Radian<T> second)
     {
         return first._val <= second._val;
@@ -80,6 +84,7 @@ public readonly record struct Radian<T>: IComparisonOperators<Radian<T>, Radian<
     /// <param name="first">The first radian value to compare.</param>
     /// <param name="second">The second radian value to compare.</param>
     /// <returns>true if the first value is greater than or equal to the second; otherwise, false.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator >=(Radian<T> first, Radian<T> second)
     {
         return first._val >= second._val;
@@ -91,6 +96,7 @@ public readonly record struct Radian<T>: IComparisonOperators<Radian<T>, Radian<
     /// <param name="a">The first radian value.</param>
     /// <param name="b">The second radian value to subtract.</param>
     /// <returns>The difference between the two radian values.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Radian<T> operator -(Radian<T> a, Radian<T> b)
     {
         return new Radian<T>(a._val - b._val);
@@ -101,6 +107,7 @@ public readonly record struct Radian<T>: IComparisonOperators<Radian<T>, Radian<
     /// <param name="a">The first radian value.</param>
     /// <param name="b">The second radian value to add.</param>
     /// <returns>The sum of the two radian values.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Radian<T> operator +(Radian<T> a, Radian<T> b)
     {
         return new Radian<T>(a._val + b._val);
@@ -111,6 +118,7 @@ public readonly record struct Radian<T>: IComparisonOperators<Radian<T>, Radian<
     /// <param name="first">The first radian value to compare.</param>
     /// <param name="second">The second radian value to compare.</param>
     /// <returns>true if the first value is less than the second; otherwise, false.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator <(Radian<T> first, Radian<T> second)
     {
         return first._val < second._val;
@@ -121,6 +129,7 @@ public readonly record struct Radian<T>: IComparisonOperators<Radian<T>, Radian<
     /// <param name="first">The first radian value to compare.</param>
     /// <param name="second">The second radian value to compare.</param>
     /// <returns>true if the first value is greater than the second; otherwise, false.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator >(Radian<T> first, Radian<T> second)
     {
         return first._val > second._val;
@@ -129,31 +138,37 @@ public readonly record struct Radian<T>: IComparisonOperators<Radian<T>, Radian<
     /// <summary>
     /// Negates this radian value.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Radian<T> operator -(Radian<T> a) => new Radian<T>(-a._val);
 
     /// <summary>
     /// Multiplies a radian value by a scalar.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Radian<T> operator *(Radian<T> a, T scalar) => new Radian<T>(a._val * scalar);
 
     /// <summary>
     /// Multiplies a radian value by a scalar.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Radian<T> operator *(T scalar, Radian<T> a) => new Radian<T>(scalar * a._val);
 
     /// <summary>
     /// Divides a radian value by a scalar.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Radian<T> operator /(Radian<T> a, T scalar) => new Radian<T>(a._val / scalar);
 
     /// <summary>
     /// Returns the absolute value of this radian.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Radian<T> Abs() => new Radian<T>(T.Abs(_val));
 
     /// <summary>
     /// Normalizes this angle to the range (-π, π].
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Radian<T> Normalize()
     {
         var pi = T.Pi;
@@ -169,6 +184,7 @@ public readonly record struct Radian<T>: IComparisonOperators<Radian<T>, Radian<
     /// </summary>
     /// <param name="src">The radian value to convert.</param>
     /// <returns>The underlying numeric value.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static explicit operator T(Radian<T> src)
     {
         return src._val;
@@ -178,6 +194,7 @@ public readonly record struct Radian<T>: IComparisonOperators<Radian<T>, Radian<
     /// </summary>
     /// <param name="src">The degree value to convert.</param>
     /// <returns>The equivalent radian value.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator Radian<T>(Degree<T> src)
     {
         var val = (T)src;
@@ -191,6 +208,7 @@ public readonly record struct Radian<T>: IComparisonOperators<Radian<T>, Radian<
     /// <param name="obj">The object to compare to.</param>
     /// <returns>A value indicating the relative order of the compared values.</returns>
     /// <exception cref="ArgumentException">Thrown when the object is not of type Radian{T}.</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int CompareTo(object? obj)
     {
         if (ReferenceEquals(null, obj)) return 1;
@@ -202,6 +220,7 @@ public readonly record struct Radian<T>: IComparisonOperators<Radian<T>, Radian<
     /// </summary>
     /// <param name="other">The other radian value to compare to.</param>
     /// <returns>A value indicating the relative order of the compared values.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public int CompareTo(Radian<T> other)
     {
         return _val.CompareTo(other._val);

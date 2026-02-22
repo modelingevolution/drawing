@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using ProtoBuf;
 
 namespace ModelingEvolution.Drawing;
@@ -26,6 +27,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// <summary>
     /// Initializes a new pose with the specified position and rotation.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Pose3(Point3<T> position, Rotation3<T> rotation)
     {
         _position = position;
@@ -41,6 +43,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// <param name="rx">Rotation around X axis in degrees.</param>
     /// <param name="ry">Rotation around Y axis in degrees.</param>
     /// <param name="rz">Rotation around Z axis in degrees.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Pose3(T x, T y, T z, T rx, T ry, T rz)
     {
         _position = new Point3<T>(x, y, z);
@@ -129,6 +132,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// <summary>
     /// Transforms a point from local coordinates to world coordinates using this pose.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly Point3<T> TransformPoint(Point3<T> localPoint)
     {
         var rotated = _rotation.Rotate(localPoint);
@@ -138,6 +142,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// <summary>
     /// Transforms a vector from local coordinates to world coordinates using this pose's rotation.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly Vector3<T> TransformVector(Vector3<T> localVector)
     {
         return _rotation.Rotate(localVector);
@@ -146,6 +151,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// <summary>
     /// Returns the inverse of this pose.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly Pose3<T> Inverse()
     {
         var invRotation = _rotation.Inverse();
@@ -157,6 +163,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// <summary>
     /// Combines two poses (this * other).
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly Pose3<T> Multiply(Pose3<T> other)
     {
         var newRotation = Rotation3<T>.Combine(_rotation, other._rotation);
@@ -168,6 +175,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// <summary>
     /// Linearly interpolates between two poses.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Pose3<T> Lerp(Pose3<T> a, Pose3<T> b, T t)
     {
         var position = Point3<T>.Lerp(a._position, b._position, t);
@@ -178,6 +186,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// <summary>
     /// Calculates the distance between two poses (position only).
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T Distance(Pose3<T> a, Pose3<T> b)
     {
         return Point3<T>.Distance(a._position, b._position);
@@ -186,6 +195,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// <summary>
     /// Converts this pose to a different numeric type.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Pose3<U> Truncating<U>()
         where U : INumber<U>, ITrigonometricFunctions<U>, IRootFunctions<U>, IFloatingPoint<U>, ISignedNumber<U>, IFloatingPointIeee754<U>, IMinMaxValue<U>
     {
@@ -194,11 +204,17 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
 
     #region Operators
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Pose3<T> operator *(Pose3<T> a, Pose3<T> b) => a.Multiply(b);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Pose3<T> operator +(Pose3<T> pose, Vector3<T> offset) => new(pose._position + offset, pose._rotation);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Pose3<T> operator -(Pose3<T> pose, Vector3<T> offset) => new(pose._position - offset, pose._rotation);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Pose3<T> operator +(Pose3<T> pose, Rotation3<T> rotation) => new(pose._position, Rotation3<T>.Combine(pose._rotation, rotation));
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator ==(Pose3<T> a, Pose3<T> b) => a._position == b._position && a._rotation == b._rotation;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator !=(Pose3<T> a, Pose3<T> b) => !(a == b);
 
     #endregion
@@ -208,11 +224,13 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// <summary>
     /// Creates a pose from position and rotation.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Pose3<T> From(Point3<T> position, Rotation3<T> rotation) => new(position, rotation);
 
     /// <summary>
     /// Creates a pose from position vector and rotation.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Pose3<T> From(Vector3<T> position, Rotation3<T> rotation) => new((Point3<T>)position, rotation);
 
     /// <summary>
@@ -351,15 +369,18 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
 
     #region Conversions
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator Pose3<T>((T x, T y, T z, T rx, T ry, T rz) tuple) =>
         new(tuple.x, tuple.y, tuple.z, tuple.rx, tuple.ry, tuple.rz);
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator (T x, T y, T z, T rx, T ry, T rz)(Pose3<T> pose) =>
         (pose.X, pose.Y, pose.Z, (T)pose.Rx, (T)pose.Ry, (T)pose.Rz);
 
     /// <summary>
     /// Deconstructs into position and rotation.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly void Deconstruct(out Point3<T> position, out Rotation3<T> rotation)
     {
         position = _position;
@@ -369,6 +390,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// <summary>
     /// Deconstructs into individual components.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly void Deconstruct(out T x, out T y, out T z, out T rx, out T ry, out T rz)
     {
         x = X;
@@ -383,8 +405,11 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
 
     #region Equality & Formatting
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly bool Equals(Pose3<T> other) => this == other;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override readonly bool Equals([NotNullWhen(true)] object? obj) => obj is Pose3<T> p && Equals(p);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override readonly int GetHashCode() => HashCode.Combine(_position, _rotation);
 
     public override readonly string ToString() =>

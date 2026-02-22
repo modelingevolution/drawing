@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using ProtoBuf;
 
 namespace ModelingEvolution.Drawing;
@@ -32,6 +33,7 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     /// <param name="rx">Roll - rotation around X axis in degrees.</param>
     /// <param name="ry">Pitch - rotation around Y axis in degrees.</param>
     /// <param name="rz">Yaw - rotation around Z axis in degrees.</param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Rotation3(Degree<T> rx, Degree<T> ry, Degree<T> rz)
     {
         _rx = rx;
@@ -96,21 +98,25 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     /// <summary>
     /// Creates a rotation from degrees.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Rotation3<T> FromDegrees(T rx, T ry, T rz) => new(rx, ry, rz);
 
     /// <summary>
     /// Creates a rotation from radians.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Rotation3<T> FromRadians(Radian<T> rx, Radian<T> ry, Radian<T> rz) => new((Degree<T>)rx, (Degree<T>)ry, (Degree<T>)rz);
 
     /// <summary>
     /// Gets the rotation angles in radians.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly (Radian<T> rx, Radian<T> ry, Radian<T> rz) ToRadians() => ((Radian<T>)_rx, (Radian<T>)_ry, (Radian<T>)_rz);
 
     /// <summary>
     /// Converts to a quaternion representation.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly Quaternion<T> ToQuaternion()
     {
         var (rx, ry, rz) = ToRadians();
@@ -136,6 +142,7 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     /// <summary>
     /// Creates a rotation from a quaternion.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Rotation3<T> FromQuaternion(Quaternion<T> q)
     {
         // Extract Euler angles from quaternion (ZYX order)
@@ -182,6 +189,7 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     /// <summary>
     /// Rotates a vector by this rotation.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly Vector3<T> Rotate(Vector3<T> v)
     {
         var q = ToQuaternion();
@@ -191,6 +199,7 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     /// <summary>
     /// Rotates a point by this rotation around the origin.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly Point3<T> Rotate(Point3<T> p)
     {
         var v = Rotate((Vector3<T>)p);
@@ -200,11 +209,13 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     /// <summary>
     /// Returns the inverse rotation.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly Rotation3<T> Inverse() => new(-_rx, -_ry, -_rz);
 
     /// <summary>
     /// Combines two rotations.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Rotation3<T> Combine(Rotation3<T> a, Rotation3<T> b)
     {
         var qa = a.ToQuaternion();
@@ -216,6 +227,7 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     /// <summary>
     /// Linearly interpolates between two rotations (spherical interpolation via quaternions).
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Rotation3<T> Slerp(Rotation3<T> a, Rotation3<T> b, T t)
     {
         var qa = a.ToQuaternion();
@@ -227,6 +239,7 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     /// <summary>
     /// Converts this rotation to a different numeric type.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Rotation3<U> Truncating<U>()
         where U : INumber<U>, ITrigonometricFunctions<U>, IRootFunctions<U>, IFloatingPoint<U>, ISignedNumber<U>, IFloatingPointIeee754<U>, IMinMaxValue<U>
     {
@@ -235,30 +248,40 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
 
     #region Operators
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Rotation3<T> operator +(Rotation3<T> a, Rotation3<T> b) => Combine(a, b);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Rotation3<T> operator -(Rotation3<T> r) => r.Inverse();
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator ==(Rotation3<T> a, Rotation3<T> b) => a._rx == b._rx && a._ry == b._ry && a._rz == b._rz;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator !=(Rotation3<T> a, Rotation3<T> b) => !(a == b);
 
     #endregion
 
     #region Conversions
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator Rotation3<T>((T rx, T ry, T rz) tuple) => new(tuple.rx, tuple.ry, tuple.rz);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator (T rx, T ry, T rz)(Rotation3<T> r) => ((T)r._rx, (T)r._ry, (T)r._rz);
 
     /// <summary>
     /// Converts a rotation to a unit vector (versor) representing the direction
     /// that the +Z axis would point after applying this rotation.
     /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static explicit operator Vector3<T>(Rotation3<T> r) => r.Rotate(Vector3<T>.EZ);
 
     #endregion
 
     #region Equality & Formatting
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly bool Equals(Rotation3<T> other) => this == other;
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override readonly bool Equals([NotNullWhen(true)] object? obj) => obj is Rotation3<T> r && Equals(r);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public override readonly int GetHashCode() => HashCode.Combine(_rx, _ry, _rz);
     public override readonly string ToString() => $"{{Rx={(T)_rx}, Ry={(T)_ry}, Rz={(T)_rz}}}";
 

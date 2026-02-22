@@ -277,12 +277,31 @@ public class Rotation3Tests
     public void Rotation3_UnaryMinus_ReturnsInverse()
     {
         var rotation = new Rotation3<double>(10, 20, 30);
+        var result = Rotation3<double>.Combine(rotation, -rotation);
+        ((double)result.Rx).Should().BeApproximately(0, 1e-9);
+        ((double)result.Ry).Should().BeApproximately(0, 1e-9);
+        ((double)result.Rz).Should().BeApproximately(0, 1e-9);
+    }
 
-        var negated = -rotation;
-
+    [Fact]
+    public void Rotation3_Negate_NegatesAngles()
+    {
+        var rotation = new Rotation3<double>(10, 20, 30);
+        var negated = rotation.Negate();
         negated.Rx.Should().Be(-10);
         negated.Ry.Should().Be(-20);
         negated.Rz.Should().Be(-30);
+    }
+
+    [Fact]
+    public void Rotation3_Inverse_CombinesWithOriginalToIdentity()
+    {
+        var rotation = new Rotation3<double>(30, 45, 60);
+        var inverse = rotation.Inverse();
+        var result = Rotation3<double>.Combine(rotation, inverse);
+        ((double)result.Rx).Should().BeApproximately(0, 1e-9);
+        ((double)result.Ry).Should().BeApproximately(0, 1e-9);
+        ((double)result.Rz).Should().BeApproximately(0, 1e-9);
     }
 
     #endregion

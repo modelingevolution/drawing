@@ -207,10 +207,18 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     }
 
     /// <summary>
-    /// Returns the inverse rotation.
+    /// Returns a rotation with all angles negated.
+    /// Note: This is NOT the mathematical inverse for ZYX Euler angles.
+    /// Use <see cref="Inverse"/> for the true inverse rotation.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly Rotation3<T> Inverse() => new(-_rx, -_ry, -_rz);
+    public readonly Rotation3<T> Negate() => new(-_rx, -_ry, -_rz);
+
+    /// <summary>
+    /// Returns the inverse rotation (R such that Combine(this, R) ≈ Identity).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly Rotation3<T> Inverse() => FromQuaternion(ToQuaternion().Conjugate());
 
     /// <summary>
     /// Combines two rotations.

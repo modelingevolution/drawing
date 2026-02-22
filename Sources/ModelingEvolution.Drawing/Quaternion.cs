@@ -10,13 +10,13 @@ namespace ModelingEvolution.Drawing;
 /// </summary>
 /// <typeparam name="T">The numeric type used for components.</typeparam>
 [ProtoContract]
-public struct Quaternion<T> : IEquatable<Quaternion<T>>
+public readonly struct Quaternion<T> : IEquatable<Quaternion<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
-    private T _w;
-    private T _x;
-    private T _y;
-    private T _z;
+    private readonly T _w;
+    private readonly T _x;
+    private readonly T _y;
+    private readonly T _z;
 
     private static readonly T Two = T.CreateTruncating(2);
     private static readonly T SlerpThreshold = T.One - T.CreateTruncating(1e-6);
@@ -38,64 +38,64 @@ public struct Quaternion<T> : IEquatable<Quaternion<T>>
     }
 
     /// <summary>
-    /// Gets or sets the W (scalar) component.
+    /// Gets or initializes the W (scalar) component.
     /// </summary>
     [ProtoMember(1)]
     public T W
     {
-        readonly get => _w;
-        set => _w = value;
+        get => _w;
+        init => _w = value;
     }
 
     /// <summary>
-    /// Gets or sets the X component.
+    /// Gets or initializes the X component.
     /// </summary>
     [ProtoMember(2)]
     public T X
     {
-        readonly get => _x;
-        set => _x = value;
+        get => _x;
+        init => _x = value;
     }
 
     /// <summary>
-    /// Gets or sets the Y component.
+    /// Gets or initializes the Y component.
     /// </summary>
     [ProtoMember(3)]
     public T Y
     {
-        readonly get => _y;
-        set => _y = value;
+        get => _y;
+        init => _y = value;
     }
 
     /// <summary>
-    /// Gets or sets the Z component.
+    /// Gets or initializes the Z component.
     /// </summary>
     [ProtoMember(4)]
     public T Z
     {
-        readonly get => _z;
-        set => _z = value;
+        get => _z;
+        init => _z = value;
     }
 
     /// <summary>
     /// Gets the magnitude (length) of this quaternion.
     /// </summary>
-    public readonly T Length => T.Sqrt(LengthSquared);
+    public T Length => T.Sqrt(LengthSquared);
 
     /// <summary>
     /// Gets the squared magnitude of this quaternion.
     /// </summary>
-    public readonly T LengthSquared => _w * _w + _x * _x + _y * _y + _z * _z;
+    public T LengthSquared => _w * _w + _x * _x + _y * _y + _z * _z;
 
     /// <summary>
     /// Gets a value indicating whether this quaternion is normalized (unit length).
     /// </summary>
-    public readonly bool IsNormalized => T.Abs(LengthSquared - T.One) < T.Epsilon;
+    public bool IsNormalized => T.Abs(LengthSquared - T.One) < T.Epsilon;
 
     /// <summary>
     /// Returns a normalized (unit) quaternion.
     /// </summary>
-    public readonly Quaternion<T> Normalize()
+    public Quaternion<T> Normalize()
     {
         var len = Length;
         if (len == T.Zero)
@@ -106,12 +106,12 @@ public struct Quaternion<T> : IEquatable<Quaternion<T>>
     /// <summary>
     /// Returns the conjugate of this quaternion.
     /// </summary>
-    public readonly Quaternion<T> Conjugate() => new(_w, -_x, -_y, -_z);
+    public Quaternion<T> Conjugate() => new(_w, -_x, -_y, -_z);
 
     /// <summary>
     /// Returns the inverse of this quaternion.
     /// </summary>
-    public readonly Quaternion<T> Inverse()
+    public Quaternion<T> Inverse()
     {
         var lenSq = LengthSquared;
         return new Quaternion<T>(_w / lenSq, -_x / lenSq, -_y / lenSq, -_z / lenSq);
@@ -136,7 +136,7 @@ public struct Quaternion<T> : IEquatable<Quaternion<T>>
     /// <summary>
     /// Rotates a vector by this quaternion.
     /// </summary>
-    public readonly Vector3<T> Rotate(Vector3<T> v)
+    public Vector3<T> Rotate(Vector3<T> v)
     {
         // q * v * q^-1, optimized
         var qv = new Quaternion<T>(T.Zero, v.X, v.Y, v.Z);
@@ -235,10 +235,10 @@ public struct Quaternion<T> : IEquatable<Quaternion<T>>
 
     #region Equality & Formatting
 
-    public readonly bool Equals(Quaternion<T> other) => this == other;
-    public override readonly bool Equals([NotNullWhen(true)] object? obj) => obj is Quaternion<T> q && Equals(q);
-    public override readonly int GetHashCode() => HashCode.Combine(_w, _x, _y, _z);
-    public override readonly string ToString() => $"{{W={_w}, X={_x}, Y={_y}, Z={_z}}}";
+    public bool Equals(Quaternion<T> other) => this == other;
+    public override bool Equals([NotNullWhen(true)] object? obj) => obj is Quaternion<T> q && Equals(q);
+    public override int GetHashCode() => HashCode.Combine(_w, _x, _y, _z);
+    public override string ToString() => $"{{W={_w}, X={_x}, Y={_y}, Z={_z}}}";
 
     #endregion
 }

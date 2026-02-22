@@ -12,7 +12,7 @@ namespace ModelingEvolution.Drawing;
 /// </summary>
 /// <typeparam name="T">The numeric type used for width and height values.</typeparam>
 [ProtoContract]
-public struct Size<T> : IEquatable<Size<T>>, IParsable<Size<T>>, ISize<T>
+public readonly struct Size<T> : IEquatable<Size<T>>, IParsable<Size<T>>, ISize<T>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>, IParsable<T>
 {
     /// <summary>
@@ -24,9 +24,9 @@ public struct Size<T> : IEquatable<Size<T>>, IParsable<Size<T>>, ISize<T>
     /// </summary>
     public static readonly Size<T> Empty;
     [ProtoMember(1)]
-    private T width; // Do not rename (binary serialization)
+    private readonly T width; // Do not rename (binary serialization)
     [ProtoMember(2)]
-    private T height; // Do not rename (binary serialization)
+    private readonly T height; // Do not rename (binary serialization)
 
     /// <summary>
     /// Initializes a new instance of the Size struct with equal width and height.
@@ -196,24 +196,24 @@ public struct Size<T> : IEquatable<Size<T>>, IParsable<Size<T>>, ISize<T>
     /// Tests whether this <see cref='Size{T}'/> has zero width and height.
     /// </summary>
     [Browsable(false)]
-    public readonly bool IsEmpty => width == T.Zero && height == T.Zero;
+    public bool IsEmpty => width == T.Zero && height == T.Zero;
 
     /// <summary>
-    /// Represents the horizontal component of this <see cref='Size{T}'/>.
+    /// Gets or initializes the horizontal component of this <see cref='Size{T}'/>.
     /// </summary>
     public T Width
     {
-        readonly get => width;
-        set => width = value;
+        get => width;
+        init => width = value;
     }
 
     /// <summary>
-    /// Represents the vertical component of this <see cref='Size{T}'/>.
+    /// Gets or initializes the vertical component of this <see cref='Size{T}'/>.
     /// </summary>
     public T Height
     {
-        readonly get => height;
-        set => height = value;
+        get => height;
+        init => height = value;
     }
 
     /// <summary>
@@ -230,27 +230,27 @@ public struct Size<T> : IEquatable<Size<T>>, IParsable<Size<T>>, ISize<T>
     /// Tests to see whether the specified object is a <see cref='Size{T}'/>  with the same dimensions
     /// as this <see cref='Size{T}'/>.
     /// </summary>
-    public override readonly bool Equals([NotNullWhen(true)] object? obj) => obj is Size<T> && Equals((Size<T>)obj);
+    public override bool Equals([NotNullWhen(true)] object? obj) => obj is Size<T> && Equals((Size<T>)obj);
 
     /// <summary>
     /// Determines whether this Size is equal to another Size by comparing their width and height values.
     /// </summary>
     /// <param name="other">The other Size to compare with this instance.</param>
     /// <returns>true if the width and height of both sizes are equal; otherwise, false.</returns>
-    public readonly bool Equals(Size<T> other) => this == other;
+    public bool Equals(Size<T> other) => this == other;
 
     /// <summary>
     /// Returns the hash code for this Size.
     /// </summary>
     /// <returns>A 32-bit signed integer hash code.</returns>
-    public override readonly int GetHashCode() => HashCode.Combine(Width, Height);
+    public override int GetHashCode() => HashCode.Combine(Width, Height);
 
     
 
     /// <summary>
     /// Creates a human-readable string that represents this <see cref='Size{T}'/>.
     /// </summary>
-    public override readonly string ToString() => $"[{width} {height}]";
+    public override string ToString() => $"[{width} {height}]";
 
     /// <summary>
     /// Multiplies <see cref="Size<T>"/> by a <see cref="T"/> producing <see cref="Size<T>"/>.

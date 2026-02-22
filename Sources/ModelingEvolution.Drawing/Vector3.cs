@@ -12,12 +12,12 @@ namespace ModelingEvolution.Drawing;
 /// <typeparam name="T">The numeric type used for vector components.</typeparam>
 [ProtoContract]
 [Vector3JsonConverterAttribute]
-public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
+public readonly struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
-    private T _x;
-    private T _y;
-    private T _z;
+    private readonly T _x;
+    private readonly T _y;
+    private readonly T _z;
 
     /// <summary>
     /// Represents the unit vector in the X direction (1, 0, 0).
@@ -51,7 +51,7 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     }
 
     /// <summary>
-    /// Gets or sets the X component of this vector.
+    /// Gets or initializes the X component of this vector.
     /// </summary>
     [ProtoMember(1)]
     public T X
@@ -59,11 +59,11 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _x;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        set => _x = value;
+        init => _x = value;
     }
 
     /// <summary>
-    /// Gets or sets the Y component of this vector.
+    /// Gets or initializes the Y component of this vector.
     /// </summary>
     [ProtoMember(2)]
     public T Y
@@ -71,11 +71,11 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _y;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        set => _y = value;
+        init => _y = value;
     }
 
     /// <summary>
-    /// Gets or sets the Z component of this vector.
+    /// Gets or initializes the Z component of this vector.
     /// </summary>
     [ProtoMember(3)]
     public T Z
@@ -83,7 +83,7 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _z;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        set => _z = value;
+        init => _z = value;
     }
 
     /// <summary>
@@ -145,17 +145,6 @@ public struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
             throw new ArgumentException("Cannot normalize zero vector.");
         T l = T.Sqrt(ls);
         return this / l;
-    }
-
-    /// <summary>
-    /// Negates this vector (reverses its direction).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public void Negate()
-    {
-        _x = -_x;
-        _y = -_y;
-        _z = -_z;
     }
 
     /// <summary>

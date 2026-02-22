@@ -12,7 +12,7 @@ namespace ModelingEvolution.Drawing;
 [ProtoContract]
 [VectorJsonConverterAttribute]
 [Svg.SvgExporter(typeof(VectorSvgExporterFactory))]
-public struct Vector<T> : IFormattable, IEquatable<Vector<T>>
+public readonly struct Vector<T> : IFormattable, IEquatable<Vector<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
     /// <summary>
@@ -240,15 +240,6 @@ public struct Vector<T> : IFormattable, IEquatable<Vector<T>>
     }
 
     /// <summary>
-    /// Negates this vector (reverses its direction).
-    /// </summary>
-    public void Negate()
-    {
-        _x = -_x;
-        _y = -_y;
-    }
-
-    /// <summary>
     /// Returns a normalized (unit) vector in the same direction as this vector.
     /// </summary>
     /// <returns>A normalized vector.</returns>
@@ -370,22 +361,22 @@ public struct Vector<T> : IFormattable, IEquatable<Vector<T>>
     }
 
     /// <summary>
-    /// Gets or sets the X component of this vector.
+    /// Gets or initializes the X component of this vector.
     /// </summary>
     [ProtoMember(1)]
     public T X
     {
         get => _x;
-        set => _x = value;
+        init => _x = value;
     }
     /// <summary>
-    /// Gets or sets the Y component of this vector.
+    /// Gets or initializes the Y component of this vector.
     /// </summary>
     [ProtoMember(2)]
     public T Y
     {
         get => _y;
-        set => _y = value;
+        init => _y = value;
     }
 
     /// <summary>
@@ -436,12 +427,7 @@ public struct Vector<T> : IFormattable, IEquatable<Vector<T>>
     /// </summary>
     /// <param name="vector">The vector to negate.</param>
     /// <returns>The negated vector.</returns>
-    public static Vector<T> operator -(Vector<T> vector)
-    {
-        Vector<T> result = vector;
-        result.Negate();
-        return result;
-    }
+    public static Vector<T> operator -(Vector<T> vector) => new Vector<T>(-vector._x, -vector._y);
 
     /// <summary>
     /// Determines whether two vectors are not equal.
@@ -562,8 +548,8 @@ public struct Vector<T> : IFormattable, IEquatable<Vector<T>>
         return Add(vector1, vector2);
     }
 
-    T _x;
-    T _y;
+    readonly T _x;
+    readonly T _y;
 
     /// <summary>
     /// Maps this 2D vector onto a 3D plane perpendicular to the given normal.

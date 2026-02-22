@@ -13,12 +13,12 @@ namespace ModelingEvolution.Drawing;
 /// <typeparam name="T">The numeric type used for coordinates.</typeparam>
 [ProtoContract]
 [Point3JsonConverterAttribute]
-public struct Point3<T> : IEquatable<Point3<T>>, IParsable<Point3<T>>
+public readonly struct Point3<T> : IEquatable<Point3<T>>, IParsable<Point3<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
-    private T _x;
-    private T _y;
-    private T _z;
+    private readonly T _x;
+    private readonly T _y;
+    private readonly T _z;
 
     /// <summary>
     /// Represents a point at the origin (0, 0, 0).
@@ -50,46 +50,46 @@ public struct Point3<T> : IEquatable<Point3<T>>, IParsable<Point3<T>>
     }
 
     /// <summary>
-    /// Gets or sets the X coordinate of this point.
+    /// Gets or initializes the X coordinate of this point.
     /// </summary>
     [ProtoMember(1)]
     public T X
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        readonly get => _x;
+        get => _x;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        set => _x = value;
+        init => _x = value;
     }
 
     /// <summary>
-    /// Gets or sets the Y coordinate of this point.
+    /// Gets or initializes the Y coordinate of this point.
     /// </summary>
     [ProtoMember(2)]
     public T Y
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        readonly get => _y;
+        get => _y;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        set => _y = value;
+        init => _y = value;
     }
 
     /// <summary>
-    /// Gets or sets the Z coordinate of this point.
+    /// Gets or initializes the Z coordinate of this point.
     /// </summary>
     [ProtoMember(3)]
     public T Z
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        readonly get => _z;
+        get => _z;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        set => _z = value;
+        init => _z = value;
     }
 
     /// <summary>
     /// Gets a value indicating whether this point is at the origin.
     /// </summary>
     [Browsable(false)]
-    public readonly bool IsEmpty
+    public bool IsEmpty
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _x == T.Zero && _y == T.Zero && _z == T.Zero;
@@ -217,13 +217,13 @@ public struct Point3<T> : IEquatable<Point3<T>>, IParsable<Point3<T>>
     #region Equality & Formatting
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly bool Equals(Point3<T> other) => this == other;
+    public bool Equals(Point3<T> other) => this == other;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public override readonly bool Equals([NotNullWhen(true)] object? obj) => obj is Point3<T> pt && Equals(pt);
+    public override bool Equals([NotNullWhen(true)] object? obj) => obj is Point3<T> pt && Equals(pt);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public override readonly int GetHashCode() => HashCode.Combine(_x, _y, _z);
+    public override int GetHashCode() => HashCode.Combine(_x, _y, _z);
 
-    public override readonly string ToString() => $"{{X={_x}, Y={_y}, Z={_z}}}";
+    public override string ToString() => $"{{X={_x}, Y={_y}, Z={_z}}}";
 
     #endregion
 

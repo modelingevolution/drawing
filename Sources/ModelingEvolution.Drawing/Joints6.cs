@@ -12,28 +12,28 @@ namespace ModelingEvolution.Drawing;
 /// <typeparam name="T">The numeric type used for angle values.</typeparam>
 [ProtoContract]
 [Joints6JsonConverterAttribute]
-public struct Joints6<T> : IEquatable<Joints6<T>>, IParsable<Joints6<T>>, IFormattable
+public readonly struct Joints6<T> : IEquatable<Joints6<T>>, IParsable<Joints6<T>>, IFormattable
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
-    private Degree<T> _j1;
-    private Degree<T> _j2;
-    private Degree<T> _j3;
-    private Degree<T> _j4;
-    private Degree<T> _j5;
-    private Degree<T> _j6;
+    private readonly Degree<T> _j1;
+    private readonly Degree<T> _j2;
+    private readonly Degree<T> _j3;
+    private readonly Degree<T> _j4;
+    private readonly Degree<T> _j5;
+    private readonly Degree<T> _j6;
 
     [ProtoMember(1)]
-    private T ProtoJ1 { readonly get => (T)_j1; set => _j1 = value; }
+    private T ProtoJ1 { get => (T)_j1; init => _j1 = value; }
     [ProtoMember(2)]
-    private T ProtoJ2 { readonly get => (T)_j2; set => _j2 = value; }
+    private T ProtoJ2 { get => (T)_j2; init => _j2 = value; }
     [ProtoMember(3)]
-    private T ProtoJ3 { readonly get => (T)_j3; set => _j3 = value; }
+    private T ProtoJ3 { get => (T)_j3; init => _j3 = value; }
     [ProtoMember(4)]
-    private T ProtoJ4 { readonly get => (T)_j4; set => _j4 = value; }
+    private T ProtoJ4 { get => (T)_j4; init => _j4 = value; }
     [ProtoMember(5)]
-    private T ProtoJ5 { readonly get => (T)_j5; set => _j5 = value; }
+    private T ProtoJ5 { get => (T)_j5; init => _j5 = value; }
     [ProtoMember(6)]
-    private T ProtoJ6 { readonly get => (T)_j6; set => _j6 = value; }
+    private T ProtoJ6 { get => (T)_j6; init => _j6 = value; }
 
     /// <summary>
     /// A joint configuration with all angles at zero.
@@ -61,24 +61,24 @@ public struct Joints6<T> : IEquatable<Joints6<T>>, IParsable<Joints6<T>>, IForma
     }
 
     /// <summary>Gets the angle of joint 1.</summary>
-    public readonly Degree<T> J1 { [MethodImpl(MethodImplOptions.AggressiveInlining)] get => _j1; }
+    public Degree<T> J1 { [MethodImpl(MethodImplOptions.AggressiveInlining)] get => _j1; }
     /// <summary>Gets the angle of joint 2.</summary>
-    public readonly Degree<T> J2 { [MethodImpl(MethodImplOptions.AggressiveInlining)] get => _j2; }
+    public Degree<T> J2 { [MethodImpl(MethodImplOptions.AggressiveInlining)] get => _j2; }
     /// <summary>Gets the angle of joint 3.</summary>
-    public readonly Degree<T> J3 { [MethodImpl(MethodImplOptions.AggressiveInlining)] get => _j3; }
+    public Degree<T> J3 { [MethodImpl(MethodImplOptions.AggressiveInlining)] get => _j3; }
     /// <summary>Gets the angle of joint 4.</summary>
-    public readonly Degree<T> J4 { [MethodImpl(MethodImplOptions.AggressiveInlining)] get => _j4; }
+    public Degree<T> J4 { [MethodImpl(MethodImplOptions.AggressiveInlining)] get => _j4; }
     /// <summary>Gets the angle of joint 5.</summary>
-    public readonly Degree<T> J5 { [MethodImpl(MethodImplOptions.AggressiveInlining)] get => _j5; }
+    public Degree<T> J5 { [MethodImpl(MethodImplOptions.AggressiveInlining)] get => _j5; }
     /// <summary>Gets the angle of joint 6.</summary>
-    public readonly Degree<T> J6 { [MethodImpl(MethodImplOptions.AggressiveInlining)] get => _j6; }
+    public Degree<T> J6 { [MethodImpl(MethodImplOptions.AggressiveInlining)] get => _j6; }
 
     /// <summary>
     /// Gets the joint angle at the specified index (0-based).
     /// </summary>
     /// <param name="index">Joint index, 0 through 5.</param>
     /// <exception cref="IndexOutOfRangeException">Thrown when <paramref name="index"/> is outside 0..5.</exception>
-    public readonly Degree<T> this[int index]
+    public Degree<T> this[int index]
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => index switch
@@ -160,7 +160,7 @@ public struct Joints6<T> : IEquatable<Joints6<T>>, IParsable<Joints6<T>>, IForma
     /// </summary>
     /// <param name="other">The other joint configuration to compare against.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly Degree<T> MaxAbsDelta(Joints6<T> other)
+    public Degree<T> MaxAbsDelta(Joints6<T> other)
     {
         var d1 = (_j1 - other._j1).Abs();
         var d2 = (_j2 - other._j2).Abs();
@@ -184,7 +184,7 @@ public struct Joints6<T> : IEquatable<Joints6<T>>, IParsable<Joints6<T>>, IForma
     /// <param name="other">The other joint configuration to compare against.</param>
     /// <param name="tolerance">Maximum allowed difference per joint.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly bool IsWithin(Joints6<T> other, Degree<T> tolerance) => MaxAbsDelta(other) <= tolerance;
+    public bool IsWithin(Joints6<T> other, Degree<T> tolerance) => MaxAbsDelta(other) <= tolerance;
 
     /// <summary>
     /// Returns true if every joint angle is between the corresponding min and max values (inclusive).
@@ -192,7 +192,7 @@ public struct Joints6<T> : IEquatable<Joints6<T>>, IParsable<Joints6<T>>, IForma
     /// <param name="min">The minimum allowed angles per joint.</param>
     /// <param name="max">The maximum allowed angles per joint.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly bool IsBetween(Joints6<T> min, Joints6<T> max) =>
+    public bool IsBetween(Joints6<T> min, Joints6<T> max) =>
         _j1 >= min._j1 && _j1 <= max._j1 &&
         _j2 >= min._j2 && _j2 <= max._j2 &&
         _j3 >= min._j3 && _j3 <= max._j3 &&
@@ -203,14 +203,14 @@ public struct Joints6<T> : IEquatable<Joints6<T>>, IParsable<Joints6<T>>, IForma
     /// <summary>
     /// Copies the joint angles into a new array of Degree{T}.
     /// </summary>
-    public readonly Degree<T>[] ToArray() => [_j1, _j2, _j3, _j4, _j5, _j6];
+    public Degree<T>[] ToArray() => [_j1, _j2, _j3, _j4, _j5, _j6];
 
     /// <summary>
     /// Copies the joint angles into the destination span. The span must have at least 6 elements.
     /// </summary>
     /// <param name="destination">A span with at least 6 elements.</param>
     /// <exception cref="ArgumentException">Thrown when the span has fewer than 6 elements.</exception>
-    public readonly void CopyTo(Span<Degree<T>> destination)
+    public void CopyTo(Span<Degree<T>> destination)
     {
         if (destination.Length < 6)
             throw new ArgumentException($"Destination span must have at least 6 elements, got {destination.Length}.", nameof(destination));
@@ -256,7 +256,7 @@ public struct Joints6<T> : IEquatable<Joints6<T>>, IParsable<Joints6<T>>, IForma
     /// <param name="j5">Angle of joint 5.</param>
     /// <param name="j6">Angle of joint 6.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly void Deconstruct(out Degree<T> j1, out Degree<T> j2, out Degree<T> j3,
+    public void Deconstruct(out Degree<T> j1, out Degree<T> j2, out Degree<T> j3,
         out Degree<T> j4, out Degree<T> j5, out Degree<T> j6)
     {
         j1 = _j1;
@@ -273,20 +273,20 @@ public struct Joints6<T> : IEquatable<Joints6<T>>, IParsable<Joints6<T>>, IForma
 
     /// <inheritdoc />
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly bool Equals(Joints6<T> other) =>
+    public bool Equals(Joints6<T> other) =>
         _j1 == other._j1 && _j2 == other._j2 && _j3 == other._j3 &&
         _j4 == other._j4 && _j5 == other._j5 && _j6 == other._j6;
 
     /// <inheritdoc />
-    public override readonly bool Equals([NotNullWhen(true)] object? obj) => obj is Joints6<T> j && Equals(j);
+    public override bool Equals([NotNullWhen(true)] object? obj) => obj is Joints6<T> j && Equals(j);
 
     /// <inheritdoc />
-    public override readonly int GetHashCode() => HashCode.Combine(_j1, _j2, _j3, _j4, _j5, _j6);
+    public override int GetHashCode() => HashCode.Combine(_j1, _j2, _j3, _j4, _j5, _j6);
 
     /// <summary>
     /// Returns a string representation of all joint angles with degree symbols.
     /// </summary>
-    public override readonly string ToString() =>
+    public override string ToString() =>
         $"{_j1}, {_j2}, {_j3}, {_j4}, {_j5}, {_j6}";
 
     /// <summary>
@@ -294,7 +294,7 @@ public struct Joints6<T> : IEquatable<Joints6<T>>, IParsable<Joints6<T>>, IForma
     /// </summary>
     /// <param name="format">The format string applied to each angle value.</param>
     /// <param name="formatProvider">The format provider.</param>
-    public readonly string ToString(string? format, IFormatProvider? formatProvider = null) =>
+    public string ToString(string? format, IFormatProvider? formatProvider = null) =>
         $"{_j1.ToString(format, formatProvider)}, {_j2.ToString(format, formatProvider)}, {_j3.ToString(format, formatProvider)}, " +
         $"{_j4.ToString(format, formatProvider)}, {_j5.ToString(format, formatProvider)}, {_j6.ToString(format, formatProvider)}";
 

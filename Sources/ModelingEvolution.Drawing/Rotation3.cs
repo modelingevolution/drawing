@@ -13,12 +13,12 @@ namespace ModelingEvolution.Drawing;
 /// <typeparam name="T">The numeric type used for angles.</typeparam>
 [ProtoContract]
 [Rotation3JsonConverterAttribute]
-public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
+public readonly struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
-    private Degree<T> _rx; // Roll - rotation around X axis
-    private Degree<T> _ry; // Pitch - rotation around Y axis
-    private Degree<T> _rz; // Yaw - rotation around Z axis
+    private readonly Degree<T> _rx; // Roll - rotation around X axis
+    private readonly Degree<T> _ry; // Pitch - rotation around Y axis
+    private readonly Degree<T> _rz; // Yaw - rotation around Z axis
 
     private static readonly T Two = T.CreateTruncating(2);
 
@@ -42,58 +42,58 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     }
 
     /// <summary>
-    /// Gets or sets Roll (rotation around X axis) in degrees.
+    /// Gets or initializes Roll (rotation around X axis) in degrees.
     /// </summary>
     public Degree<T> Rx
     {
-        readonly get => _rx;
-        set => _rx = value;
+        get => _rx;
+        init => _rx = value;
     }
 
     /// <summary>
-    /// Gets or sets Pitch (rotation around Y axis) in degrees.
+    /// Gets or initializes Pitch (rotation around Y axis) in degrees.
     /// </summary>
     public Degree<T> Ry
     {
-        readonly get => _ry;
-        set => _ry = value;
+        get => _ry;
+        init => _ry = value;
     }
 
     /// <summary>
-    /// Gets or sets Yaw (rotation around Z axis) in degrees.
+    /// Gets or initializes Yaw (rotation around Z axis) in degrees.
     /// </summary>
     public Degree<T> Rz
     {
-        readonly get => _rz;
-        set => _rz = value;
+        get => _rz;
+        init => _rz = value;
     }
 
     // Protobuf shadow properties — serialize as raw T for wire compatibility
     [ProtoMember(1)]
     private T ProtoRx
     {
-        readonly get => (T)_rx;
-        set => _rx = value;
+        get => (T)_rx;
+        init => _rx = value;
     }
 
     [ProtoMember(2)]
     private T ProtoRy
     {
-        readonly get => (T)_ry;
-        set => _ry = value;
+        get => (T)_ry;
+        init => _ry = value;
     }
 
     [ProtoMember(3)]
     private T ProtoRz
     {
-        readonly get => (T)_rz;
-        set => _rz = value;
+        get => (T)_rz;
+        init => _rz = value;
     }
 
     /// <summary>
     /// Gets a value indicating whether this rotation is identity (no rotation).
     /// </summary>
-    public readonly bool IsIdentity => _rx == Degree<T>.Zero && _ry == Degree<T>.Zero && _rz == Degree<T>.Zero;
+    public bool IsIdentity => _rx == Degree<T>.Zero && _ry == Degree<T>.Zero && _rz == Degree<T>.Zero;
 
     /// <summary>
     /// Creates a rotation from degrees.
@@ -111,13 +111,13 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     /// Gets the rotation angles in radians.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly (Radian<T> rx, Radian<T> ry, Radian<T> rz) ToRadians() => ((Radian<T>)_rx, (Radian<T>)_ry, (Radian<T>)_rz);
+    public (Radian<T> rx, Radian<T> ry, Radian<T> rz) ToRadians() => ((Radian<T>)_rx, (Radian<T>)_ry, (Radian<T>)_rz);
 
     /// <summary>
     /// Converts to a quaternion representation.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly Quaternion<T> ToQuaternion()
+    public Quaternion<T> ToQuaternion()
     {
         var (rx, ry, rz) = ToRadians();
         var halfRx = (T)rx / Two;
@@ -190,7 +190,7 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     /// Rotates a vector by this rotation.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly Vector3<T> Rotate(Vector3<T> v)
+    public Vector3<T> Rotate(Vector3<T> v)
     {
         var q = ToQuaternion();
         return q.Rotate(v);
@@ -200,7 +200,7 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     /// Rotates a point by this rotation around the origin.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly Point3<T> Rotate(Point3<T> p)
+    public Point3<T> Rotate(Point3<T> p)
     {
         var v = Rotate((Vector3<T>)p);
         return (Point3<T>)v;
@@ -212,13 +212,13 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     /// Use <see cref="Inverse"/> for the true inverse rotation.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly Rotation3<T> Negate() => new(-_rx, -_ry, -_rz);
+    public Rotation3<T> Negate() => new(-_rx, -_ry, -_rz);
 
     /// <summary>
     /// Returns the inverse rotation (R such that Combine(this, R) ≈ Identity).
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly Rotation3<T> Inverse() => FromQuaternion(ToQuaternion().Conjugate());
+    public Rotation3<T> Inverse() => FromQuaternion(ToQuaternion().Conjugate());
 
     /// <summary>
     /// Combines two rotations.
@@ -268,13 +268,13 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     #endregion
 
     /// <summary>
-    /// Converts this Euler rotation to a 3×3 rotation matrix (ZYX convention).
+    /// Converts this Euler rotation to a 3x3 rotation matrix (ZYX convention).
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly Matrix3x3<T> ToMatrix3x3() => Matrix3x3<T>.RotationZYX(_rx, _ry, _rz);
+    public Matrix3x3<T> ToMatrix3x3() => Matrix3x3<T>.RotationZYX(_rx, _ry, _rz);
 
     /// <summary>
-    /// Creates a rotation from a 3×3 rotation matrix by extracting ZYX Euler angles.
+    /// Creates a rotation from a 3x3 rotation matrix by extracting ZYX Euler angles.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Rotation3<T> FromMatrix3x3(Matrix3x3<T> m)
@@ -302,12 +302,12 @@ public struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     #region Equality & Formatting
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly bool Equals(Rotation3<T> other) => this == other;
+    public bool Equals(Rotation3<T> other) => this == other;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public override readonly bool Equals([NotNullWhen(true)] object? obj) => obj is Rotation3<T> r && Equals(r);
+    public override bool Equals([NotNullWhen(true)] object? obj) => obj is Rotation3<T> r && Equals(r);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public override readonly int GetHashCode() => HashCode.Combine(_rx, _ry, _rz);
-    public override readonly string ToString() => $"{{Rx={(T)_rx}, Ry={(T)_ry}, Rz={(T)_rz}}}";
+    public override int GetHashCode() => HashCode.Combine(_rx, _ry, _rz);
+    public override string ToString() => $"{{Rx={(T)_rx}, Ry={(T)_ry}, Rz={(T)_rz}}}";
 
     #endregion
 

@@ -16,7 +16,7 @@ namespace ModelingEvolution.Drawing;
 [PointJsonConverter()]
 [Svg.SvgExporter(typeof(PointSvgExporterFactory))]
 [StructLayout(LayoutKind.Sequential, Pack = 1)]
-public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
+public readonly struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
     /// <summary>
@@ -176,8 +176,8 @@ public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
     /// <returns>A random point with coordinates within the specified size.</returns>
     public static Point<T> Random(System.Drawing.SizeF size) => Random(T.CreateTruncating(size.Width), T.CreateTruncating(size.Height));
     
-    private T x; // Do not rename (binary serialization)
-    private T y; // Do not rename (binary serialization)
+    private readonly T x; // Do not rename (binary serialization)
+    private readonly T y; // Do not rename (binary serialization)
     
     /// <summary>
     /// Initializes a new instance of the Point struct with the specified coordinates.
@@ -228,27 +228,27 @@ public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
     /// Gets a value indicating whether this point is empty (both coordinates are zero).
     /// </summary>
     [Browsable(false)]
-    public readonly bool IsEmpty => x == T.Zero && y == T.Zero;
+    public bool IsEmpty => x == T.Zero && y == T.Zero;
 
 
     /// <summary>
-    /// Gets or sets the X coordinate of this point.
+    /// Gets or initializes the X coordinate of this point.
     /// </summary>
     [ProtoMember(1)]
     public T X
     {
-        readonly get => x;
-        set => x = value;
+        get => x;
+        init => x = value;
     }
 
     /// <summary>
-    /// Gets or sets the Y coordinate of this point.
+    /// Gets or initializes the Y coordinate of this point.
     /// </summary>
     [ProtoMember(2)]
     public T Y
     {
-        readonly get => y;
-        set => y = value;
+        get => y;
+        init => y = value;
     }
 
     
@@ -351,20 +351,20 @@ public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
     /// </summary>
     /// <param name="obj">The object to compare with this point.</param>
     /// <returns>true if the specified object is equal to this point; otherwise, false.</returns>
-    public override readonly bool Equals([NotNullWhen(true)] object? obj) => obj is Point<T> && Equals((Point<T>)obj);
+    public override bool Equals([NotNullWhen(true)] object? obj) => obj is Point<T> && Equals((Point<T>)obj);
 
     /// <summary>
     /// Determines whether the specified point is equal to this point.
     /// </summary>
     /// <param name="other">The point to compare with this point.</param>
     /// <returns>true if the specified point is equal to this point; otherwise, false.</returns>
-    public readonly bool Equals(Point<T> other) => this == other;
+    public bool Equals(Point<T> other) => this == other;
 
     /// <summary>
     /// Returns the hash code for this point.
     /// </summary>
     /// <returns>A 32-bit signed integer hash code.</returns>
-    public override readonly int GetHashCode() => HashCode.Combine(X.GetHashCode(), Y.GetHashCode());
+    public override int GetHashCode() => HashCode.Combine(X.GetHashCode(), Y.GetHashCode());
 
     /// <summary>
     /// Rotates this point around the specified origin by the given angle.
@@ -372,7 +372,7 @@ public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
     /// <param name="angle">The rotation angle.</param>
     /// <param name="origin">The center of rotation. Defaults to the origin (0, 0).</param>
     /// <returns>The rotated point.</returns>
-    public readonly Point<T> Rotate(Degree<T> angle, Point<T> origin = default)
+    public Point<T> Rotate(Degree<T> angle, Point<T> origin = default)
     {
         var rad = (Radian<T>)angle;
         var cos = T.Cos((T)rad);
@@ -391,7 +391,7 @@ public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
     /// <summary>
     /// Computes the Euclidean distance from this point to another.
     /// </summary>
-    public readonly T DistanceTo(Point<T> other)
+    public T DistanceTo(Point<T> other)
     {
         var dx = other.x - x;
         var dy = other.y - y;
@@ -401,14 +401,14 @@ public struct Point<T> : IEquatable<Point<T>>, IParsable<Point<T>>
     /// <summary>
     /// Linearly interpolates between this point and another.
     /// </summary>
-    public readonly Point<T> Lerp(Point<T> other, T t) =>
+    public Point<T> Lerp(Point<T> other, T t) =>
         new Point<T>(x + (other.x - x) * t, y + (other.y - y) * t);
 
     /// <summary>
     /// Reflects this point across the specified center point.
     /// </summary>
-    public readonly Point<T> Reflect(Point<T> center) =>
+    public Point<T> Reflect(Point<T> center) =>
         new Point<T>(center.x + center.x - x, center.y + center.y - y);
 
-    public override readonly string ToString() => $"{{X={x}, Y={y}}}";
+    public override string ToString() => $"{{X={x}, Y={y}}}";
 }

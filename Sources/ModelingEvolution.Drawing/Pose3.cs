@@ -13,11 +13,11 @@ namespace ModelingEvolution.Drawing;
 /// <typeparam name="T">The numeric type used for coordinates and angles.</typeparam>
 [ProtoContract]
 [Pose3JsonConverterAttribute]
-public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
+public readonly struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
-    private Point3<T> _position;
-    private Rotation3<T> _rotation;
+    private readonly Point3<T> _position;
+    private readonly Rotation3<T> _rotation;
 
     /// <summary>
     /// Represents identity pose (origin with no rotation).
@@ -61,89 +61,65 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     }
 
     /// <summary>
-    /// Gets or sets the position component.
+    /// Gets or initializes the position component.
     /// </summary>
     [ProtoMember(1)]
     public Point3<T> Position
     {
-        readonly get => _position;
-        set => _position = value;
+        get => _position;
+        init => _position = value;
     }
 
     /// <summary>
-    /// Gets or sets the rotation component.
+    /// Gets or initializes the rotation component.
     /// </summary>
     [ProtoMember(2)]
     public Rotation3<T> Rotation
     {
-        readonly get => _rotation;
-        set => _rotation = value;
+        get => _rotation;
+        init => _rotation = value;
     }
 
     /// <summary>
-    /// Gets or sets the X position.
+    /// Gets the X position.
     /// </summary>
-    public T X
-    {
-        readonly get => _position.X;
-        set => _position.X = value;
-    }
+    public T X { get => _position.X; }
 
     /// <summary>
-    /// Gets or sets the Y position.
+    /// Gets the Y position.
     /// </summary>
-    public T Y
-    {
-        readonly get => _position.Y;
-        set => _position.Y = value;
-    }
+    public T Y { get => _position.Y; }
 
     /// <summary>
-    /// Gets or sets the Z position.
+    /// Gets the Z position.
     /// </summary>
-    public T Z
-    {
-        readonly get => _position.Z;
-        set => _position.Z = value;
-    }
+    public T Z { get => _position.Z; }
 
     /// <summary>
-    /// Gets or sets the rotation around X axis in degrees.
+    /// Gets the rotation around X axis in degrees.
     /// </summary>
-    public Degree<T> Rx
-    {
-        readonly get => _rotation.Rx;
-        set => _rotation.Rx = value;
-    }
+    public Degree<T> Rx { get => _rotation.Rx; }
 
     /// <summary>
-    /// Gets or sets the rotation around Y axis in degrees.
+    /// Gets the rotation around Y axis in degrees.
     /// </summary>
-    public Degree<T> Ry
-    {
-        readonly get => _rotation.Ry;
-        set => _rotation.Ry = value;
-    }
+    public Degree<T> Ry { get => _rotation.Ry; }
 
     /// <summary>
-    /// Gets or sets the rotation around Z axis in degrees.
+    /// Gets the rotation around Z axis in degrees.
     /// </summary>
-    public Degree<T> Rz
-    {
-        readonly get => _rotation.Rz;
-        set => _rotation.Rz = value;
-    }
+    public Degree<T> Rz { get => _rotation.Rz; }
 
     /// <summary>
     /// Gets a value indicating whether this pose is identity (origin with no rotation).
     /// </summary>
-    public readonly bool IsIdentity => _position.IsEmpty && _rotation.IsIdentity;
+    public bool IsIdentity => _position.IsEmpty && _rotation.IsIdentity;
 
     /// <summary>
     /// Transforms a point from local coordinates to world coordinates using this pose.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly Point3<T> TransformPoint(Point3<T> localPoint)
+    public Point3<T> TransformPoint(Point3<T> localPoint)
     {
         var rotated = _rotation.Rotate(localPoint);
         return rotated + (Vector3<T>)_position;
@@ -153,7 +129,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// Transforms a vector from local coordinates to world coordinates using this pose's rotation.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly Vector3<T> TransformVector(Vector3<T> localVector)
+    public Vector3<T> TransformVector(Vector3<T> localVector)
     {
         return _rotation.Rotate(localVector);
     }
@@ -162,7 +138,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// Returns the inverse of this pose.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly Pose3<T> Inverse()
+    public Pose3<T> Inverse()
     {
         var invRotation = _rotation.Inverse();
         var negPosition = new Vector3<T>(-_position.X, -_position.Y, -_position.Z);
@@ -174,7 +150,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// Combines two poses (this * other).
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly Pose3<T> Multiply(Pose3<T> other)
+    public Pose3<T> Multiply(Pose3<T> other)
     {
         var newRotation = Rotation3<T>.Combine(_rotation, other._rotation);
         var rotatedPosition = _rotation.Rotate(other._position);
@@ -391,7 +367,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// Deconstructs into position and rotation.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly void Deconstruct(out Point3<T> position, out Rotation3<T> rotation)
+    public void Deconstruct(out Point3<T> position, out Rotation3<T> rotation)
     {
         position = _position;
         rotation = _rotation;
@@ -401,7 +377,7 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// Deconstructs into individual components.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly void Deconstruct(out T x, out T y, out T z, out T rx, out T ry, out T rz)
+    public void Deconstruct(out T x, out T y, out T z, out T rx, out T ry, out T rz)
     {
         x = X;
         y = Y;
@@ -416,13 +392,13 @@ public struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     #region Equality & Formatting
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly bool Equals(Pose3<T> other) => this == other;
+    public bool Equals(Pose3<T> other) => this == other;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public override readonly bool Equals([NotNullWhen(true)] object? obj) => obj is Pose3<T> p && Equals(p);
+    public override bool Equals([NotNullWhen(true)] object? obj) => obj is Pose3<T> p && Equals(p);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public override readonly int GetHashCode() => HashCode.Combine(_position, _rotation);
+    public override int GetHashCode() => HashCode.Combine(_position, _rotation);
 
-    public override readonly string ToString() =>
+    public override string ToString() =>
         $"{{X={X}, Y={Y}, Z={Z}, Rx={(T)Rx}, Ry={(T)Ry}, Rz={(T)Rz}}}";
 
     #endregion

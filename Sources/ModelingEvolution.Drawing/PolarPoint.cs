@@ -38,6 +38,66 @@ public readonly record struct CylindricalPoint<T>
     }
 
     /// <summary>
+    /// Creates a cylindrical point on the XY plane (Z=0).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static CylindricalPoint<T> OnPlane(T radialDistance, Radian<T> angle)
+        => new(angle, radialDistance, T.Zero);
+
+    /// <summary>
+    /// Returns a new cylindrical point with the specified Z, preserving radial distance and angle.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public CylindricalPoint<T> WithZ(T z) => new(Angle, RadialDistance, z);
+
+    /// <summary>
+    /// Returns a new cylindrical point with the specified radial distance, preserving angle and Z.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public CylindricalPoint<T> WithRadialDistance(T radialDistance) => new(Angle, radialDistance, Z);
+
+    /// <summary>
+    /// Returns a new cylindrical point with the specified angle, preserving radial distance and Z.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public CylindricalPoint<T> WithAngle(Radian<T> angle) => new(angle, RadialDistance, Z);
+
+    /// <summary>
+    /// Rotates the angle by the specified delta. Since the angle is stored as Radian&lt;T&gt;,
+    /// you can pass either Radian&lt;T&gt; or Degree&lt;T&gt; (implicit conversion).
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public CylindricalPoint<T> RotateAngle(Radian<T> delta) => new(Angle + delta, RadialDistance, Z);
+
+    /// <summary>
+    /// Adds an angular delta to the cylindrical point's angle.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static CylindricalPoint<T> operator +(CylindricalPoint<T> point, Radian<T> delta)
+        => new(point.Angle + delta, point.RadialDistance, point.Z);
+
+    /// <summary>
+    /// Subtracts an angular delta from the cylindrical point's angle.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static CylindricalPoint<T> operator -(CylindricalPoint<T> point, Radian<T> delta)
+        => new(point.Angle - delta, point.RadialDistance, point.Z);
+
+    /// <summary>
+    /// Offsets a Cartesian point by a cylindrical displacement.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Point3<T> operator +(Point3<T> point, CylindricalPoint<T> offset)
+        => point + (Vector3<T>)offset;
+
+    /// <summary>
+    /// Subtracts a cylindrical displacement from a Cartesian point.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static Point3<T> operator -(Point3<T> point, CylindricalPoint<T> offset)
+        => point - (Vector3<T>)offset;
+
+    /// <summary>
     /// Implicitly converts a polar point to a cylindrical point with Z=0.
     /// </summary>
     /// <param name="point">The polar point to convert.</param>
@@ -47,7 +107,40 @@ public readonly record struct CylindricalPoint<T>
         return new CylindricalPoint<T>(point.Angle, point.Radius, T.Zero);
     }
     /// <summary>
-    /// Implicitly converts a cylindrical point to a Vector3 in Cartesian coordinates.
+    /// Converts a cylindrical point to a generic Vector3 in Cartesian coordinates.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static explicit operator Vector3<T>(CylindricalPoint<T> point)
+    {
+        T x = point.RadialDistance * T.Cos((T)point.Angle);
+        T y = point.RadialDistance * T.Sin((T)point.Angle);
+        return new Vector3<T>(x, y, point.Z);
+    }
+
+    /// <summary>
+    /// Converts a cylindrical point to a Cartesian Point3.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static implicit operator Point3<T>(CylindricalPoint<T> point)
+    {
+        T x = point.RadialDistance * T.Cos((T)point.Angle);
+        T y = point.RadialDistance * T.Sin((T)point.Angle);
+        return new Point3<T>(x, y, point.Z);
+    }
+
+    /// <summary>
+    /// Converts a Cartesian Point3 to a cylindrical point.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static implicit operator CylindricalPoint<T>(Point3<T> point)
+    {
+        T r = T.Sqrt(point.X * point.X + point.Y * point.Y);
+        Radian<T> angle = Radian<T>.FromRadian(T.Atan2(point.Y, point.X));
+        return new CylindricalPoint<T>(angle, r, point.Z);
+    }
+
+    /// <summary>
+    /// Implicitly converts a cylindrical point to a System.Numerics.Vector3 in Cartesian coordinates.
     /// </summary>
     /// <param name="point">The cylindrical point to convert.</param>
     /// <returns>A Vector3 representing the point in Cartesian coordinates.</returns>

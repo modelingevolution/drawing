@@ -313,6 +313,166 @@ public readonly struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     }
 
     /// <summary>
+    /// Creates a pose from N points defining a surface plane using least-squares best-fit.
+    /// Origin is the centroid. Z-axis is the best-fit normal (oriented via right-hand rule
+    /// of the first three points). X-axis is the projection of edge a→b onto the plane.
+    /// </summary>
+    /// <param name="points">At least 3 non-collinear points on or near the surface.</param>
+    /// <returns>A pose where origin is the centroid, Z-axis is the best-fit surface normal.</returns>
+    /// <exception cref="ArgumentException">Thrown when fewer than 3 points or points are collinear.</exception>
+    public static Pose3<T> FromSurface(ReadOnlySpan<Point3<T>> points)
+    {
+        if (points.Length < 3)
+            throw new ArgumentException("At least 3 points are required to define a surface.", nameof(points));
+
+        if (points.Length == 3)
+            return FromSurface(points[0], points[1], points[2]);
+
+        var epsilon = T.CreateTruncating(1e-9);
+        var n = T.CreateTruncating(points.Length);
+
+        // 1. Centroid
+        var cx = T.Zero;
+        var cy = T.Zero;
+        var cz = T.Zero;
+        for (int i = 0; i < points.Length; i++)
+        {
+            cx += points[i].X;
+            cy += points[i].Y;
+            cz += points[i].Z;
+        }
+        cx /= n;
+        cy /= n;
+        cz /= n;
+        var centroid = new Point3<T>(cx, cy, cz);
+
+        // 2. Scatter matrix (symmetric 3x3): S = Σ (pi - centroid)(pi - centroid)^T
+        var sxx = T.Zero;
+        var sxy = T.Zero;
+        var sxz = T.Zero;
+        var syy = T.Zero;
+        var syz = T.Zero;
+        var szz = T.Zero;
+        for (int i = 0; i < points.Length; i++)
+        {
+            var dx = points[i].X - cx;
+            var dy = points[i].Y - cy;
+            var dz = points[i].Z - cz;
+            sxx += dx * dx;
+            sxy += dx * dy;
+            sxz += dx * dz;
+            syy += dy * dy;
+            syz += dy * dz;
+            szz += dz * dz;
+        }
+
+        // 3. Normal = eigenvector of smallest eigenvalue of scatter matrix
+        var zAxis = SmallestEigenvector3x3Symmetric(sxx, sxy, sxz, syy, syz, szz);
+
+        // 4. Orient via right-hand rule of first three points
+        var ab = points[1] - points[0];
+        var ac = points[2] - points[0];
+        var cross = Vector3<T>.Cross(ab, ac);
+        if (Vector3<T>.Dot(cross, zAxis) < T.Zero)
+            zAxis = -zAxis;
+
+        // 5. X-axis: project edge a→b onto the plane, normalize
+        var proj = Vector3<T>.Dot(ab, zAxis);
+        var xAxis = new Vector3<T>(
+            ab.X - proj * zAxis.X,
+            ab.Y - proj * zAxis.Y,
+            ab.Z - proj * zAxis.Z);
+        var xLen = xAxis.Length;
+        if (xLen < epsilon)
+            throw new ArgumentException("Cannot determine X-axis: first two points project to the same location on the best-fit plane.");
+        xAxis = xAxis / xLen;
+
+        // 6. Y = Z × X (right-hand system)
+        var yAxis = Vector3<T>.Cross(zAxis, xAxis);
+
+        var rotation = RotationFromAxes(xAxis, yAxis, zAxis);
+        return new Pose3<T>(centroid, rotation);
+    }
+
+    /// <summary>
+    /// Finds the eigenvector corresponding to the smallest eigenvalue of a 3×3 symmetric matrix.
+    /// Uses the analytical trigonometric method for eigenvalues, then cross-product of rows for the eigenvector.
+    /// </summary>
+    private static Vector3<T> SmallestEigenvector3x3Symmetric(T sxx, T sxy, T sxz, T syy, T syz, T szz)
+    {
+        var two = T.CreateTruncating(2);
+        var three = T.CreateTruncating(3);
+        var six = T.CreateTruncating(6);
+        var epsilon = T.CreateTruncating(1e-12);
+
+        // Shift to zero-mean: K = S - m*I where m = trace/3
+        var m = (sxx + syy + szz) / three;
+        var kxx = sxx - m;
+        var kyy = syy - m;
+        var kzz = szz - m;
+
+        // q = ||K||_F^2 / 6
+        var q = (kxx * kxx + kyy * kyy + kzz * kzz
+                 + two * (sxy * sxy + sxz * sxz + syz * syz)) / six;
+        var p = T.Sqrt(q);
+
+        if (p < epsilon)
+        {
+            // Scatter is (near-)isotropic — no well-defined plane.
+            // Fall back: try cross-product of first available pair
+            throw new ArgumentException("Points are collinear or coincident and do not define a plane.");
+        }
+
+        // B = K / p (normalized)
+        var invP = T.One / p;
+        var bxx = kxx * invP;
+        var bxy = sxy * invP;
+        var bxz = sxz * invP;
+        var byy = kyy * invP;
+        var byz = syz * invP;
+        var bzz = kzz * invP;
+
+        // halfDetB = det(B) / 2, clamped to [-1, 1]
+        var halfDetB = (bxx * (byy * bzz - byz * byz)
+                        - bxy * (bxy * bzz - byz * bxz)
+                        + bxz * (bxy * byz - byy * bxz)) / two;
+        if (halfDetB > T.One) halfDetB = T.One;
+        if (halfDetB < -T.One) halfDetB = -T.One;
+
+        var phi = T.Acos(halfDetB) / three;
+
+        // Smallest eigenvalue: e3 = m + 2p·cos(φ + 2π/3)
+        var twoPiOverThree = two * T.Pi / three;
+        var e3 = m + two * p * T.Cos(phi + twoPiOverThree);
+
+        // Eigenvector via cross-product of rows of (S - e3·I)
+        var r0 = new Vector3<T>(sxx - e3, sxy, sxz);
+        var r1 = new Vector3<T>(sxy, syy - e3, syz);
+        var r2 = new Vector3<T>(sxz, syz, szz - e3);
+
+        var c01 = Vector3<T>.Cross(r0, r1);
+        var c02 = Vector3<T>.Cross(r0, r2);
+        var c12 = Vector3<T>.Cross(r1, r2);
+
+        var l01 = Vector3<T>.Dot(c01, c01);
+        var l02 = Vector3<T>.Dot(c02, c02);
+        var l12 = Vector3<T>.Dot(c12, c12);
+
+        var best = l01;
+        if (l02 > best) best = l02;
+        if (l12 > best) best = l12;
+
+        if (best < epsilon)
+            throw new ArgumentException("Points are collinear or coincident and do not define a plane.");
+
+        if (l01 >= l02 && l01 >= l12)
+            return c01 / T.Sqrt(l01);
+        if (l02 >= l12)
+            return c02 / T.Sqrt(l02);
+        return c12 / T.Sqrt(l12);
+    }
+
+    /// <summary>
     /// Creates a Rotation3 from orthonormal basis vectors (X, Y, Z axes).
     /// The resulting rotation satisfies: Rotate(EX)=X, Rotate(EY)=Y, Rotate(EZ)=Z.
     /// </summary>

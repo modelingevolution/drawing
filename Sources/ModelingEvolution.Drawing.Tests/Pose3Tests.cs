@@ -578,4 +578,181 @@ public class Pose3Tests
     }
 
     #endregion
+
+    #region FromSurface (N-point, best-fit plane)
+
+    [Fact]
+    public void FromSurface_NPoints_OriginIsCentroid()
+    {
+        var points = new Point3<double>[]
+        {
+            new(0, 0, 0), new(10, 0, 0), new(10, 10, 0), new(0, 10, 0)
+        };
+
+        var pose = Pose3<double>.FromSurface(points);
+
+        pose.X.Should().BeApproximately(5, 0.0001);
+        pose.Y.Should().BeApproximately(5, 0.0001);
+        pose.Z.Should().BeApproximately(0, 0.0001);
+    }
+
+    [Fact]
+    public void FromSurface_NPoints_HorizontalPlane_ZPointsUp()
+    {
+        // Counter-clockwise in XY plane → right-hand rule → Z points up
+        var points = new Point3<double>[]
+        {
+            new(0, 0, 0), new(10, 0, 0), new(10, 10, 0), new(0, 10, 0)
+        };
+
+        var pose = Pose3<double>.FromSurface(points);
+        var zDir = pose.Rotation.Rotate(Vector3<double>.EZ);
+
+        zDir.X.Should().BeApproximately(0, Tolerance);
+        zDir.Y.Should().BeApproximately(0, Tolerance);
+        zDir.Z.Should().BeApproximately(1, Tolerance);
+    }
+
+    [Fact]
+    public void FromSurface_NPoints_XAxisAlongFirstEdge()
+    {
+        var points = new Point3<double>[]
+        {
+            new(0, 0, 0), new(5, 0, 0), new(5, 5, 0), new(0, 5, 0)
+        };
+
+        var pose = Pose3<double>.FromSurface(points);
+        var xDir = pose.Rotation.Rotate(Vector3<double>.EX);
+
+        // X-axis should be along points[0]→points[1] projected onto plane = +X
+        xDir.X.Should().BeApproximately(1, Tolerance);
+        xDir.Y.Should().BeApproximately(0, Tolerance);
+        xDir.Z.Should().BeApproximately(0, Tolerance);
+    }
+
+    [Fact]
+    public void FromSurface_NPoints_AllPointsHaveNearZeroLocalZ()
+    {
+        // Coplanar points: all at Z=5
+        var points = new Point3<double>[]
+        {
+            new(0, 0, 5), new(10, 0, 5), new(10, 8, 5),
+            new(5, 12, 5), new(0, 8, 5)
+        };
+
+        var pose = Pose3<double>.FromSurface(points);
+        var inverse = pose.Inverse();
+
+        for (int i = 0; i < points.Length; i++)
+        {
+            var local = inverse.TransformPoint(points[i]);
+            local.Z.Should().BeApproximately(0, 0.0001, $"Point {i} should have Z≈0 in local frame");
+        }
+    }
+
+    [Fact]
+    public void FromSurface_NPoints_NoisyPlane_NormalIsClose()
+    {
+        // Points approximately on Z=0 plane with small noise
+        var points = new Point3<double>[]
+        {
+            new(0, 0, 0.01), new(10, 0, -0.01), new(10, 10, 0.02),
+            new(0, 10, -0.02), new(5, 5, 0.005), new(3, 7, -0.01)
+        };
+
+        var pose = Pose3<double>.FromSurface(points);
+        var zDir = pose.Rotation.Rotate(Vector3<double>.EZ);
+
+        // Normal should be approximately +Z
+        Math.Abs(zDir.Z).Should().BeGreaterThan(0.999);
+    }
+
+    [Fact]
+    public void FromSurface_NPoints_TiltedPlane()
+    {
+        // Points on the plane z = x (45° tilt around Y-axis)
+        var points = new Point3<double>[]
+        {
+            new(0, 0, 0), new(1, 0, 1), new(1, 1, 1),
+            new(0, 1, 0), new(0.5, 0.5, 0.5)
+        };
+
+        var pose = Pose3<double>.FromSurface(points);
+        var inverse = pose.Inverse();
+
+        for (int i = 0; i < points.Length; i++)
+        {
+            var local = inverse.TransformPoint(points[i]);
+            local.Z.Should().BeApproximately(0, 0.001, $"Point {i} should lie on the surface");
+        }
+    }
+
+    [Fact]
+    public void FromSurface_NPoints_MatchesThreePointForExactSquare()
+    {
+        // 4 points: first 3 define the same plane
+        var a = new Point3<double>(0, 0, 0);
+        var b = new Point3<double>(10, 0, 0);
+        var c = new Point3<double>(10, 10, 0);
+        var d = new Point3<double>(0, 10, 0);
+
+        var pose3 = Pose3<double>.FromSurface(a, b, c);
+        var poseN = Pose3<double>.FromSurface([a, b, c, d]);
+
+        // Normal directions should match
+        var z3 = pose3.Rotation.Rotate(Vector3<double>.EZ);
+        var zN = poseN.Rotation.Rotate(Vector3<double>.EZ);
+        z3.X.Should().BeApproximately(zN.X, 0.001);
+        z3.Y.Should().BeApproximately(zN.Y, 0.001);
+        z3.Z.Should().BeApproximately(zN.Z, 0.001);
+
+        // X-axis directions should match
+        var x3 = pose3.Rotation.Rotate(Vector3<double>.EX);
+        var xN = poseN.Rotation.Rotate(Vector3<double>.EX);
+        x3.X.Should().BeApproximately(xN.X, 0.001);
+        x3.Y.Should().BeApproximately(xN.Y, 0.001);
+        x3.Z.Should().BeApproximately(xN.Z, 0.001);
+    }
+
+    [Fact]
+    public void FromSurface_NPoints_ThrowsForFewerThan3()
+    {
+        var points = new Point3<double>[] { new(0, 0, 0), new(1, 0, 0) };
+
+        var act = () => Pose3<double>.FromSurface(points);
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*3 points*");
+    }
+
+    [Fact]
+    public void FromSurface_NPoints_ThrowsForCollinearPoints()
+    {
+        var points = new Point3<double>[]
+        {
+            new(0, 0, 0), new(1, 0, 0), new(2, 0, 0), new(3, 0, 0)
+        };
+
+        var act = () => Pose3<double>.FromSurface(points);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void FromSurface_NPoints_DelegatesToThreePointFor3()
+    {
+        var a = new Point3<double>(10, 20, 30);
+        var b = new Point3<double>(11, 20, 30);
+        var c = new Point3<double>(10, 21, 30);
+
+        var pose3 = Pose3<double>.FromSurface(a, b, c);
+        var poseN = Pose3<double>.FromSurface([a, b, c]);
+
+        // Exact same result — delegates to 3-point overload
+        pose3.X.Should().Be(poseN.X);
+        pose3.Y.Should().Be(poseN.Y);
+        pose3.Z.Should().Be(poseN.Z);
+    }
+
+    #endregion
 }

@@ -69,6 +69,23 @@ public class ColorTests
         Assert.Equal(expectedResult, result);
     }
 
+    [Theory]
+    [InlineData("#FF0000", 255, 0, 0, 255)]
+    [InlineData("#00FF00", 0, 255, 0, 255)]
+    [InlineData("#0000FF", 0, 0, 255, 255)]
+    [InlineData("#80808080", 128, 128, 128, 128)]
+    [InlineData("0xFF0000", 255, 0, 0, 255)]
+    [InlineData("rgba(255,128,64,0.5)", 255, 128, 64, 127)]
+    public void TryParse_ValidInputs_ReturnsExpectedColor(string input, byte r, byte g, byte b, byte a)
+    {
+        Color.TryParse(input, out var color).Should().BeTrue();
+
+        color.R.Should().Be(r);
+        color.G.Should().Be(g);
+        color.B.Should().Be(b);
+        color.A.Should().Be(a);
+    }
+
     [Fact]
     public void JsonSerialization_RoundTrip_PreservesValues()
     {

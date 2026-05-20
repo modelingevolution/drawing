@@ -13,6 +13,7 @@ namespace ModelingEvolution.Drawing;
 /// <typeparam name="T">The numeric type used for coordinates.</typeparam>
 [ProtoContract]
 [Point3JsonConverterAttribute]
+[System.Runtime.CompilerServices.CollectionBuilder(typeof(Point3CollectionBuilder), nameof(Point3CollectionBuilder.Create))]
 public readonly struct Point3<T> : IEquatable<Point3<T>>, IParsable<Point3<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
@@ -83,6 +84,23 @@ public readonly struct Point3<T> : IEquatable<Point3<T>>, IParsable<Point3<T>>
         get => _z;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         init => _z = value;
+    }
+
+    /// <summary>
+    /// Returns a struct enumerator over the three coordinates (X, Y, Z) in order.
+    /// Required by <see cref="System.Runtime.CompilerServices.CollectionBuilderAttribute"/>
+    /// so collection-expression literals (<c>Point3&lt;double&gt; p = [1, 2, 3];</c>) resolve the element type.
+    /// </summary>
+    public Enumerator GetEnumerator() => new(this);
+
+    /// <summary>Struct enumerator over the three coordinates of a <see cref="Point3{T}"/>.</summary>
+    public struct Enumerator
+    {
+        private readonly Point3<T> _p;
+        private int _i;
+        internal Enumerator(Point3<T> p) { _p = p; _i = -1; }
+        public T Current => _i switch { 0 => _p._x, 1 => _p._y, 2 => _p._z, _ => throw new InvalidOperationException() };
+        public bool MoveNext() => ++_i < 3;
     }
 
     /// <summary>

@@ -209,6 +209,32 @@ public readonly record struct Matrix3x3<T>(
         T.Zero, sy, T.Zero,
         T.Zero, T.Zero, sz);
 
+    /// <summary>
+    /// Constructs a similarity matrix (uniform scale × rotation) that maps <paramref name="source"/>
+    /// to <paramref name="target"/> when applied as a vector transform.
+    /// Specifically, <c>M.Transform(source) ≈ target</c>.
+    /// </summary>
+    /// <param name="source">Source vector (must be non-zero).</param>
+    /// <param name="target">Target vector (may be any length; zero target yields a degenerate zero matrix).</param>
+    /// <returns>The 3×3 matrix combining rotation that aligns source's direction with target's, scaled by |target|/|source|.</returns>
+    /// <exception cref="ArgumentException">Source vector has zero length.</exception>
+    /// <remarks>
+    /// Two-point alignment is geometrically under-constrained in 3D (rotation around the source axis is free);
+    /// this method picks the unique shortest-arc rotation (via <see cref="Vector3{T}.RotationTo"/>).
+    /// Use cases include adapting taught polyline paths whose endpoints have shifted.
+    /// </remarks>
+    public static Matrix3x3<T> SimilarityFromVectors(Vector3<T> source, Vector3<T> target)
+    {
+        var sourceLength = source.Length;
+        if (sourceLength == T.Zero)
+            throw new ArgumentException("Source vector must be non-zero.", nameof(source));
+
+        var scale = target.Length / sourceLength;
+        var rotation = source.RotationTo(target);                  // Rotation3<T>, Euler ZYX
+        var R = RotationZYX(rotation.Rx, rotation.Ry, rotation.Rz);
+        return scale * R;
+    }
+
     /// <summary>Creates a matrix from three column vectors.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Matrix3x3<T> FromColumns(Vector3<T> c0, Vector3<T> c1, Vector3<T> c2) => new(

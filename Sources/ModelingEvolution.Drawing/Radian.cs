@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
 
 namespace ModelingEvolution.Drawing;
 
@@ -32,6 +33,7 @@ public static class Radian
 /// </summary>
 /// <typeparam name="T">The numeric type that supports trigonometric functions.</typeparam>
 [DebuggerDisplay("{_val}rad")]
+[JsonConverter(typeof(ParsableJsonConverterFactory))]
 public readonly record struct Radian<T>: IComparisonOperators<Radian<T>, Radian<T>, bool>, IComparable<Radian<T>>, IComparable, IParsable<Radian<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>
 {

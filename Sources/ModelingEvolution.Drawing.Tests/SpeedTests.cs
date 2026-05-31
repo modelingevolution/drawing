@@ -137,27 +137,34 @@ public class SpeedTests
     [Fact]
     public void Parse_WithUnitSuffix_ReturnsSpeed()
     {
-        ((float)Speed<float>.Parse("42.5 u/s", null)).Should().BeApproximately(42.5f, Tol);
+        ((float)Speed<float>.Parse("6.4 mm/min", null)).Should().BeApproximately(6.4f, Tol);
+        ((float)Speed<float>.Parse("42.5 mm/min", null)).Should().BeApproximately(42.5f, Tol);
     }
 
     [Fact]
     public void Parse_WithSiPrefix_Scales()
     {
-        // strip the "u/s" unit first, then the SI prefix on the value
-        ((float)Speed<float>.Parse("1.5 ku/s", null)).Should().BeApproximately(1500f, Tol);
-        ((float)Speed<float>.Parse("500 mu/s", null)).Should().BeApproximately(0.5f, Tol);
+        // strip the "mm/min" unit first, then the SI prefix on the value
+        ((float)Speed<float>.Parse("1.5 kmm/min", null)).Should().BeApproximately(1500f, Tol);
+        ((float)Speed<float>.Parse("500 mmm/min", null)).Should().BeApproximately(0.5f, Tol);
     }
 
     [Fact]
     public void Parse_PrefixIsCaseSensitive()
     {
-        ((float)Speed<float>.Parse("1 mu/s", null)).Should().BeApproximately(0.001f, Tol);
-        ((float)Speed<float>.Parse("1 Mu/s", null)).Should().BeApproximately(1_000_000f, Tol);
+        ((float)Speed<float>.Parse("1 mmm/min", null)).Should().BeApproximately(0.001f, Tol);
+        ((float)Speed<float>.Parse("1 Mmm/min", null)).Should().BeApproximately(1_000_000f, Tol);
     }
 
     [Fact]
     public void TryParse_UnknownTrailingLetter_ReturnsFalse()
     {
-        Speed<float>.TryParse("42 Xu/s", null, out _).Should().BeFalse();
+        Speed<float>.TryParse("42 Xmm/min", null, out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public void ToString_UsesMmPerMinUnit()
+    {
+        Speed<float>.From(6.4f).ToString().Should().Be("6.4 mm/min");
     }
 }

@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
 
 namespace ModelingEvolution.Drawing;
 
@@ -31,6 +32,7 @@ public static class Degree
 /// </summary>
 /// <typeparam name="T">The numeric type that supports trigonometric functions.</typeparam>
 [DebuggerDisplay("{_val}")]
+[JsonConverter(typeof(ParsableJsonConverterFactory))]
 public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree<T>, bool>, IComparable<Degree<T>>, IComparable, IFormattable, IParsable<Degree<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>
 {

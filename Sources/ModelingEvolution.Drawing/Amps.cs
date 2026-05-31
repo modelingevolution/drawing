@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
+using System.Text.Json.Serialization;
 using ProtoBuf;
 
 namespace ModelingEvolution.Drawing;
@@ -12,6 +13,7 @@ namespace ModelingEvolution.Drawing;
 /// <typeparam name="T">The numeric type used for the current value.</typeparam>
 [DebuggerDisplay("{_val} A")]
 [ProtoContract]
+[JsonConverter(typeof(ParsableJsonConverterFactory))]
 public readonly record struct Amps<T> : IComparisonOperators<Amps<T>, Amps<T>, bool>, IComparable<Amps<T>>, IComparable, IParsable<Amps<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
     IFloatingPointIeee754<T>, IMinMaxValue<T>

@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
+using System.Text.Json.Serialization;
 using ProtoBuf;
 
 namespace ModelingEvolution.Drawing;
@@ -12,6 +13,7 @@ namespace ModelingEvolution.Drawing;
 /// <typeparam name="T">The numeric type used for the frequency value.</typeparam>
 [DebuggerDisplay("{_val} Hz")]
 [ProtoContract]
+[JsonConverter(typeof(ParsableJsonConverterFactory))]
 public readonly record struct Frequency<T> : IComparisonOperators<Frequency<T>, Frequency<T>, bool>, IComparable<Frequency<T>>, IComparable, IParsable<Frequency<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
     IFloatingPointIeee754<T>, IMinMaxValue<T>

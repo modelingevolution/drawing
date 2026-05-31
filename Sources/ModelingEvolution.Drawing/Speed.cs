@@ -2,16 +2,18 @@ using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Numerics;
+using System.Text.Json.Serialization;
 using ProtoBuf;
 
 namespace ModelingEvolution.Drawing;
 
 /// <summary>
-/// Represents a scalar speed (magnitude of velocity) in units per second.
+/// Represents a scalar speed (magnitude of velocity) in millimetres per minute (mm/min).
 /// </summary>
 /// <typeparam name="T">The numeric type used for the speed value.</typeparam>
-[DebuggerDisplay("{_val}")]
+[DebuggerDisplay("{_val} mm/min")]
 [ProtoContract]
+[JsonConverter(typeof(ParsableJsonConverterFactory))]
 public readonly record struct Speed<T> : IComparisonOperators<Speed<T>, Speed<T>, bool>, IComparable<Speed<T>>, IComparable, IParsable<Speed<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>,
     IFloatingPointIeee754<T>, IMinMaxValue<T>
@@ -85,22 +87,22 @@ public readonly record struct Speed<T> : IComparisonOperators<Speed<T>, Speed<T>
 
     #region Parsing
 
-    /// <summary>Parses a speed, accepting the canonical "u/s" unit (units per second) and an optional
-    /// SI prefix on the value (e.g. "5", "5 u/s", "1.5 ku/s"). Uses the invariant culture by default.</summary>
+    /// <summary>Parses a speed, accepting the canonical "mm/min" unit and an optional SI prefix on
+    /// the value (e.g. "6.4", "6.4 mm/min", "1.5 kmm/min"). Uses the invariant culture by default.</summary>
     public static Speed<T> Parse(string s, IFormatProvider? provider)
-        => new(SiPrefix.Parse<T>(s, "u/s", provider));
+        => new(SiPrefix.Parse<T>(s, "mm/min", provider));
 
-    /// <summary>Tries to parse a speed, accepting the canonical "u/s" unit and an optional SI prefix.
+    /// <summary>Tries to parse a speed, accepting the canonical "mm/min" unit and an optional SI prefix.
     /// Returns false for null or unparseable input.</summary>
     public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, out Speed<T> result)
     {
         result = Zero;
-        if (!SiPrefix.TryParse<T>(s, "u/s", provider, out var val)) return false;
+        if (!SiPrefix.TryParse<T>(s, "mm/min", provider, out var val)) return false;
         result = new Speed<T>(val);
         return true;
     }
 
     #endregion
 
-    public override string ToString() => $"{_val} u/s";
+    public override string ToString() => $"{_val} mm/min";
 }

@@ -106,20 +106,17 @@ public readonly record struct Frequency<T> : IComparisonOperators<Frequency<T>, 
 
     #region Parsing
 
-    /// <summary>Parses a numeric string as a frequency in hertz using the invariant culture by default.</summary>
+    /// <summary>Parses a frequency in hertz, accepting an optional "Hz" unit and SI prefix
+    /// (e.g. "180", "180 Hz", "2 MHz", "500 mHz"). Uses the invariant culture by default.</summary>
     public static Frequency<T> Parse(string s, IFormatProvider? provider)
-    {
-        ArgumentNullException.ThrowIfNull(s);
-        return new Frequency<T>(T.Parse(s, NumberStyles.Float, provider ?? CultureInfo.InvariantCulture));
-    }
+        => new(SiPrefix.Parse<T>(s, "Hz", provider));
 
-    /// <summary>Tries to parse a numeric string as a frequency in hertz. Returns false for null or unparseable input.</summary>
+    /// <summary>Tries to parse a frequency in hertz, accepting an optional "Hz" unit and SI prefix.
+    /// Returns false for null or unparseable input.</summary>
     public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, out Frequency<T> result)
     {
         result = Zero;
-        if (s is null) return false;
-        if (!T.TryParse(s, NumberStyles.Float, provider ?? CultureInfo.InvariantCulture, out var val))
-            return false;
+        if (!SiPrefix.TryParse<T>(s, "Hz", provider, out var val)) return false;
         result = new Frequency<T>(val);
         return true;
     }

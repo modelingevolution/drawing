@@ -126,4 +126,38 @@ public class SpeedTests
         var s = Speed<float>.From(10f);
         s.ToString().Should().Contain("10");
     }
+
+    [Fact]
+    public void Parse_ToString_RoundTrips()
+    {
+        var original = Speed<float>.From(42.5f);
+        Speed<float>.Parse(original.ToString(), null).Should().Be(original);
+    }
+
+    [Fact]
+    public void Parse_WithUnitSuffix_ReturnsSpeed()
+    {
+        ((float)Speed<float>.Parse("42.5 u/s", null)).Should().BeApproximately(42.5f, Tol);
+    }
+
+    [Fact]
+    public void Parse_WithSiPrefix_Scales()
+    {
+        // strip the "u/s" unit first, then the SI prefix on the value
+        ((float)Speed<float>.Parse("1.5 ku/s", null)).Should().BeApproximately(1500f, Tol);
+        ((float)Speed<float>.Parse("500 mu/s", null)).Should().BeApproximately(0.5f, Tol);
+    }
+
+    [Fact]
+    public void Parse_PrefixIsCaseSensitive()
+    {
+        ((float)Speed<float>.Parse("1 mu/s", null)).Should().BeApproximately(0.001f, Tol);
+        ((float)Speed<float>.Parse("1 Mu/s", null)).Should().BeApproximately(1_000_000f, Tol);
+    }
+
+    [Fact]
+    public void TryParse_UnknownTrailingLetter_ReturnsFalse()
+    {
+        Speed<float>.TryParse("42 Xu/s", null, out _).Should().BeFalse();
+    }
 }

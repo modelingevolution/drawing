@@ -182,6 +182,40 @@ public class VoltsTests
         Volts<float>.TryParse("not-a-number", null, out _).Should().BeFalse();
     }
 
+    [Fact]
+    public void Parse_ToString_RoundTrips()
+    {
+        var original = Volts<float>.From(180.5f);
+        Volts<float>.Parse(original.ToString(), null).Should().Be(original);
+    }
+
+    [Fact]
+    public void Parse_WithUnitSuffix_ReturnsVolts()
+    {
+        ((float)Volts<float>.Parse("180 V", null)).Should().BeApproximately(180f, Tol);
+        ((float)Volts<float>.Parse("180V", null)).Should().BeApproximately(180f, Tol);
+    }
+
+    [Fact]
+    public void Parse_WithSiPrefix_Scales()
+    {
+        ((float)Volts<float>.Parse("1.5 kV", null)).Should().BeApproximately(1500f, Tol);
+        ((float)Volts<float>.Parse("500 mV", null)).Should().BeApproximately(0.5f, Tol);
+    }
+
+    [Fact]
+    public void Parse_PrefixIsCaseSensitive()
+    {
+        ((float)Volts<float>.Parse("1 mV", null)).Should().BeApproximately(0.001f, Tol);
+        ((float)Volts<float>.Parse("1 MV", null)).Should().BeApproximately(1_000_000f, Tol);
+    }
+
+    [Fact]
+    public void TryParse_UnknownTrailingLetter_ReturnsFalse()
+    {
+        Volts<float>.TryParse("180 XV", null, out _).Should().BeFalse();
+    }
+
     #endregion
 
     #region ToString

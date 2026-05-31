@@ -87,20 +87,17 @@ public readonly record struct Volts<T> : IComparisonOperators<Volts<T>, Volts<T>
 
     #region Parsing
 
-    /// <summary>Parses a numeric string as a voltage in volts using the invariant culture by default.</summary>
+    /// <summary>Parses a voltage in volts, accepting an optional "V" unit and SI prefix
+    /// (e.g. "180", "180 V", "1.5 kV", "500 mV"). Uses the invariant culture by default.</summary>
     public static Volts<T> Parse(string s, IFormatProvider? provider)
-    {
-        ArgumentNullException.ThrowIfNull(s);
-        return new Volts<T>(T.Parse(s, NumberStyles.Float, provider ?? CultureInfo.InvariantCulture));
-    }
+        => new(SiPrefix.Parse<T>(s, "V", provider));
 
-    /// <summary>Tries to parse a numeric string as a voltage in volts. Returns false for null or unparseable input.</summary>
+    /// <summary>Tries to parse a voltage in volts, accepting an optional "V" unit and SI prefix.
+    /// Returns false for null or unparseable input.</summary>
     public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, out Volts<T> result)
     {
         result = Zero;
-        if (s is null) return false;
-        if (!T.TryParse(s, NumberStyles.Float, provider ?? CultureInfo.InvariantCulture, out var val))
-            return false;
+        if (!SiPrefix.TryParse<T>(s, "V", provider, out var val)) return false;
         result = new Volts<T>(val);
         return true;
     }

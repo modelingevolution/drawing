@@ -200,6 +200,41 @@ public class FrequencyTests
         Frequency<float>.TryParse("not-a-number", null, out _).Should().BeFalse();
     }
 
+    [Fact]
+    public void Parse_ToString_RoundTrips()
+    {
+        var original = Frequency<float>.FromHertz(180.5f);
+        Frequency<float>.Parse(original.ToString(), null).Should().Be(original);
+    }
+
+    [Fact]
+    public void Parse_WithUnitSuffix_ReturnsHertz()
+    {
+        Frequency<float>.Parse("180 Hz", null).Hertz.Should().BeApproximately(180f, Tol);
+        Frequency<float>.Parse("180Hz", null).Hertz.Should().BeApproximately(180f, Tol);
+    }
+
+    [Fact]
+    public void Parse_WithSiPrefix_Scales()
+    {
+        Frequency<float>.Parse("2 MHz", null).Hertz.Should().BeApproximately(2_000_000f, Tol);
+        Frequency<float>.Parse("1.5 kHz", null).Hertz.Should().BeApproximately(1500f, Tol);
+        Frequency<float>.Parse("500 mHz", null).Hertz.Should().BeApproximately(0.5f, Tol);
+    }
+
+    [Fact]
+    public void Parse_PrefixIsCaseSensitive()
+    {
+        Frequency<float>.Parse("1 mHz", null).Hertz.Should().BeApproximately(0.001f, Tol);
+        Frequency<float>.Parse("1 MHz", null).Hertz.Should().BeApproximately(1_000_000f, Tol);
+    }
+
+    [Fact]
+    public void TryParse_UnknownTrailingLetter_ReturnsFalse()
+    {
+        Frequency<float>.TryParse("180 XHz", null, out _).Should().BeFalse();
+    }
+
     #endregion
 
     #region ToString

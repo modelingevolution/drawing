@@ -62,4 +62,47 @@ public class DegreeTests
         var d = Degree<double>.Create(45);
         ((double)d.Normalize()).Should().BeApproximately(45, 1e-9);
     }
+
+    #region Parsing (SiPrefix)
+
+    [Fact]
+    public void Parse_ToString_RoundTrips()
+    {
+        // Round-trips against the EXACT default ToString output ("{value}°", U+00B0, no space).
+        var original = Degree<double>.Create(90);
+        Degree<double>.Parse(original.ToString(), null).Should().Be(original);
+    }
+
+    [Fact]
+    public void Parse_WithUnitSuffix_ReturnsDegrees()
+    {
+        ((double)Degree<double>.Parse("90°", null)).Should().BeApproximately(90, 1e-9);
+        ((double)Degree<double>.Parse("90 °", null)).Should().BeApproximately(90, 1e-9);
+    }
+
+    [Fact]
+    public void Parse_WithSiPrefix_Scales()
+    {
+        ((double)Degree<double>.Parse("500 m°", null)).Should().BeApproximately(0.5, 1e-9);
+    }
+
+    [Fact]
+    public void Parse_BareNumber_ReturnsDegrees()
+    {
+        ((double)Degree<double>.Parse("45", null)).Should().BeApproximately(45, 1e-9);
+    }
+
+    [Fact]
+    public void TryParse_Null_ReturnsFalse()
+    {
+        Degree<double>.TryParse(null, null, out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public void TryParse_UnknownTrailingLetter_ReturnsFalse()
+    {
+        Degree<double>.TryParse("90 X°", null, out _).Should().BeFalse();
+    }
+
+    #endregion
 }

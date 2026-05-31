@@ -31,7 +31,7 @@ public static class Degree
 /// </summary>
 /// <typeparam name="T">The numeric type that supports trigonometric functions.</typeparam>
 [DebuggerDisplay("{_val}")]
-public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree<T>, bool>, IComparable<Degree<T>>, IComparable, IFormattable
+public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree<T>, bool>, IComparable<Degree<T>>, IComparable, IFormattable, IParsable<Degree<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>
 {
     /// <summary>
@@ -252,5 +252,20 @@ public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree
         if (_val is IFormattable f)
             return f.ToString(format, formatProvider) + "\u00b0";
         return ToString();
+    }
+
+    /// <summary>Parses an angle in degrees, accepting an optional "\u00b0" (U+00B0) unit and SI prefix
+    /// (e.g. "90", "90\u00b0", "500 m\u00b0"). Uses the invariant culture by default.</summary>
+    public static Degree<T> Parse(string s, IFormatProvider? provider)
+        => Create(SiPrefix.Parse<T>(s, "\u00b0", provider));
+
+    /// <summary>Tries to parse an angle in degrees, accepting an optional "\u00b0" unit and SI prefix.
+    /// Returns false for null or unparseable input.</summary>
+    public static bool TryParse([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] string? s, IFormatProvider? provider, out Degree<T> result)
+    {
+        result = Zero;
+        if (!SiPrefix.TryParse<T>(s, "\u00b0", provider, out var val)) return false;
+        result = Create(val);
+        return true;
     }
 }

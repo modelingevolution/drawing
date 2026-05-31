@@ -192,6 +192,50 @@ public class AmpsTests
         Amps<float>.From(180f).ToString().Should().Contain("180").And.Contain("A");
     }
 
+    [Fact]
+    public void Parse_ToString_RoundTrips()
+    {
+        var original = Amps<float>.From(180.5f);
+        Amps<float>.Parse(original.ToString(), null).Should().Be(original);
+    }
+
+    [Fact]
+    public void Parse_WithUnitSuffix_ReturnsAmps()
+    {
+        ((float)Amps<float>.Parse("180 A", null)).Should().BeApproximately(180f, Tol);
+        ((float)Amps<float>.Parse("180A", null)).Should().BeApproximately(180f, Tol);
+    }
+
+    [Fact]
+    public void Parse_WithSiPrefix_Scales()
+    {
+        ((float)Amps<float>.Parse("1.5 kA", null)).Should().BeApproximately(1500f, Tol);
+        ((float)Amps<float>.Parse("500 mA", null)).Should().BeApproximately(0.5f, Tol);
+    }
+
+    [Fact]
+    public void Parse_PrefixIsCaseSensitive()
+    {
+        // m = milli (1e-3), M = mega (1e6) — must differ
+        ((float)Amps<float>.Parse("1 mA", null)).Should().BeApproximately(0.001f, Tol);
+        ((float)Amps<float>.Parse("1 MA", null)).Should().BeApproximately(1_000_000f, Tol);
+        Amps<float>.Parse("1 mA", null).Should().NotBe(Amps<float>.Parse("1 MA", null));
+    }
+
+    [Fact]
+    public void Parse_KiloAcceptsUppercaseKAlias()
+    {
+        // "1 KA" == 1000 A == "1 kA" — uppercase K is a lenient input alias for kilo
+        ((float)Amps<float>.Parse("1 KA", null)).Should().BeApproximately(1000f, Tol);
+        Amps<float>.Parse("1 KA", null).Should().Be(Amps<float>.Parse("1 kA", null));
+    }
+
+    [Fact]
+    public void TryParse_UnknownTrailingLetter_ReturnsFalse()
+    {
+        Amps<float>.TryParse("180 XA", null, out _).Should().BeFalse();
+    }
+
     #endregion
 
     #region ProtoContract

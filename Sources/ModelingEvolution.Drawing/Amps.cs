@@ -87,20 +87,17 @@ public readonly record struct Amps<T> : IComparisonOperators<Amps<T>, Amps<T>, b
 
     #region Parsing
 
-    /// <summary>Parses a numeric string as a current in amperes using the invariant culture by default.</summary>
+    /// <summary>Parses a current in amperes, accepting an optional "A" unit and SI prefix
+    /// (e.g. "180", "180 A", "1.5 kA", "500 mA"). Uses the invariant culture by default.</summary>
     public static Amps<T> Parse(string s, IFormatProvider? provider)
-    {
-        ArgumentNullException.ThrowIfNull(s);
-        return new Amps<T>(T.Parse(s, NumberStyles.Float, provider ?? CultureInfo.InvariantCulture));
-    }
+        => new(SiPrefix.Parse<T>(s, "A", provider));
 
-    /// <summary>Tries to parse a numeric string as a current in amperes. Returns false for null or unparseable input.</summary>
+    /// <summary>Tries to parse a current in amperes, accepting an optional "A" unit and SI prefix.
+    /// Returns false for null or unparseable input.</summary>
     public static bool TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, out Amps<T> result)
     {
         result = Zero;
-        if (s is null) return false;
-        if (!T.TryParse(s, NumberStyles.Float, provider ?? CultureInfo.InvariantCulture, out var val))
-            return false;
+        if (!SiPrefix.TryParse<T>(s, "A", provider, out var val)) return false;
         result = new Amps<T>(val);
         return true;
     }

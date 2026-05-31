@@ -32,7 +32,7 @@ public static class Radian
 /// </summary>
 /// <typeparam name="T">The numeric type that supports trigonometric functions.</typeparam>
 [DebuggerDisplay("{_val}rad")]
-public readonly record struct Radian<T>: IComparisonOperators<Radian<T>, Radian<T>, bool>, IComparable<Radian<T>>, IComparable
+public readonly record struct Radian<T>: IComparisonOperators<Radian<T>, Radian<T>, bool>, IComparable<Radian<T>>, IComparable, IParsable<Radian<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>
 {
     /// <summary>
@@ -224,6 +224,21 @@ public readonly record struct Radian<T>: IComparisonOperators<Radian<T>, Radian<
     public int CompareTo(Radian<T> other)
     {
         return _val.CompareTo(other._val);
+    }
+
+    /// <summary>Parses an angle in radians, accepting an optional "rad" unit and SI prefix
+    /// (e.g. "1.5", "1.5rad", "500 mrad"). Uses the invariant culture by default.</summary>
+    public static Radian<T> Parse(string s, IFormatProvider? provider)
+        => FromRadian(SiPrefix.Parse<T>(s, "rad", provider));
+
+    /// <summary>Tries to parse an angle in radians, accepting an optional "rad" unit and SI prefix.
+    /// Returns false for null or unparseable input.</summary>
+    public static bool TryParse([System.Diagnostics.CodeAnalysis.NotNullWhen(true)] string? s, IFormatProvider? provider, out Radian<T> result)
+    {
+        result = Zero;
+        if (!SiPrefix.TryParse<T>(s, "rad", provider, out var val)) return false;
+        result = FromRadian(val);
+        return true;
     }
 
     /// <summary>

@@ -222,8 +222,10 @@ All 2D shapes implement `IShape<T, TSelf>`, providing `Area()`, `Perimeter()`, `
 | Type | Description |
 |---|---|
 | `Joints6<T>` | 6-DOF joint angles stored as six `Degree<T>` fields (no array allocation). Indexer `[0..5]`, arithmetic operators, `Lerp`, `MaxAbsDelta`, `IsWithin(tolerance)`, `IsBetween(min, max)`. `ToArray()`, `FromSpan()`, `FromArray()`, `CopyTo(Span)`. Protobuf and JSON serialization. |
-| `Speed<T>` | Scalar speed in units/second. Arithmetic, `TimeFor(distance)`, `DistanceIn(time)`. Parsing. |
+| `Speed<T>` | Scalar speed in units/second (unitless magnitude). Arithmetic, `TimeFor(distance)`, `DistanceIn(time)`. Parsing. |
 | `Velocity3<T>` | 3D velocity vector (direction + magnitude). Create from direction + speed. `Speed`, `Direction`, `DisplacementIn(time)`. Arithmetic operators. |
+| `Speed<T, TUnit>` | **Unit-aware** speed tagged at compile time with its unit (`ISpeedUnit<T>`). Stores the value in `TUnit`; `ToSi()`/`FromSi()`/`To<TOther>()` normalise via the SI base (m/s). Full arithmetic, comparisons, ratio (`Speed/Speed → T`), `IParsable`. Mixing units (or a non-speed unit) is a compile error. Verified zero-cost vs raw `double`. |
+| `ISpeedUnit<T>` | Marker for speed units. Built-ins: `MetrePerSecond<T>` (SI base), `MillimetrePerSecond<T>`, `MetrePerMinute<T>`. Implement to add your own. |
 
 ### Equations
 
@@ -744,6 +746,32 @@ var (eRx, eRy, eRz) = rotation.ToEulerZYX();
 
 // Convert to quaternion
 Quaternion<double> q = rotation.ToQuaternion();
+```
+
+### Unit-Aware Speed
+
+```csharp
+using ModelingEvolution.Drawing.Units;
+
+// The unit is part of the type — the value is stored in that unit.
+Speed<double, MetrePerMinute<double>> feed = new(300);   // 300 m/min
+
+// Normalise to the SI base (m/s) or convert to another speed unit.
+double si = feed.ToSi();                                  // 5.0 (m/s)
+var inMmPerS = feed.To<MillimetrePerSecond<double>>();    // 5000 mm/s
+
+// Same-unit arithmetic, scalar scaling, and a dimensionless ratio.
+var faster = feed * 2.0;                                  // 600 m/min
+double ratio = faster / feed;                             // 2.0
+
+// Cross-unit add normalises through SI; result stays in the left unit.
+var total = inMmPerS.Add(feed);                           // (5000 + 5000) mm/s
+
+Console.WriteLine(feed);                                  // "300 m/min"
+
+// Compile-time safety:
+//   feed + inMmPerS;                  // error: different units — use .Add(...)
+//   feed.To<Millimetre<double>>();    // error: not an ISpeedUnit
 ```
 
 ## Requirements

@@ -112,8 +112,11 @@ public readonly record struct Color : IEquatable<Color>, IParsable<Color>
         s = s.StartsWith("#") ? s[1..] : s;
 
         if (!uint.TryParse(s, NumberStyles.HexNumber, provider, out var value)) return false;
-        
-        result = new Color(value);
+
+        uint alpha = 255;
+        if (s.Length == 8)
+            alpha = 0;
+        result = new Color(value | alpha << ARGBAlphaShift);
         return true;
 
     }

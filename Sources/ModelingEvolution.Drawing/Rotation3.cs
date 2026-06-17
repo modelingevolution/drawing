@@ -13,6 +13,7 @@ namespace ModelingEvolution.Drawing;
 /// <typeparam name="T">The numeric type used for angles.</typeparam>
 [ProtoContract]
 [Rotation3JsonConverterAttribute]
+[System.Runtime.CompilerServices.CollectionBuilder(typeof(Rotation3CollectionBuilder), nameof(Rotation3CollectionBuilder.Create))]
 public readonly struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotation3<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
@@ -66,6 +67,23 @@ public readonly struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotati
     {
         get => _rz;
         init => _rz = value;
+    }
+
+    /// <summary>
+    /// Returns a struct enumerator over the three angles (Rx, Ry, Rz) in degrees, in order.
+    /// Required by <see cref="System.Runtime.CompilerServices.CollectionBuilderAttribute"/>
+    /// so collection-expression literals (<c>Rotation3&lt;double&gt; r = [0, 0, 5];</c>) resolve the element type.
+    /// </summary>
+    public Enumerator GetEnumerator() => new(this);
+
+    /// <summary>Struct enumerator over the three Euler angles (in degrees) of a <see cref="Rotation3{T}"/>.</summary>
+    public struct Enumerator
+    {
+        private readonly Rotation3<T> _r;
+        private int _i;
+        internal Enumerator(Rotation3<T> r) { _r = r; _i = -1; }
+        public T Current => _i switch { 0 => (T)_r._rx, 1 => (T)_r._ry, 2 => (T)_r._rz, _ => throw new InvalidOperationException() };
+        public bool MoveNext() => ++_i < 3;
     }
 
     // Protobuf shadow properties — serialize as raw T for wire compatibility

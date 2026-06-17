@@ -13,6 +13,7 @@ namespace ModelingEvolution.Drawing;
 /// <typeparam name="T">The numeric type used for coordinates and angles.</typeparam>
 [ProtoContract]
 [Pose3JsonConverterAttribute]
+[System.Runtime.CompilerServices.CollectionBuilder(typeof(Pose3CollectionBuilder), nameof(Pose3CollectionBuilder.Create))]
 public readonly struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
@@ -94,6 +95,32 @@ public readonly struct Pose3<T> : IEquatable<Pose3<T>>, IParsable<Pose3<T>>
     /// Gets the Z position.
     /// </summary>
     public T Z { get => _position.Z; }
+
+    /// <summary>
+    /// Returns a struct enumerator over the six components (X, Y, Z, Rx, Ry, Rz) in order,
+    /// with rotation angles in degrees. Required by <see cref="System.Runtime.CompilerServices.CollectionBuilderAttribute"/>
+    /// so collection-expression literals (<c>Pose3&lt;double&gt; p = [120, 50, 200, 180, 0, 0];</c>) resolve the element type.
+    /// </summary>
+    public Enumerator GetEnumerator() => new(this);
+
+    /// <summary>Struct enumerator over the six components of a <see cref="Pose3{T}"/>.</summary>
+    public struct Enumerator
+    {
+        private readonly Pose3<T> _p;
+        private int _i;
+        internal Enumerator(Pose3<T> p) { _p = p; _i = -1; }
+        public T Current => _i switch
+        {
+            0 => _p._position.X,
+            1 => _p._position.Y,
+            2 => _p._position.Z,
+            3 => (T)_p._rotation.Rx,
+            4 => (T)_p._rotation.Ry,
+            5 => (T)_p._rotation.Rz,
+            _ => throw new InvalidOperationException()
+        };
+        public bool MoveNext() => ++_i < 6;
+    }
 
     /// <summary>
     /// Gets the rotation around X axis in degrees.

@@ -12,6 +12,7 @@ namespace ModelingEvolution.Drawing;
 /// <typeparam name="T">The numeric type used for vector components.</typeparam>
 [ProtoContract]
 [Vector3JsonConverterAttribute]
+[System.Runtime.CompilerServices.CollectionBuilder(typeof(Vector3CollectionBuilder), nameof(Vector3CollectionBuilder.Create))]
 public readonly struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
@@ -84,6 +85,23 @@ public readonly struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
         get => _z;
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         init => _z = value;
+    }
+
+    /// <summary>
+    /// Returns a struct enumerator over the three components (X, Y, Z) in order.
+    /// Required by <see cref="System.Runtime.CompilerServices.CollectionBuilderAttribute"/>
+    /// so collection-expression literals (<c>Vector3&lt;double&gt; v = [1, 2, 3];</c>) can resolve the element type.
+    /// </summary>
+    public Enumerator GetEnumerator() => new(this);
+
+    /// <summary>Struct enumerator over the three components of a <see cref="Vector3{T}"/>.</summary>
+    public struct Enumerator
+    {
+        private readonly Vector3<T> _v;
+        private int _i;
+        internal Enumerator(Vector3<T> v) { _v = v; _i = -1; }
+        public T Current => _i switch { 0 => _v._x, 1 => _v._y, 2 => _v._z, _ => throw new InvalidOperationException() };
+        public bool MoveNext() => ++_i < 3;
     }
 
     /// <summary>

@@ -53,7 +53,7 @@ public class Trajectory3BuilderTests
     public void MoveTo_ComputesTimeFromSpeed()
     {
         // Distance from (0,0,0) to (10,0,0) = 10 units
-        // Speed = 5 u/s → dt = 10/5 = 2s
+        // Speed = 5 (mm/min) → dt = 10/5 = 2 (time units; magnitude-only, relabel doesn't change the ratio)
         var traj = new Trajectory3Builder<float>()
             .Add(P(0, 0, 0))
             .MoveTo(P(10, 0, 0), Speed<float>.From(5f))

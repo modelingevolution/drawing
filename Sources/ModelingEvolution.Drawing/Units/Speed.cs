@@ -67,8 +67,17 @@ public readonly record struct Speed<T, TUnit> :
     /// <summary>Scales a speed by a scalar.</summary>
     public static Speed<T, TUnit> operator *(T scalar, Speed<T, TUnit> a) => new(scalar * a._value);
 
+    /// <summary>Scales a speed by a percentage, e.g. <c>maxSpeed * new Percentage(50)</c> → half speed.</summary>
+    public static Speed<T, TUnit> operator *(Speed<T, TUnit> a, Percentage p) => new(a._value * T.CreateChecked(p.Fraction));
+
+    /// <summary>Scales a speed by a percentage, e.g. <c>new Percentage(50) * maxSpeed</c> → half speed.</summary>
+    public static Speed<T, TUnit> operator *(Percentage p, Speed<T, TUnit> a) => new(T.CreateChecked(p.Fraction) * a._value);
+
     /// <summary>Divides a speed by a scalar.</summary>
     public static Speed<T, TUnit> operator /(Speed<T, TUnit> a, T scalar) => new(a._value / scalar);
+
+    /// <summary>Recovers the full speed from one that is <paramref name="p"/> of it, e.g. half / 50% = full.</summary>
+    public static Speed<T, TUnit> operator /(Speed<T, TUnit> a, Percentage p) => new(a._value / T.CreateChecked(p.Fraction));
 
     /// <summary>The dimensionless ratio of two speeds expressed in the same unit.</summary>
     public static T operator /(Speed<T, TUnit> a, Speed<T, TUnit> b) => a._value / b._value;

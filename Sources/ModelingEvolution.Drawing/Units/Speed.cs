@@ -82,6 +82,25 @@ public readonly record struct Speed<T, TUnit> :
     /// <summary>The dimensionless ratio of two speeds expressed in the same unit.</summary>
     public static T operator /(Speed<T, TUnit> a, Speed<T, TUnit> b) => a._value / b._value;
 
+    /// <summary>Kinematics: distance covered over a time span (s = v · t). Result is in SI (metres).</summary>
+    public static Length<T, Metre<T>> operator *(Speed<T, TUnit> v, TimeSpan dt)
+        => Length<T, Metre<T>>.FromSi(v.ToSi() * T.CreateChecked(dt.TotalSeconds));
+
+    /// <summary>Kinematics: distance covered over a time span (s = v · t). Result is in SI (metres).</summary>
+    public static Length<T, Metre<T>> operator *(TimeSpan dt, Speed<T, TUnit> v)
+        => Length<T, Metre<T>>.FromSi(T.CreateChecked(dt.TotalSeconds) * v.ToSi());
+
+    /// <summary>Kinematics: average acceleration over a time span (a = Δv / t). Result is in SI (m/s²).</summary>
+    public static Acceleration<T, MetrePerSecondSquared<T>> operator /(Speed<T, TUnit> v, TimeSpan dt)
+        => Acceleration<T, MetrePerSecondSquared<T>>.FromSi(v.ToSi() / T.CreateChecked(dt.TotalSeconds));
+
+    /// <summary>
+    /// Kinematics: time to reach this speed from rest at <paramref name="acceleration"/> (t = v / a). A
+    /// method, not an operator, because the acceleration's unit type-parameter is free.
+    /// </summary>
+    public TimeSpan TimeToReach<TAccelUnit>(Acceleration<T, TAccelUnit> acceleration) where TAccelUnit : IAccelerationUnit<T>
+        => TimeSpan.FromSeconds(double.CreateChecked(ToSi() / acceleration.ToSi()));
+
     /// <summary>Adds a speed expressed in a different unit, normalising through SI. Result is in this unit.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Speed<T, TUnit> Add<TOther>(Speed<T, TOther> other) where TOther : ISpeedUnit<T>

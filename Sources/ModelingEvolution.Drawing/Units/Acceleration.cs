@@ -82,6 +82,14 @@ public readonly record struct Acceleration<T, TUnit> :
     /// <summary>The dimensionless ratio of two accelerations expressed in the same unit.</summary>
     public static T operator /(Acceleration<T, TUnit> a, Acceleration<T, TUnit> b) => a._value / b._value;
 
+    /// <summary>Kinematics: change in speed over a time span (Δv = a · t). Result is in SI (m/s).</summary>
+    public static Speed<T, MetrePerSecond<T>> operator *(Acceleration<T, TUnit> a, TimeSpan dt)
+        => Speed<T, MetrePerSecond<T>>.FromSi(a.ToSi() * T.CreateChecked(dt.TotalSeconds));
+
+    /// <summary>Kinematics: change in speed over a time span (Δv = a · t). Result is in SI (m/s).</summary>
+    public static Speed<T, MetrePerSecond<T>> operator *(TimeSpan dt, Acceleration<T, TUnit> a)
+        => Speed<T, MetrePerSecond<T>>.FromSi(T.CreateChecked(dt.TotalSeconds) * a.ToSi());
+
     /// <summary>Adds an acceleration expressed in a different unit, normalising through SI. Result is in this unit.</summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public Acceleration<T, TUnit> Add<TOther>(Acceleration<T, TOther> other) where TOther : IAccelerationUnit<T>

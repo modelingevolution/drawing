@@ -143,17 +143,122 @@ public class AllocationScopeTests
         tiles.Length.Should().Be(4);
     }
 
+    // Replaces ThreadIsolation_ScopeOnOneThreadDoesNotAffectAnother. That test asserted a scope was
+    // invisible to work forked inside it, which was a restatement of [ThreadStatic] rather than a
+    // desired guarantee — it also meant an arena silently stopped applying across an await. The scope
+    // is now ambient to the execution flow, so the meaningful pair is: forked work inherits it, and an
+    // unrelated flow does not.
     [Fact]
-    public async Task ThreadIsolation_ScopeOnOneThreadDoesNotAffectAnother()
+    public async Task FlowIsolation_ScopeInheritedByForkedWork_NotByUnrelatedFlows()
     {
+        AllocationScope? unrelatedFlowScope = null;
+        var unrelated = Task.Run(() => { unrelatedFlowScope = AllocationScope.Current; });
+
         using var scope = AllocationScope.Begin();
         AllocationScope.Current.Should().BeSameAs(scope);
 
-        AllocationScope? otherThreadScope = null;
-        await Task.Run(() => { otherThreadScope = AllocationScope.Current; });
+        AllocationScope? forkedScope = null;
+        await Task.Run(() => { forkedScope = AllocationScope.Current; });
 
-        otherThreadScope.Should().BeNull();
+        // Forked after Begin: the arena applies, which is the point of the scope.
+        forkedScope.Should().BeSameAs(scope);
+
+        // Forked from a flow that had no scope: unaffected.
+        await unrelated;
+        unrelatedFlowScope.Should().BeNull();
     }
+
+    [Fact]
+    public async Task ScopeSurvivesAnAwait_SoAllocationsAfterItStillUseTheArena()
+    {
+        using var scope = AllocationScope.Begin();
+
+        await Task.Delay(1);
+
+        AllocationScope.Current.Should().BeSameAs(scope);
+
+        var scaled = UnitSquare() * new Size<float>(2, 2);
+        scaled.Count.Should().Be(4);
+    }
+
+    // Regression: a scope must never survive on a pooled thread after the flow that began it ended.
+    // Under [ThreadStatic] the scope was written to the thread that called Begin, but Dispose ran on
+    // whichever thread resumed the continuation, so the beginning thread kept a disposed scope and the
+    // next unrelated work item on that thread allocated into it.
+    [Fact]
+    public async Task ScopeNeverLeaksOntoAPooledThreadRunningUnrelatedWork()
+    {
+        const int rounds = 200;
+        var leaked = 0;
+
+        var owners = new Task[rounds];
+        var probes = new Task[rounds];
+
+        for (int i = 0; i < rounds; i++)
+        {
+            owners[i] = Task.Run(async () =>
+            {
+                using var scope = AllocationScope.Begin();
+                var scaled = UnitSquare() * new Size<float>(2, 2);
+                scaled.Count.Should().Be(4);
+                // Resumes on a different pool thread than the one that ran Begin.
+                await Task.Delay(1);
+            });
+
+            // Forked from the test flow, which has no scope, so it must never observe one.
+            probes[i] = Task.Run(() =>
+            {
+                if (AllocationScope.Current is not null)
+                    Interlocked.Increment(ref leaked);
+            });
+        }
+
+        await Task.WhenAll(owners);
+        await Task.WhenAll(probes);
+
+        leaked.Should().Be(0);
+    }
+
+    // Regression: because the scope now flows into forked work, one scope can be allocated from by
+    // several threads at once. The tracking list must tolerate that.
+    [Fact]
+    public async Task ParallelChildrenOfOneScope_AllocateConcurrently()
+    {
+        for (int round = 0; round < 20; round++)
+        {
+            using var scope = AllocationScope.Begin();
+
+            var workers = Enumerable.Range(0, Environment.ProcessorCount * 4).Select(_ => Task.Run(() =>
+            {
+                for (int i = 0; i < 50; i++)
+                {
+                    var scaled = UnitSquare() * new Size<float>(2, 2);
+                    scaled.Count.Should().Be(4);
+                }
+            }));
+
+            await Task.WhenAll(workers);
+        }
+    }
+
+    [Fact]
+    public void Dispose_IsIdempotent()
+    {
+        var outer = AllocationScope.Begin();
+        var inner = AllocationScope.Begin();
+
+        inner.Dispose();
+        inner.Dispose();
+
+        // A second Dispose must not re-install the previous scope over the current one.
+        AllocationScope.Current.Should().BeSameAs(outer);
+        outer.Dispose();
+        AllocationScope.Current.Should().BeNull();
+    }
+
+    private static Polygon<float> UnitSquare() => new(
+        new Point<float>(0, 0), new Point<float>(1, 0),
+        new Point<float>(1, 1), new Point<float>(0, 1));
 
     [Fact]
     public void PolygonOperatorChain_ThroughScope()

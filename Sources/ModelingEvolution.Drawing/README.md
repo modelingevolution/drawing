@@ -226,6 +226,8 @@ All 2D shapes implement `IShape<T, TSelf>`, providing `Area()`, `Perimeter()`, `
 | `Velocity3<T>` | 3D velocity vector (direction + magnitude). Create from direction + speed. `Speed`, `Direction`, `DisplacementIn(time)`. Arithmetic operators. |
 | `Speed<T, TUnit>` | **Unit-aware** speed tagged at compile time with its unit (`ISpeedUnit<T>`). Stores the value in `TUnit`; `ToSi()`/`FromSi()`/`To<TOther>()` normalise via the SI base (m/s). Full arithmetic, comparisons, ratio (`Speed/Speed → T`), `IParsable`. Mixing units (or a non-speed unit) is a compile error. Verified zero-cost vs raw `double`. |
 | `ISpeedUnit<T>` | Marker for speed units. Built-ins: `MetrePerSecond<T>` (SI base), `MillimetrePerSecond<T>`, `MetrePerMinute<T>`. Implement to add your own. |
+| `AngularSpeed<T, TUnit>` | **Unit-aware** angular speed tagged at compile time with its unit (`IAngularSpeedUnit<T>`). Stores the value in `TUnit`; `ToSi()`/`FromSi()`/`To<TOther>()` normalise via the SI base (rad/s). Full arithmetic, signed negation, comparisons, ratio (`AngularSpeed/AngularSpeed → T`), `IParsable`. A separate dimension from `Speed<T, TUnit>`, so mixing an angular speed with a linear one is a compile error. |
+| `IAngularSpeedUnit<T>` | Marker for angular-speed units. Built-ins: `RadianPerSecond<T>` (SI base), `DegreePerSecond<T>`. Implement to add your own. |
 
 ### Equations
 
@@ -772,6 +774,36 @@ Console.WriteLine(feed);                                  // "300 m/min"
 // Compile-time safety:
 //   feed + inMmPerS;                  // error: different units — use .Add(...)
 //   feed.To<Millimetre<double>>();    // error: not an ISpeedUnit
+```
+
+### Unit-Aware Angular Speed
+
+`AngularSpeed<T, TUnit>` mirrors `Speed<T, TUnit>` for rotation, on its own dimension with the SI
+base rad/s. Keeping the two dimensions apart is the point: a rotary axis and a linear axis cannot be
+commanded with each other's speed.
+
+```csharp
+using ModelingEvolution.Drawing.Units;
+
+// The unit is part of the type — the value is stored in that unit.
+AngularSpeed<double, DegreePerSecond<double>> tilt = new(5);   // 5 °/s
+
+// Normalise to the SI base (rad/s) or convert to another angular-speed unit.
+double si = tilt.ToSi();                                        // 0.0873 (rad/s)
+var inRadPerS = tilt.To<RadianPerSecond<double>>();
+
+// Signed: negating reverses the sense of rotation.
+var reverse = -tilt;                                            // -5 °/s
+
+// Scale by a percentage of a maximum, e.g. a jog knob at 20% of the axis limit.
+var jog = tilt * new Percentage(20f);                           // 1 °/s
+
+Console.WriteLine(tilt);                                        // "5 °/s"
+
+// Compile-time safety — the dimensions do not mix:
+//   tilt + new Speed<double, MillimetrePerSecond<double>>(20);  // error: different types
+//   tilt.To<MetrePerSecond<double>>();                          // error: not an IAngularSpeedUnit
+//   Speed<double, DegreePerSecond<double>> wrong;               // error: not an ISpeedUnit
 ```
 
 ## Requirements

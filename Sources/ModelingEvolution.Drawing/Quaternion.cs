@@ -159,7 +159,9 @@ public readonly struct Quaternion<T> : IEquatable<Quaternion<T>>
 
     /// <summary>
     /// Creates the shortest-arc rotation that turns the direction of <paramref name="from"/> into the direction of
-    /// <paramref name="to"/>. For opposite directions it turns by π about an axis perpendicular to <paramref name="from"/>.
+    /// <paramref name="to"/>. For opposite directions (1 + from̂·tô &lt; 1e-12) it is the half-turn about
+    /// <c>normalize(EX × from)</c>, or about <c>normalize(EY × from)</c> when <paramref name="from"/> is along X
+    /// (|EX × from̂|² &lt; 1e-12); so +X → −X turns about −Z and +Z → −Z about −Y.
     /// </summary>
     /// <exception cref="ArgumentException">Thrown when either vector is zero.</exception>
     public static Quaternion<T> FromTo(Vector3<T> from, Vector3<T> to)

@@ -4,8 +4,8 @@ using FluentAssertions;
 namespace ModelingEvolution.Drawing.Tests;
 
 /// <summary>
-/// Epic-129 Q7: <see cref="Rotation3{T}"/> and <see cref="Pose3{T}"/> are wire and edit formats. The vector and matrix
-/// maths types neither take nor return them; direction → rotation is <see cref="Quaternion{T}.FromTo"/>.
+/// Epic-129 Q7: <see cref="Rotation3{T}"/> and <see cref="Pose3{T}"/> are wire and edit formats. The vector, point and
+/// matrix maths types neither take nor return them (<c>Pose3.From(p, r)</c> builds a pose); direction → rotation is <see cref="Quaternion{T}.FromTo"/>.
 /// </summary>
 public class EulerSurfaceTests
 {
@@ -37,6 +37,12 @@ public class EulerSurfaceTests
     public void Vector3_HasNoMemberTakingOrReturningRotation3OrPose3()
     {
         MembersTouchingWireTypes(typeof(Vector3<double>)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Point3_HasNoMemberTakingOrReturningRotation3OrPose3()
+    {
+        MembersTouchingWireTypes(typeof(Point3<double>)).Should().BeEmpty();
     }
 
     [Fact]

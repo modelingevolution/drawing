@@ -34,6 +34,53 @@ public class Frame3EulerTests
         }
     }
 
+    private static double NearGimbalRy(Random rng) => (rng.Next(2) == 0 ? 1 : -1) * (89.9 + rng.NextDouble() * 0.1);
+
+    private static double[,] RotationOf(Pose3<double> p) =>
+        Mul(Mul(Rz((double)p.Rz * Math.PI / 180), Ry((double)p.Ry * Math.PI / 180)), Rx((double)p.Rx * Math.PI / 180));
+
+    private static void ShouldBeSameRotation(double[,] actual, double[,] expected, double tol, string because)
+    {
+        for (int i = 0; i < 3; i++)
+            for (int j = 0; j < 3; j++)
+                Math.Abs(actual[i, j] - expected[i, j]).Should().BeLessThan(tol, because);
+    }
+
+    [Fact]
+    public void FromPose3_ToPose3_KeepsTheRotationNearGimbal_10000Random()
+    {
+        // |ry| in [89.9°, 90°]: the rx/rz split may change, the rotation may not (every element within 1e-8).
+        var rng = new Random(129);
+        for (int i = 0; i < 10_000; i++)
+        {
+            var p = new Pose3<double>(Uniform(rng, 2000), Uniform(rng, 2000), Uniform(rng, 2000),
+                Uniform(rng, 180), NearGimbalRy(rng), Uniform(rng, 180));
+
+            var back = Frame3<double>.FromPose3(p, 0.001).ToPose3(1000);
+
+            Math.Abs(back.X - p.X).Should().BeLessThan(1e-9);
+            Math.Abs(back.Y - p.Y).Should().BeLessThan(1e-9);
+            Math.Abs(back.Z - p.Z).Should().BeLessThan(1e-9);
+            ShouldBeSameRotation(RotationOf(back), RotationOf(p), 1e-8, $"rotation of {p}");
+        }
+    }
+
+    [Theory]
+    [InlineData(30, 90, 0)]
+    [InlineData(30, 90, 45)]
+    [InlineData(-120, -90, 0)]
+    [InlineData(-120, -90, 70)]
+    public void FromPose3_ToPose3_AtExactly90_KeepsTheRotationWithRzZero(double rx, double ry, double rz)
+    {
+        var p = new Pose3<double>(0, 0, 0, rx, ry, rz);
+
+        var back = Frame3<double>.FromPose3(p, 1).ToPose3(1);
+
+        ((double)back.Ry).Should().BeApproximately(ry, 1e-6);
+        ((double)back.Rz).Should().Be(0);
+        ShouldBeSameRotation(RotationOf(back), RotationOf(p), 1e-12, $"rotation of {p}");
+    }
+
     [Fact]
     public void FromPose3_ScalesPositionAndKeepsRotation()
     {

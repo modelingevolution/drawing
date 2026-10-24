@@ -564,20 +564,77 @@ public class Matrix3x3Tests
         }
     }
 
-    [Fact]
-    public void ToEulerZYX_EqualsMasterAngles_OutsideGimbalBand_10000Random()
+    // Master extracted rx = atan2(M32, M33), ry = asin(-M31), rz = atan2(M21, M11) when |cos ry| > 1e-6 (exact there),
+    // and forced rz = 0 inside that band.
+    private static void ShouldMatchMaster(Matrix3x3<double> m, double angleTol)
     {
-        // Master extracted rx = atan2(M32, M33), ry = asin(-M31), rz = atan2(M21, M11) when |cos ry| > 1e-6.
+        var (erx, ery, erz) = m.ToEulerZYX();
+        var cosRy = Math.Sqrt(m.M11 * m.M11 + m.M21 * m.M21);
+        if (cosRy > 1e-6)
+        {
+            ((double)erx).Should().BeApproximately(Math.Atan2(m.M32, m.M33) * 180 / Math.PI, angleTol);
+            ((double)ery).Should().BeApproximately(Math.Asin(-m.M31) * 180 / Math.PI, angleTol);
+            ((double)erz).Should().BeApproximately(Math.Atan2(m.M21, m.M11) * 180 / Math.PI, angleTol);
+        }
+        else
+        {
+            AssertMatricesEqual(MasterRotationZYX((double)erx, (double)ery, (double)erz), m, 1e-8);
+        }
+    }
+
+    [Fact]
+    public void ToEulerZYX_EqualsMasterAngles_10000Random()
+    {
         var rng = new Random(129);
         for (int i = 0; i < 10_000; i++)
         {
-            double rx = rng.NextDouble() * 358 - 179, ry = rng.NextDouble() * 178 - 89, rz = rng.NextDouble() * 358 - 179;
-            var m = MasterRotationZYX(rx, ry, rz);
-            var (erx, ery, erz) = m.ToEulerZYX();
-            ((double)erx).Should().BeApproximately(Math.Atan2(m.M32, m.M33) * 180 / Math.PI, 1e-9);
-            ((double)ery).Should().BeApproximately(Math.Asin(-m.M31) * 180 / Math.PI, 1e-9);
-            ((double)erz).Should().BeApproximately(Math.Atan2(m.M21, m.M11) * 180 / Math.PI, 1e-9);
+            double rx = rng.NextDouble() * 358 - 179, ry = rng.NextDouble() * 180 - 90, rz = rng.NextDouble() * 358 - 179;
+            ShouldMatchMaster(MasterRotationZYX(rx, ry, rz), 1e-9);
         }
+    }
+
+    [Fact]
+    public void ToEulerZYX_EqualsMasterNearGimbal_10000Random()
+    {
+        // |ry| in [89.9°, 90°]: master's angles where master was exact (atan2 of elements of size cos ry, so the
+        // tolerance is wider), the same matrix inside master's band.
+        var rng = new Random(129);
+        for (int i = 0; i < 10_000; i++)
+        {
+            double rx = rng.NextDouble() * 358 - 179, rz = rng.NextDouble() * 358 - 179;
+            double ry = (rng.Next(2) == 0 ? 1 : -1) * (89.9 + rng.NextDouble() * 0.1);
+            ShouldMatchMaster(MasterRotationZYX(rx, ry, rz), 1e-6);
+        }
+    }
+
+    [Fact]
+    public void RotationZYX_ToEulerZYX_RoundTripsNearGimbal_10000Random()
+    {
+        var rng = new Random(129);
+        for (int i = 0; i < 10_000; i++)
+        {
+            double rx = rng.NextDouble() * 358 - 179, rz = rng.NextDouble() * 358 - 179;
+            double ry = (rng.Next(2) == 0 ? 1 : -1) * (89.9 + rng.NextDouble() * 0.1);
+            var m = Matrix3x3<double>.RotationZYX(rx, ry, rz);
+
+            var (erx, ery, erz) = m.ToEulerZYX();
+
+            AssertMatricesEqual(Matrix3x3<double>.RotationZYX(erx, ery, erz), m, 1e-8);
+        }
+    }
+
+    [Theory]
+    [InlineData(30, 90, 45)]
+    [InlineData(-120, -90, 70)]
+    public void RotationZYX_ToEulerZYX_AtExactly90_KeepsTheMatrixWithRzZero(double rx, double ry, double rz)
+    {
+        var m = Matrix3x3<double>.RotationZYX(rx, ry, rz);
+
+        var (erx, ery, erz) = m.ToEulerZYX();
+
+        ((double)erz).Should().Be(0);
+        ((double)ery).Should().BeApproximately(ry, 1e-6);
+        AssertMatricesEqual(Matrix3x3<double>.RotationZYX(erx, ery, erz), m, 1e-12);
     }
 
     #endregion

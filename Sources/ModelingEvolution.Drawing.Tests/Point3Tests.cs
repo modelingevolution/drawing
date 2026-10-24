@@ -109,24 +109,6 @@ public class Point3Tests
         a.Equals(b).Should().BeTrue();
     }
 
-    [Fact]
-    public void Point3_AddRotation_ReturnsPose3()
-    {
-        var point = new Point3<double>(10, 20, 30);
-        var rotation = new Rotation3<double>(45, 90, -30);
-
-        Pose3<double> pose = point + rotation;
-
-        pose.Position.Should().Be(point);
-        pose.Rotation.Should().Be(rotation);
-        pose.X.Should().Be(10);
-        pose.Y.Should().Be(20);
-        pose.Z.Should().Be(30);
-        pose.Rx.Should().Be(45);
-        pose.Ry.Should().Be(90);
-        pose.Rz.Should().Be(-30);
-    }
-
     #endregion
 
     #region Methods

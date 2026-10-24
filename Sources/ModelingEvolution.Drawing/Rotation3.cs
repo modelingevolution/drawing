@@ -24,6 +24,7 @@ public readonly struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotati
     private readonly Degree<T> _rz; // Yaw - rotation around Z axis
 
     private static readonly T Two = T.CreateTruncating(2);
+    private static readonly T GimbalCos = T.CreateTruncating(1e-9);
 
     /// <summary>
     /// Represents zero rotation (identity).
@@ -144,43 +145,34 @@ public readonly struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotati
     }
 
     /// <summary>
-    /// Creates a rotation from a quaternion.
+    /// Creates a rotation from a quaternion: the one rotation → Euler (ZYX, R = Rz·Ry·Rx) formula of the library.
+    /// The result reproduces the rotation for every ry, ±90° included; when cos ry &lt; 1e-9 (gimbal lock) rz = 0.
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Rotation3<T> FromQuaternion(Quaternion<T> q)
     {
-        // Extract Euler angles from quaternion (ZYX order)
-        var sinp = Two * (q.W * q.Y - q.Z * q.X);
-        T rx, ry, rz;
+        // Extract ZYX Euler angles (R = Rz·Ry·Rx) from the rotation matrix elements of q.
+        // ry = atan2(sin, cos) keeps full precision near ±90°; the gimbal branch is taken only when cos ry is
+        // below 1e-9, where rx and rz share one degree of freedom: rz = 0 and rx from R = Ry·Rx, exact for any ry.
+        var sinp = Two * (q.W * q.Y - q.Z * q.X);                      // -r20
+        var r00 = T.One - Two * (q.Y * q.Y + q.Z * q.Z);
+        var r10 = Two * (q.W * q.Z + q.X * q.Y);
+        var cosp = T.Sqrt(r00 * r00 + r10 * r10);
+        var ry = T.Atan2(sinp, cosp);
+        T rx, rz;
 
-        var gimbalThreshold = T.One - T.CreateTruncating(1e-6);
-
-        if (T.Abs(sinp) >= gimbalThreshold)
+        if (cosp < GimbalCos)
         {
-            // Gimbal lock: Ry ~ +/-90 deg. Rx and Rz share one degree of freedom.
-            // Convention: set Rz = 0, recover Rx from rotation matrix R[0][1], R[0][2].
-            ry = T.CopySign(T.Pi / Two, sinp);
             rz = T.Zero;
-
-            var r01 = Two * (q.X * q.Y - q.W * q.Z);
-            var r02 = Two * (q.X * q.Z + q.W * q.Y);
-
-            rx = sinp > T.Zero
-                ? T.Atan2(r01, r02)
-                : T.Atan2(-r01, -r02);
+            var r12 = Two * (q.Y * q.Z - q.W * q.X);
+            var r11 = T.One - Two * (q.X * q.X + q.Z * q.Z);
+            rx = T.Atan2(-r12, r11);
         }
         else
         {
-            // Normal case
-            var sinrCosp = Two * (q.W * q.X + q.Y * q.Z);
-            var cosrCosp = T.One - Two * (q.X * q.X + q.Y * q.Y);
-            rx = T.Atan2(sinrCosp, cosrCosp);
-
-            ry = T.Asin(sinp);
-
-            var sinyCosp = Two * (q.W * q.Z + q.X * q.Y);
-            var cosyCosp = T.One - Two * (q.Y * q.Y + q.Z * q.Z);
-            rz = T.Atan2(sinyCosp, cosyCosp);
+            var r21 = Two * (q.W * q.X + q.Y * q.Z);
+            var r22 = T.One - Two * (q.X * q.X + q.Y * q.Y);
+            rx = T.Atan2(r21, r22);
+            rz = T.Atan2(r10, r00);
         }
 
         // rx, ry, rz are in radians — wrap in Radian<T> then implicit-convert to Degree<T>

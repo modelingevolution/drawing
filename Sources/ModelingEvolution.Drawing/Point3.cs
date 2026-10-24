@@ -202,8 +202,6 @@ public readonly struct Point3<T> : IEquatable<Point3<T>>, IParsable<Point3<T>>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Point3<T> operator /(Point3<T> pt, T scalar) => new(pt._x / scalar, pt._y / scalar, pt._z / scalar);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Pose3<T> operator +(Point3<T> pt, Rotation3<T> r) => new(pt, r);
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator ==(Point3<T> a, Point3<T> b) => a._x == b._x && a._y == b._y && a._z == b._z;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator !=(Point3<T> a, Point3<T> b) => !(a == b);

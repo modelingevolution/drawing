@@ -1,6 +1,21 @@
-name: Create Release
+name: Release
+
+# Merge to master: bump = the HIGHEST release:major|minor|patch|none label (major > minor > patch > none) over every
+# PR merged since the last release tag (first-parent commits lastReleaseTag..HEAD). A PR without a release label
+# counts as minor; all PRs release:none = skip; no merged PR for any of those commits = the job fails (releases
+# come from labelled PRs). Because the bump covers the whole range, a run cancelled while pending loses nothing:
+# the next run carries its bump.
+#
+# release.sh is the only version implementation; it tags and pushes, and refuses to tag a commit whose history
+# lacks the newest release tag. A tag pushed with GITHUB_TOKEN starts no other workflow, so this run calls
+# publish-nuget.yml itself with the version release.sh produced. Order: test -> tag -> publish -> GitHub Release.
+#
+# Recovery: re-run a failed run only while its commit is still master's tip; otherwise do nothing, the next merge
+# carries the bump.
 
 on:
+  push:
+    branches: [ master ]
   workflow_dispatch:
     inputs:
       version_bump:
@@ -13,16 +28,28 @@ on:
           - major
           - custom
       custom_version:
-        description: 'Custom version (only used if version_bump is custom)'
+        description: 'Custom version X.Y.Z.B (only used if version_bump is custom)'
         required: false
         type: string
 
 permissions:
   contents: write
+  pull-requests: read
+
+# One run at a time, in order; a pending run replaced by a newer one loses nothing (see above).
+concurrency:
+  group: release-master
+  cancel-in-progress: false
 
 jobs:
-  create-release:
+  tag:
     runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.bump.outputs.skip }}
+      bump: ${{ steps.bump.outputs.bump }}
+      version: ${{ steps.release.outputs.version }}
+      tag: ${{ steps.release.outputs.tag }}
+      previous: ${{ steps.release.outputs.previous }}
 
     steps:
     - name: Checkout
@@ -30,102 +57,183 @@ jobs:
       with:
         fetch-depth: 0
 
-    - name: Get current version from git tags
-      id: current_version
+    - name: Configure git user
       run: |
-        LATEST_TAG=$(git tag -l "ModelingEvolution.Drawing/*" | sort -V | tail -1)
-
-        if [ -n "$LATEST_TAG" ]; then
-          CURRENT_VERSION="${LATEST_TAG#ModelingEvolution.Drawing/}"
-        else
-          CURRENT_VERSION=$(curl -s "https://api.nuget.org/v3-flatcontainer/modelingevolution.drawing/index.json" | jq -r '.versions[-1]' 2>/dev/null || echo "")
-        fi
-
-        if [ -z "$CURRENT_VERSION" ] || [ "$CURRENT_VERSION" = "null" ]; then
-          CURRENT_VERSION="1.0.0.0"
-        fi
-
-        echo "Current version: $CURRENT_VERSION (from tag: $LATEST_TAG)"
-        echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
-
-    - name: Calculate next version
-      id: next_version
-      run: |
-        CURRENT_VERSION="${{ steps.current_version.outputs.current_version }}"
-        VERSION_BUMP="${{ github.event.inputs.version_bump }}"
-        CUSTOM_VERSION="${{ github.event.inputs.custom_version }}"
-
-        if [ "$VERSION_BUMP" = "custom" ]; then
-          if [ -z "$CUSTOM_VERSION" ]; then
-            echo "Error: Custom version is required when version_bump is 'custom'"
-            exit 1
-          fi
-          NEXT_VERSION="$CUSTOM_VERSION"
-        else
-          IFS='.' read -ra VERSION_PARTS <<< "$CURRENT_VERSION"
-          MAJOR="${VERSION_PARTS[0]:-1}"
-          MINOR="${VERSION_PARTS[1]:-0}"
-          PATCH="${VERSION_PARTS[2]:-0}"
-          BUILD="${VERSION_PARTS[3]:-0}"
-
-          case "$VERSION_BUMP" in
-            major)
-              MAJOR=$((MAJOR + 1))
-              MINOR=0
-              PATCH=0
-              BUILD=0
-              ;;
-            minor)
-              MINOR=$((MINOR + 1))
-              PATCH=0
-              BUILD=$((BUILD + 1))
-              ;;
-            patch)
-              PATCH=$((PATCH + 1))
-              BUILD=$((BUILD + 1))
-              ;;
-          esac
-
-          NEXT_VERSION="$MAJOR.$MINOR.$PATCH.$BUILD"
-        fi
-
-        echo "Next version: $NEXT_VERSION"
-        echo "next_version=$NEXT_VERSION" >> $GITHUB_OUTPUT
-
-    - name: Create and push tag
-      run: |
-        VERSION="${{ steps.next_version.outputs.next_version }}"
         git config --local user.email "actions@github.com"
         git config --local user.name "GitHub Actions"
-        git tag -a "ModelingEvolution.Drawing/$VERSION" -m "Release ModelingEvolution.Drawing v$VERSION"
-        git push origin "ModelingEvolution.Drawing/$VERSION"
 
+    - name: Determine bump
+      id: bump
+      env:
+        GH_TOKEN: ${{ github.token }}
+        EVENT: ${{ github.event_name }}
+        DISPATCH_BUMP: ${{ github.event.inputs.version_bump }}
+        CUSTOM_VERSION: ${{ github.event.inputs.custom_version }}
+        REPO: ${{ github.repository }}
+        SHA: ${{ github.sha }}
+      run: |
+        set -o pipefail
+        if [ "$EVENT" = "workflow_dispatch" ]; then
+          BUMP="$DISPATCH_BUMP"
+          if [ "$BUMP" = "custom" ] && [ -z "$CUSTOM_VERSION" ]; then
+            echo "::error::version_bump is custom but custom_version is empty"
+            exit 1
+          fi
+        else
+          LAST=$(git tag -l "ModelingEvolution.Drawing/*" | sed 's#^ModelingEvolution.Drawing/##' \
+            | { grep -v -- '-' || true; } | sort -V | tail -1)
+          if [ -n "$LAST" ]; then
+            RANGE="refs/tags/ModelingEvolution.Drawing/$LAST..HEAD"
+          else
+            RANGE="HEAD"
+          fi
+          COMMITS=$(git rev-list --first-parent "$RANGE")
+          echo "Last release: ${LAST:-none}; first-parent commits since: $(printf '%s' "$COMMITS" | grep -c . || true)"
+          if [ -z "$COMMITS" ]; then
+            echo "::error::No commits since the last release tag ($LAST)"
+            exit 1
+          fi
+          rank() { case "$1" in none) echo 0 ;; patch) echo 1 ;; minor) echo 2 ;; major) echo 3 ;; esac; }
+          FOUND=0
+          BEST=-1
+          for C in $COMMITS; do
+            # The commit -> PR association can lag right after a merge: HEAD (this run's merge) is retried.
+            # A failing API call fails the job.
+            ATTEMPTS=1
+            [ "$C" = "$SHA" ] && ATTEMPTS=4
+            PR=""
+            for attempt in $(seq 1 "$ATTEMPTS"); do
+              PR=$(gh api "repos/$REPO/commits/$C/pulls" \
+                | jq -c --arg sha "$C" '[.[] | select(.merge_commit_sha == $sha)][0] // empty')
+              [ -n "$PR" ] && break
+              if [ "$attempt" -lt "$ATTEMPTS" ]; then
+                echo "No merged PR for $C yet (attempt $attempt); retrying in 10 s"
+                sleep 10
+              fi
+            done
+            if [ -z "$PR" ]; then
+              if [ "$C" = "$SHA" ]; then
+                # HEAD is this run's merge: its label decides the bump, so an older PR must never stand in for it.
+                echo "::error::No merged PR found for HEAD $SHA after $ATTEMPTS attempts; releases come from labelled PRs. Re-run via workflow_dispatch if this was intended."
+                exit 1
+              fi
+              echo "$C: no merged PR"
+              continue
+            fi
+            FOUND=$((FOUND + 1))
+            LABELS=$(echo "$PR" | jq -r '.labels[].name' \
+              | { grep -E '^release:(major|minor|patch|none)$' || true; } | sort -u)
+            COUNT=$(printf '%s' "$LABELS" | grep -c . || true)
+            NUMBER=$(echo "$PR" | jq -r '.number')
+            if [ "$COUNT" -gt 1 ]; then
+              echo "::error::PR #$NUMBER carries more than one release label: ${LABELS//$'\n'/ }"
+              exit 1
+            fi
+            if [ "$COUNT" -eq 1 ]; then
+              PR_BUMP="${LABELS#release:}"
+            else
+              PR_BUMP="minor"
+            fi
+            echo "$C: PR #$NUMBER -> $PR_BUMP"
+            R=$(rank "$PR_BUMP")
+            if [ "$R" -gt "$BEST" ]; then BEST=$R; BUMP=$PR_BUMP; fi
+          done
+          if [ "$FOUND" -eq 0 ]; then
+            echo "::error::No merged PR found for $SHA; releases come from labelled PRs. Re-run via workflow_dispatch if this was intended."
+            exit 1
+          fi
+        fi
+        echo "Bump: $BUMP"
+        echo "bump=$BUMP" >> "$GITHUB_OUTPUT"
+        if [ "$BUMP" = "none" ]; then
+          echo "skip=true" >> "$GITHUB_OUTPUT"
+          echo "## Release skipped (release:none)" >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+        fi
+
+    # Nothing is tagged while the suite is red. Tests write outside the repo; a dirty tree here is a defect.
+    - name: Setup .NET
+      if: steps.bump.outputs.skip != 'true'
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore
+      if: steps.bump.outputs.skip != 'true'
+      working-directory: ./Sources
+      run: dotnet restore
+
+    - name: Build
+      if: steps.bump.outputs.skip != 'true'
+      working-directory: ./Sources
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Test
+      if: steps.bump.outputs.skip != 'true'
+      working-directory: ./Sources
+      run: dotnet test --configuration Release --no-build --verbosity normal
+
+    - name: Tag with release.sh
+      id: release
+      if: steps.bump.outputs.skip != 'true'
+      env:
+        BUMP: ${{ steps.bump.outputs.bump }}
+        CUSTOM_VERSION: ${{ github.event.inputs.custom_version }}
+      run: |
+        if [ "$BUMP" = "custom" ]; then
+          ./release.sh --version "$CUSTOM_VERSION" --ci
+        else
+          ./release.sh "--$BUMP" --ci
+        fi
+
+  publish:
+    needs: tag
+    if: needs.tag.outputs.skip != 'true'
+    uses: ./.github/workflows/publish-nuget.yml
+    with:
+      version: ${{ needs.tag.outputs.version }}
+    secrets: inherit
+
+  # The public GitHub Release exists only after the package was pushed.
+  github-release:
+    needs: [ tag, publish ]
+    if: needs.tag.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+
+    steps:
     - name: Create GitHub Release
       uses: ncipollo/release-action@v1
       with:
-        tag: "ModelingEvolution.Drawing/${{ steps.next_version.outputs.next_version }}"
-        name: "ModelingEvolution.Drawing v${{ steps.next_version.outputs.next_version }}"
+        tag: ${{ needs.tag.outputs.tag }}
+        name: "ModelingEvolution.Drawing v${{ needs.tag.outputs.version }}"
         body: |
-          ## ModelingEvolution.Drawing v${{ steps.next_version.outputs.next_version }}
+          ## ModelingEvolution.Drawing v${{ needs.tag.outputs.version }}
 
           ### Installation
           ```bash
-          dotnet add package ModelingEvolution.Drawing --version ${{ steps.next_version.outputs.next_version }}
+          dotnet add package ModelingEvolution.Drawing --version ${{ needs.tag.outputs.version }}
           ```
 
           ---
 
-          **Full Changelog**: https://github.com/${{ github.repository }}/compare/ModelingEvolution.Drawing/${{ steps.current_version.outputs.current_version }}...ModelingEvolution.Drawing/${{ steps.next_version.outputs.next_version }}
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/ModelingEvolution.Drawing/${{ needs.tag.outputs.previous }}...${{ needs.tag.outputs.tag }}
         draft: false
         prerelease: false
         generateReleaseNotes: true
 
     - name: Summary
+      env:
+        BUMP: ${{ needs.tag.outputs.bump }}
+        PREVIOUS: ${{ needs.tag.outputs.previous }}
+        VERSION: ${{ needs.tag.outputs.version }}
+        TAG: ${{ needs.tag.outputs.tag }}
       run: |
-        echo "## Release Created Successfully" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "- **Previous Version**: ${{ steps.current_version.outputs.current_version }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **New Version**: ${{ steps.next_version.outputs.next_version }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Tag**: ModelingEvolution.Drawing/${{ steps.next_version.outputs.next_version }}" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "The tag push will trigger the publish-nuget workflow to build and push the package to NuGet." >> $GITHUB_STEP_SUMMARY
+        {
+          echo "## Released"
+          echo ""
+          echo "- **Bump**: $BUMP"
+          echo "- **Previous Version**: $PREVIOUS"
+          echo "- **New Version**: $VERSION"
+          echo "- **Tag**: $TAG"
+        } >> "$GITHUB_STEP_SUMMARY"

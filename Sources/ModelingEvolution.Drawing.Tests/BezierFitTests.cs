@@ -264,11 +264,8 @@ public class BezierFitTests
     [Fact]
     public void RenderFit_ToSvg()
     {
-        var outputDir = Path.Combine(
-            Path.GetDirectoryName(typeof(BezierFitTests).Assembly.Location)!,
-            "..", "..", "..", "..", "..",
-            "bezier-fit-svg");
-        outputDir = Path.GetFullPath(outputDir);
+        // A test never writes into the repository; the committed gallery is a one-time snapshot.
+        var outputDir = Path.Combine(Path.GetTempPath(), "ModelingEvolution.Drawing.Tests", "bezier-fit-svg");
         Directory.CreateDirectory(outputDir);
 
         var cases = new List<FitCase>

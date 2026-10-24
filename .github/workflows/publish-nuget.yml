@@ -5,10 +5,17 @@ on:
     tags:
       - 'ModelingEvolution.Drawing/*.*.*.*'
       - 'v*.*.*'  # Also support v-prefixed tags for compatibility
+  workflow_call:
+    inputs:
+      version:
+        description: 'Version to publish (X.Y.Z.B or X.Y.Z.B-preview.N)'
+        required: true
+        type: string
+  # Manual re-publish of an EXISTING release tag (e.g. after a failed push): the tag's commit is built.
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to publish (e.g., 1.0.53.35)'
+        description: 'Existing tag version to re-publish (e.g., 1.13.0.71)'
         required: true
         type: string
 
@@ -22,7 +29,10 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    
+      with:
+        # A dispatch run needs the tags to find and check out the release tag.
+        fetch-depth: ${{ github.event_name == 'workflow_dispatch' && '0' || '1' }}
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -30,11 +40,13 @@ jobs:
     
     - name: Set version
       id: version
+      env:
+        INPUT_VERSION: ${{ inputs.version }}
       run: |
-        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-          VERSION="${{ github.event.inputs.version }}"
-        else
-          # Extract version from tag
+        # Resolution order: workflow_call input, workflow_dispatch input (both are `inputs.version`), then the tag.
+        if [ -n "$INPUT_VERSION" ]; then
+          VERSION="$INPUT_VERSION"
+        elif [[ "$GITHUB_REF" == refs/tags/* ]]; then
           TAG="${GITHUB_REF#refs/tags/}"
           # Handle both formats: ModelingEvolution.Drawing/1.0.57.35 and v1.0.57.35
           if [[ "$TAG" == ModelingEvolution.Drawing/* ]]; then
@@ -42,20 +54,48 @@ jobs:
           else
             VERSION="${TAG#v}"
           fi
+        else
+          echo "::error::No version: not called with an input and not run on a tag (ref: $GITHUB_REF)"
+          exit 1
         fi
+        if ! [[ "$VERSION" =~ ^[0-9]+(\.[0-9]+){2,3}(-preview\.[0-9]+)?$ ]]; then
+          echo "::error::Invalid version: $VERSION"
+          exit 1
+        fi
+        # AssemblyVersion/FileVersion cannot carry a pre-release suffix.
+        NUMERIC="${VERSION%%-*}"
+        echo "Version: $VERSION (assembly/file version: $NUMERIC)"
         echo "VERSION=$VERSION" >> $GITHUB_ENV
         echo "version=$VERSION" >> $GITHUB_OUTPUT
-    
-    - name: Update version in csproj
+        echo "numeric=$NUMERIC" >> $GITHUB_OUTPUT
+
+    # Also true when release.yml was itself dispatched and calls this workflow: its tag was just pushed on the
+    # same commit, so the check passes and the checkout is a no-op.
+    - name: Check out the release tag (workflow_dispatch only)
+      if: github.event_name == 'workflow_dispatch'
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
       run: |
-        VERSION="${{ steps.version.outputs.version }}"
+        TAG="ModelingEvolution.Drawing/$VERSION"
+        if ! git rev-parse -q --verify "refs/tags/$TAG" > /dev/null; then
+          echo "::error::Tag $TAG does not exist; a manual run only re-publishes an existing release tag"
+          exit 1
+        fi
+        git checkout -q "refs/tags/$TAG"
+        echo "Building $TAG at $(git rev-parse HEAD)"
+
+    - name: Update version in csproj
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+        NUMERIC: ${{ steps.version.outputs.numeric }}
+      run: |
         cd Sources/ModelingEvolution.Drawing
-        # Update all version-related properties
-        sed -i "s/<AssemblyVersion>.*<\/AssemblyVersion>/<AssemblyVersion>$VERSION<\/AssemblyVersion>/" ModelingEvolution.Drawing.csproj
-        sed -i "s/<FileVersion>.*<\/FileVersion>/<FileVersion>$VERSION<\/FileVersion>/" ModelingEvolution.Drawing.csproj
+        sed -i "s/<AssemblyVersion>.*<\/AssemblyVersion>/<AssemblyVersion>$NUMERIC<\/AssemblyVersion>/" ModelingEvolution.Drawing.csproj
+        sed -i "s/<FileVersion>.*<\/FileVersion>/<FileVersion>$NUMERIC<\/FileVersion>/" ModelingEvolution.Drawing.csproj
         sed -i "s/<Version>.*<\/Version>/<Version>$VERSION<\/Version>/" ModelingEvolution.Drawing.csproj
         sed -i "s/<PackageVersion>.*<\/PackageVersion>/<PackageVersion>$VERSION<\/PackageVersion>/" ModelingEvolution.Drawing.csproj
-    
+        grep -E "<(AssemblyVersion|FileVersion|Version|PackageVersion)>" ModelingEvolution.Drawing.csproj
+
     - name: Restore dependencies
       working-directory: ./Sources
       run: dotnet restore
@@ -64,9 +104,9 @@ jobs:
       working-directory: ./Sources
       run: dotnet build --configuration Release --no-restore
     
-    - name: Run tests
+    - name: Run tests (a red suite publishes nothing)
       working-directory: ./Sources
-      run: dotnet test --configuration Release --no-build --verbosity normal || true
+      run: dotnet test --configuration Release --no-build --verbosity normal
     
     - name: Pack
       working-directory: ./Sources/ModelingEvolution.Drawing

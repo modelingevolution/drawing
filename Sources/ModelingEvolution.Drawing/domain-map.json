@@ -1,0 +1,135 @@
+{
+  "$schema": "https://modelingevolution.com/schemas/domain-map/v1",
+  "repo": "drawing",
+  "project": "ModelingEvolution.Drawing",
+  "description": "Generic 2D/3D geometry, poses, paths, units; gains the kinematic chain (epic-129 feature 001).",
+  "domain": "Robotic platform",
+  "subdomain": "Math",
+  "boundedContext": "robotic-geometry",
+  "layer": "math",
+  "status": "existing",
+  "components": [
+    {
+      "name": "2D geometry",
+      "kind": "library",
+      "types": [
+        "Point",
+        "Vector",
+        "Polygon",
+        "Polyline",
+        "Rectangle",
+        "Circle",
+        "BezierCurve",
+        "ComplexCurve",
+        "Path"
+      ],
+      "status": "existing"
+    },
+    {
+      "name": "3D poses and rotations",
+      "kind": "library",
+      "types": [
+        "Point3",
+        "Vector3",
+        "Quaternion",
+        "Rotation3",
+        "Pose3",
+        "Segment3",
+        "Triangle3",
+        "Polyline3",
+        "Matrix3x3"
+      ],
+      "status": "existing"
+    },
+    {
+      "name": "Joint vectors",
+      "kind": "library",
+      "types": [
+        "Joints6"
+      ],
+      "status": "existing"
+    },
+    {
+      "name": "Paths and trajectories",
+      "kind": "library",
+      "types": [
+        "PosePath3",
+        "Trajectory3",
+        "Waypoint3",
+        "Velocity3",
+        "TrajectoryController"
+      ],
+      "status": "existing"
+    },
+    {
+      "name": "Polygon algorithms",
+      "kind": "library",
+      "types": [
+        "DelaunayTriangulation",
+        "EarClipTriangulation",
+        "StraightSkeletonAlgorithm",
+        "VoronoiSkeletonAlgorithm",
+        "ChordalAxisAlgorithm",
+        "Densification",
+        "Skeleton"
+      ],
+      "status": "existing"
+    },
+    {
+      "name": "Units",
+      "kind": "library",
+      "types": [
+        "Millimetre",
+        "Metre",
+        "MillimetrePerSecond",
+        "RadianPerSecond",
+        "Degree",
+        "Radian"
+      ],
+      "status": "existing"
+    },
+    {
+      "name": "SVG export",
+      "kind": "library",
+      "types": [
+        "SvgExporter",
+        "ISvgExporter"
+      ],
+      "status": "existing"
+    },
+    {
+      "name": "PID controller",
+      "kind": "library",
+      "types": [
+        "PidController"
+      ],
+      "status": "existing"
+    },
+    {
+      "name": "Frame3",
+      "kind": "library",
+      "types": [
+        "Frame3"
+      ],
+      "status": "planned",
+      "epic": "epics/epic-129-matrix/design.md#drawing-the-kinematic-chain-feature-001",
+      "description": "Rigid frame (position + quaternion) with the one Euler rule (FromPose3/ToPose3)."
+    },
+    {
+      "name": "Kinematic chain",
+      "kind": "solver",
+      "types": [
+        "ModelingEvolution.Drawing.Kinematics",
+        "KinematicChain",
+        "Link",
+        "Joint",
+        "JointType",
+        "ChainFrame"
+      ],
+      "status": "planned",
+      "epic": "epics/epic-129-matrix/requirements.md#functional-requirements-seed-the-design-validates-and-numbers-them",
+      "description": "Link, Joint, KinematicChain, Forward(q[, Δθ]), Jacobian: the ONE forward kinematics (FR-1, FR-11).",
+      "note": "Pulled by epic-126 feature-010; replaces the seven chains."
+    }
+  ]
+}

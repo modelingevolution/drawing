@@ -1,0 +1,28 @@
+{
+  "$schema": "https://modelingevolution.com/schemas/domain-map/v1",
+  "repo": "drawing",
+  "project": "ModelingEvolution.Drawing.Benchmarks",
+  "description": "Allocation benchmarks.",
+  "domain": "Robotic platform",
+  "subdomain": "Math",
+  "boundedContext": "robotic-geometry",
+  "layer": "tooling",
+  "status": "existing",
+  "components": [
+    {
+      "name": "Benchmarks",
+      "kind": "tool",
+      "types": [
+        "AllocationScopeBenchmarks"
+      ],
+      "status": "existing"
+    }
+  ],
+  "dependsOn": [
+    {
+      "target": "ModelingEvolution.Drawing",
+      "pattern": "conformist",
+      "note": "CF + PL: Drawing's value types are the published language"
+    }
+  ]
+}

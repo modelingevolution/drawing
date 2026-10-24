@@ -1,0 +1,5 @@
+{
+  "exclude": [
+    { "path": "Sources/ModelingEvolution.Drawing.Blazor/*", "reason": "Razor class library template stub (one ExampleJsInterop class); no component." }
+  ]
+}

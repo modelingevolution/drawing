@@ -49,6 +49,9 @@ jobs:
       working-directory: ./Sources
       run: dotnet test --configuration Release --no-build --verbosity normal --logger:"console;verbosity=detailed"
     
+    - name: Tests must not write into the repository
+      run: '[ -z "$(git status --porcelain)" ] || { git status --porcelain; echo "::error::tests wrote into the repository"; exit 1; }'
+
     - name: Pack (dry run)
       if: matrix.dotnet-version == '10.0.x'
       working-directory: ./Sources/ModelingEvolution.Drawing
@@ -95,6 +98,9 @@ jobs:
     - name: Test
       working-directory: ./Sources
       run: dotnet test --configuration Release --no-build --verbosity normal
+
+    - name: Tests must not write into the repository
+      run: '[ -z "$(git status --porcelain)" ] || { git status --porcelain; echo "::error::tests wrote into the repository"; exit 1; }'
 
   release-script:
     runs-on: ubuntu-latest

@@ -1,113 +1,120 @@
 #!/bin/bash
-
-# ModelingEvolution.Drawing Release Script
-# Usage: ./release.sh [--patch|--minor|--major|--version X.X.X.X]
 #
-# Creates a git tag that triggers GitHub Actions to build, inject version via sed, and publish to NuGet.
-# The csproj stays at 1.0.0 placeholder — CI/CD handles version injection at build time.
+# Release script: computes the next version from git tags, creates the tag and pushes it.
+# Publishing is done by GitHub Actions only (publish-nuget.yml); nothing is ever published from a machine.
+#
+# Usage: ./release.sh [--patch|--minor|--major|--version X.Y.Z.B] [--preview] [--ci] [--dry-run]
+#
+#   --patch            bump patch, build+1 (default)
+#   --minor            bump minor, patch=0, build+1
+#   --major            bump major, minor=0, patch=0, build+1 (build is never reset)
+#   --version X.Y.Z.B  use this exact version
+#   --preview          tag {next}-preview.{N}; allowed from any branch
+#   --ci               no prompts; refuses a dirty tree
+#   --dry-run          print the computed tag and exit 0 without tagging or pushing
+#
+# A non-preview release runs on master only. Inside GitHub Actions ($GITHUB_OUTPUT set) the script appends
+# version=, tag= and previous= to $GITHUB_OUTPUT.
+#
+# This script is copied unchanged between repositories: only PACKAGE and INITIAL_VERSION differ.
 
-set -e
+set -euo pipefail
 
-# Colors for output
+PACKAGE="ModelingEvolution.Drawing"
+INITIAL_VERSION="1.0.0.0"
+RELEASE_BRANCH="master"
+
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
-# Function to print colored output
-print_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
-print_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
-print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+# Messages go to stderr; stdout carries only the --dry-run result.
+print_info() { echo -e "${GREEN}[INFO]${NC} $1" >&2; }
+print_warn() { echo -e "${YELLOW}[WARN]${NC} $1" >&2; }
+print_error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 
-# Function to get the latest version from git tags
+usage() {
+    sed -n '6,14p' "$0" | sed 's/^# \{0,1\}//'
+}
+
+# Highest release tag; -preview (and any other pre-release suffix) tags are ignored.
 get_current_version() {
-    local latest_tag=$(git tag -l "ModelingEvolution.Drawing/*" | sort -V | tail -1)
-
-    if [ -n "$latest_tag" ]; then
-        echo "${latest_tag#ModelingEvolution.Drawing/}"
+    local latest
+    latest=$(git tag -l "$PACKAGE/*" | sed "s#^$PACKAGE/##" | grep -v -- '-' | sort -V | tail -1 || true)
+    if [ -n "$latest" ]; then
+        echo "$latest"
     else
-        echo "1.0.0.0"
+        echo "$INITIAL_VERSION"
     fi
 }
 
-# Function to calculate next version
 calculate_next_version() {
     local current_version=$1
     local bump_type=$2
+    local major minor patch build
 
-    IFS='.' read -ra VERSION_PARTS <<< "$current_version"
-    local major="${VERSION_PARTS[0]:-1}"
-    local minor="${VERSION_PARTS[1]:-0}"
-    local patch="${VERSION_PARTS[2]:-0}"
-    local build="${VERSION_PARTS[3]:-0}"
+    IFS='.' read -r major minor patch build <<< "$current_version"
+    major="${major:-1}"
+    minor="${minor:-0}"
+    patch="${patch:-0}"
+    build="${build:-0}"
 
     case "$bump_type" in
-        major)
-            major=$((major + 1))
-            minor=0
-            patch=0
-            build=0
-            ;;
-        minor)
-            minor=$((minor + 1))
-            patch=0
-            build=$((build + 1))
-            ;;
-        patch)
-            patch=$((patch + 1))
-            build=$((build + 1))
-            ;;
-        *)
-            print_error "Unknown bump type: $bump_type"
-            exit 1
-            ;;
+        major) major=$((major + 1)); minor=0; patch=0 ;;
+        minor) minor=$((minor + 1)); patch=0 ;;
+        patch) patch=$((patch + 1)) ;;
+        *) print_error "Unknown bump type: $bump_type"; exit 1 ;;
     esac
+    build=$((build + 1))
 
     echo "$major.$minor.$patch.$build"
 }
 
-# Main script
+# 1 + the highest existing {version}-preview.N
+next_preview_number() {
+    local version=$1
+    local highest
+    highest=$(git tag -l "$PACKAGE/$version-preview.*" | sed "s#^$PACKAGE/$version-preview\.##" \
+        | grep -E '^[0-9]+$' | sort -n | tail -1 || true)
+    echo $(( ${highest:-0} + 1 ))
+}
+
+confirm() {
+    print_warn "$1 (y/N)"
+    local response
+    read -r response
+    [[ "$response" =~ ^[Yy]$ ]]
+}
+
+monitor_url() {
+    local url
+    url=$(git remote get-url origin 2>/dev/null || true)
+    url="${url%.git}"
+    url="${url/#git@github.com:/https://github.com/}"
+    [ -n "$url" ] && echo "$url/actions"
+}
+
 main() {
     local bump_type="patch"
     local custom_version=""
+    local preview=false
+    local ci=false
+    local dry_run=false
 
     while [[ $# -gt 0 ]]; do
         case $1 in
-            --patch)
-                bump_type="patch"
-                shift
-                ;;
-            --minor)
-                bump_type="minor"
-                shift
-                ;;
-            --major)
-                bump_type="major"
-                shift
-                ;;
+            --patch) bump_type="patch"; shift ;;
+            --minor) bump_type="minor"; shift ;;
+            --major) bump_type="major"; shift ;;
             --version)
-                custom_version="$2"
-                shift 2
-                ;;
-            -h|--help)
-                echo "Usage: $0 [--patch|--minor|--major|--version X.X.X.X]"
-                echo ""
-                echo "Creates a git tag that triggers GitHub Actions to publish to NuGet."
-                echo "The csproj version stays at 1.0.0 — CI/CD injects the real version at build time."
-                echo ""
-                echo "Options:"
-                echo "  --patch    Increment patch version (default)"
-                echo "  --minor    Increment minor version"
-                echo "  --major    Increment major version"
-                echo "  --version  Set a specific version"
-                echo "  -h, --help Show this help message"
-                exit 0
-                ;;
-            *)
-                print_error "Unknown option: $1"
-                echo "Use --help for usage information"
-                exit 1
-                ;;
+                if [[ $# -lt 2 ]]; then print_error "--version needs a value"; exit 1; fi
+                custom_version="$2"; shift 2 ;;
+            --preview) preview=true; shift ;;
+            --ci) ci=true; shift ;;
+            --dry-run) dry_run=true; shift ;;
+            -h|--help) usage; exit 0 ;;
+            *) print_error "Unknown option: $1"; usage >&2; exit 1 ;;
         esac
     done
 
@@ -116,22 +123,35 @@ main() {
         exit 1
     fi
 
-    # Check for uncommitted changes
+    if [ -n "$custom_version" ] && ! [[ "$custom_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        print_error "--version must be X.Y.Z.B, got: $custom_version"
+        exit 1
+    fi
+
+    local branch
+    branch=$(git rev-parse --abbrev-ref HEAD)
+    if [ "$preview" = false ] && [ "$branch" != "$RELEASE_BRANCH" ]; then
+        print_error "A release runs on $RELEASE_BRANCH only (current branch: $branch). Use --preview on a branch."
+        exit 1
+    fi
+
+    git update-index -q --refresh || true
     if ! git diff-index --quiet HEAD --; then
-        print_warn "You have uncommitted changes. Continue anyway? (y/N)"
-        read -r response
-        if [[ ! "$response" =~ ^[Yy]$ ]]; then
+        if [ "$ci" = true ]; then
+            print_error "Uncommitted changes; --ci refuses a dirty tree"
+            exit 1
+        elif [ "$dry_run" = true ]; then
+            print_warn "Uncommitted changes (ignored by --dry-run)"
+        elif ! confirm "You have uncommitted changes. Continue anyway?"; then
             print_info "Aborted"
             exit 0
         fi
     fi
 
-    # Get current version
-    local current_version=$(get_current_version)
+    local current_version next_version version tag_name
+    current_version=$(get_current_version)
     print_info "Current version: $current_version"
 
-    # Calculate next version
-    local next_version
     if [ -n "$custom_version" ]; then
         next_version="$custom_version"
         print_info "Using custom version: $next_version"
@@ -140,38 +160,55 @@ main() {
         print_info "Next version ($bump_type bump): $next_version"
     fi
 
-    # Confirm with user
-    local tag_name="ModelingEvolution.Drawing/$next_version"
-    echo ""
-    print_warn "This will:"
-    echo "  1. Create tag: $tag_name"
-    echo "  2. Push tag to origin (triggers GitHub Actions NuGet publish)"
-    echo ""
-    print_warn "Continue? (y/N)"
-    read -r response
+    version="$next_version"
+    if [ "$preview" = true ]; then
+        version="$next_version-preview.$(next_preview_number "$next_version")"
+        print_info "Preview version: $version"
+    fi
+    tag_name="$PACKAGE/$version"
 
-    if [[ ! "$response" =~ ^[Yy]$ ]]; then
-        print_info "Aborted"
+    if git rev-parse -q --verify "refs/tags/$tag_name" > /dev/null; then
+        print_error "Tag already exists: $tag_name"
+        exit 1
+    fi
+
+    if [ "$dry_run" = true ]; then
+        print_info "Dry run: tag $tag_name not created"
+        echo "$tag_name"
         exit 0
     fi
 
-    # Create tag
+    if [ "$ci" = false ]; then
+        echo "" >&2
+        print_warn "This will:"
+        echo "  1. Create tag: $tag_name" >&2
+        echo "  2. Push tag to origin (triggers the GitHub Actions NuGet publish)" >&2
+        echo "" >&2
+        if ! confirm "Continue?"; then
+            print_info "Aborted"
+            exit 0
+        fi
+    fi
+
     print_info "Creating tag: $tag_name"
-    git tag -a "$tag_name" -m "Release ModelingEvolution.Drawing v$next_version"
+    git tag -a "$tag_name" -m "Release $PACKAGE v$version"
 
-    # Push tag
     print_info "Pushing tag to origin..."
-    git push origin "$tag_name"
+    git push origin "refs/tags/$tag_name"
 
-    print_info "Successfully created release $next_version"
-    echo ""
-    echo "Tag: $tag_name"
-    echo "GitHub Actions will now:"
-    echo "  - Inject version $next_version into csproj via sed"
-    echo "  - Build and test"
-    echo "  - Publish to NuGet"
-    echo ""
-    echo "Monitor progress at: https://github.com/modelingevolution/drawing/actions"
+    if [ -n "${GITHUB_OUTPUT:-}" ]; then
+        {
+            echo "version=$version"
+            echo "tag=$tag_name"
+            echo "previous=$current_version"
+        } >> "$GITHUB_OUTPUT"
+    fi
+
+    print_info "Created $tag_name"
+    local url
+    url=$(monitor_url || true)
+    [ -n "$url" ] && print_info "Monitor at: $url"
+    exit 0
 }
 
 main "$@"

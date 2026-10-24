@@ -5,12 +5,20 @@ on:
     branches: [ main, master, develop ]
     paths:
       - 'Sources/**'
+      - 'release.sh'
+      - 'release.test.sh'
       - '.github/workflows/ci.yml'
+      - '.github/workflows/publish-nuget.yml'
+      - '.github/workflows/release.yml'
   pull_request:
     branches: [ main, master, develop ]
     paths:
       - 'Sources/**'
+      - 'release.sh'
+      - 'release.test.sh'
       - '.github/workflows/ci.yml'
+      - '.github/workflows/publish-nuget.yml'
+      - '.github/workflows/release.yml'
 
 jobs:
   build-and-test:
@@ -63,3 +71,42 @@ jobs:
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "- **.NET Version**: ${{ matrix.dotnet-version }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Build**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+
+  build-and-test-arm64:
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore dependencies
+      working-directory: ./Sources
+      run: dotnet restore
+
+    - name: Build
+      working-directory: ./Sources
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Test
+      working-directory: ./Sources
+      run: dotnet test --configuration Release --no-build --verbosity normal
+
+  release-script:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Syntax check
+      run: |
+        bash -n release.sh
+        bash -n release.test.sh
+
+    - name: Test release.sh
+      run: ./release.test.sh

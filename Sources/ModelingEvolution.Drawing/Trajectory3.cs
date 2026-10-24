@@ -179,7 +179,7 @@ public readonly record struct Trajectory3<T> : IPoolable<Trajectory3<T>, Lease<W
         if (dt == T.Zero) return a.Pose;
 
         var t = (time - a.Time) / dt;
-        return Pose3<T>.Lerp(a.Pose, b.Pose, t);
+        return Frame3<T>.Interpolate(Frame3<T>.FromPose3(a.Pose, T.One), Frame3<T>.FromPose3(b.Pose, T.One), t).ToPose3(T.One);
     }
 
     /// <summary>
@@ -210,11 +210,12 @@ public readonly record struct Trajectory3<T> : IPoolable<Trajectory3<T>, Lease<W
     /// </summary>
     public Trajectory3<T> Transform(Pose3<T> pose)
     {
+        var frame = Frame3<T>.FromPose3(pose, T.One);
         var span = AsSpan();
         var mem = Alloc.Memory<Waypoint3<T>>(span.Length);
         var dst = mem.Span;
         for (int i = 0; i < span.Length; i++)
-            dst[i] = new Waypoint3<T>(pose.Multiply(span[i].Pose), span[i].Time);
+            dst[i] = new Waypoint3<T>((frame * Frame3<T>.FromPose3(span[i].Pose, T.One)).ToPose3(T.One), span[i].Time);
         return new Trajectory3<T>(mem);
     }
 
@@ -287,7 +288,7 @@ public readonly record struct Trajectory3<T> : IPoolable<Trajectory3<T>, Lease<W
         var mem = Alloc.Memory<Waypoint3<T>>(span.Length);
         var dst = mem.Span;
         for (int i = 0; i < span.Length; i++)
-            dst[i] = new Waypoint3<T>(span[i].Pose + f, span[i].Time);
+            dst[i] = new Waypoint3<T>(span[i].Pose with { Position = span[i].Pose.Position + f }, span[i].Time);
         return new Trajectory3<T>(mem);
     }
 
@@ -300,7 +301,7 @@ public readonly record struct Trajectory3<T> : IPoolable<Trajectory3<T>, Lease<W
         var mem = Alloc.Memory<Waypoint3<T>>(span.Length);
         var dst = mem.Span;
         for (int i = 0; i < span.Length; i++)
-            dst[i] = new Waypoint3<T>(span[i].Pose - f, span[i].Time);
+            dst[i] = new Waypoint3<T>(span[i].Pose with { Position = span[i].Pose.Position - f }, span[i].Time);
         return new Trajectory3<T>(mem);
     }
 

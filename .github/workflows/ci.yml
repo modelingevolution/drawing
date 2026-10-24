@@ -10,6 +10,7 @@ on:
       - '.github/workflows/ci.yml'
       - '.github/workflows/publish-nuget.yml'
       - '.github/workflows/release.yml'
+      - '.github/scripts/**'
   pull_request:
     branches: [ main, master, develop ]
     paths:
@@ -19,6 +20,7 @@ on:
       - '.github/workflows/ci.yml'
       - '.github/workflows/publish-nuget.yml'
       - '.github/workflows/release.yml'
+      - '.github/scripts/**'
 
 jobs:
   build-and-test:
@@ -116,3 +118,13 @@ jobs:
 
     - name: Test release.sh
       run: ./release.test.sh
+
+  grep-gate:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Grep gate (epic-129 TS-129-48 rows; each must find 0 lines)
+      run: ./.github/scripts/grep-gate.sh

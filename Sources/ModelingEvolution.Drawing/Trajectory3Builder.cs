@@ -102,7 +102,7 @@ public sealed class Trajectory3Builder<T>
             return Add(pose);
 
         var lastPose = _buffer[_count - 1].Pose;
-        var distance = Pose3<T>.Distance(lastPose, pose);
+        var distance = Point3<T>.Distance(lastPose.Position, pose.Position);
         var dt = distance / (T)speed;
         _currentTime += dt;
 
@@ -120,7 +120,7 @@ public sealed class Trajectory3Builder<T>
             return Add(pose);
 
         var lastPose = _buffer[_count - 1].Pose;
-        var distance = Pose3<T>.Distance(lastPose, pose);
+        var distance = Point3<T>.Distance(lastPose.Position, pose.Position);
         var dt = distance / (T)speed;
         _currentTime += dt;
 
@@ -140,7 +140,7 @@ public sealed class Trajectory3Builder<T>
             return Add(pose);
 
         var lastPose = _buffer[_count - 1].Pose;
-        var distance = Pose3<T>.Distance(lastPose, pose);
+        var distance = Point3<T>.Distance(lastPose.Position, pose.Position);
         var dt = distance / (T)speed;
         _currentTime += dt;
 

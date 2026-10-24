@@ -20,6 +20,7 @@ public readonly struct Quaternion<T> : IEquatable<Quaternion<T>>
 
     private static readonly T Two = T.CreateTruncating(2);
     private static readonly T SlerpThreshold = T.One - T.CreateTruncating(1e-6);
+    private static readonly T OppositeThreshold = T.CreateTruncating(1e-12);
 
     /// <summary>
     /// Represents the identity quaternion (no rotation).
@@ -131,6 +132,92 @@ public readonly struct Quaternion<T> : IEquatable<Quaternion<T>>
             axis.X * s,
             axis.Y * s,
             axis.Z * s);
+    }
+
+    /// <summary>
+    /// Creates the rotation Rz(yaw)·Ry(pitch)·Rx(roll) from angles in radians: the URDF <c>rpy</c> convention and
+    /// the ZYX convention of <see cref="Rotation3{T}"/> and of the asset files.
+    /// </summary>
+    /// <param name="roll">Rotation about X, applied first, in radians.</param>
+    /// <param name="pitch">Rotation about Y, in radians.</param>
+    /// <param name="yaw">Rotation about Z, applied last, in radians.</param>
+    public static Quaternion<T> FromRpy(T roll, T pitch, T yaw)
+    {
+        var cx = T.Cos(roll / Two);
+        var sx = T.Sin(roll / Two);
+        var cy = T.Cos(pitch / Two);
+        var sy = T.Sin(pitch / Two);
+        var cz = T.Cos(yaw / Two);
+        var sz = T.Sin(yaw / Two);
+
+        return new Quaternion<T>(
+            cx * cy * cz + sx * sy * sz,
+            sx * cy * cz - cx * sy * sz,
+            cx * sy * cz + sx * cy * sz,
+            cx * cy * sz - sx * sy * cz);
+    }
+
+    /// <summary>
+    /// Creates the shortest-arc rotation that turns the direction of <paramref name="from"/> into the direction of
+    /// <paramref name="to"/>. For opposite directions it turns by π about an axis perpendicular to <paramref name="from"/>.
+    /// </summary>
+    /// <exception cref="ArgumentException">Thrown when either vector is zero.</exception>
+    public static Quaternion<T> FromTo(Vector3<T> from, Vector3<T> to)
+    {
+        var f = from.Normalize();
+        var t = to.Normalize();
+        var d = Vector3<T>.Dot(f, t);
+
+        if (T.One + d < OppositeThreshold)
+        {
+            var axis = Vector3<T>.Cross(Vector3<T>.EX, f);
+            if (axis.LengthSquared < OppositeThreshold)
+                axis = Vector3<T>.Cross(Vector3<T>.EY, f);
+            axis = axis.Normalize();
+            return new Quaternion<T>(T.Zero, axis.X, axis.Y, axis.Z);
+        }
+
+        var c = Vector3<T>.Cross(f, t);
+        return new Quaternion<T>(T.One + d, c.X, c.Y, c.Z).Normalize();
+    }
+
+    /// <summary>
+    /// Creates the rotation whose rotated unit axes are <paramref name="x"/>, <paramref name="y"/> and
+    /// <paramref name="z"/>: Rotate(EX) = x, Rotate(EY) = y, Rotate(EZ) = z. The axes must form a right-handed
+    /// orthonormal basis (the columns of the rotation matrix).
+    /// </summary>
+    public static Quaternion<T> FromAxes(Vector3<T> x, Vector3<T> y, Vector3<T> z)
+    {
+        // Shepperd's method on the matrix whose columns are x, y, z.
+        T m00 = x.X, m10 = x.Y, m20 = x.Z;
+        T m01 = y.X, m11 = y.Y, m21 = y.Z;
+        T m02 = z.X, m12 = z.Y, m22 = z.Z;
+        var quarter = T.One / (Two * Two);
+        var trace = m00 + m11 + m22;
+        Quaternion<T> q;
+
+        if (trace > T.Zero)
+        {
+            var s = T.Sqrt(trace + T.One) * Two;
+            q = new Quaternion<T>(quarter * s, (m21 - m12) / s, (m02 - m20) / s, (m10 - m01) / s);
+        }
+        else if (m00 > m11 && m00 > m22)
+        {
+            var s = T.Sqrt(T.One + m00 - m11 - m22) * Two;
+            q = new Quaternion<T>((m21 - m12) / s, quarter * s, (m01 + m10) / s, (m02 + m20) / s);
+        }
+        else if (m11 > m22)
+        {
+            var s = T.Sqrt(T.One + m11 - m00 - m22) * Two;
+            q = new Quaternion<T>((m02 - m20) / s, (m01 + m10) / s, quarter * s, (m12 + m21) / s);
+        }
+        else
+        {
+            var s = T.Sqrt(T.One + m22 - m00 - m11) * Two;
+            q = new Quaternion<T>((m10 - m01) / s, (m02 + m20) / s, (m12 + m21) / s, quarter * s);
+        }
+
+        return q.Normalize();
     }
 
     /// <summary>

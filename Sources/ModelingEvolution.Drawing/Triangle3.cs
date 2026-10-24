@@ -86,9 +86,9 @@ public readonly struct Triangle3<T> : IEquatable<Triangle3<T>>
     /// <returns>A pose representing the triangle's plane orientation at its center.</returns>
     public Pose3<T> ToPose()
     {
-        // Get rotation from surface, then create pose at centroid
-        var surfacePose = Pose3<T>.FromSurface(_a, _b, _c);
-        return new Pose3<T>(Centroid, surfacePose.Rotation);
+        // Rotation from the surface frame, position at the centroid
+        var surface = Frame3<T>.FromSurface(_a, _b, _c);
+        return new Frame3<T>(Centroid, surface.Rotation).ToPose3(T.One);
     }
 
     #region Operators

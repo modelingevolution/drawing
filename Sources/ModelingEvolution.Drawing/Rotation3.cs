@@ -138,23 +138,7 @@ public readonly struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotati
     public Quaternion<T> ToQuaternion()
     {
         var (rx, ry, rz) = ToRadians();
-        var halfRx = (T)rx / Two;
-        var halfRy = (T)ry / Two;
-        var halfRz = (T)rz / Two;
-
-        var cx = T.Cos(halfRx);
-        var sx = T.Sin(halfRx);
-        var cy = T.Cos(halfRy);
-        var sy = T.Sin(halfRy);
-        var cz = T.Cos(halfRz);
-        var sz = T.Sin(halfRz);
-
-        // ZYX order
-        return new Quaternion<T>(
-            w: cx * cy * cz + sx * sy * sz,
-            x: sx * cy * cz - cx * sy * sz,
-            y: cx * sy * cz + sx * cy * sz,
-            z: cx * cy * sz - sx * sy * cz);
+        return Quaternion<T>.FromRpy((T)rx, (T)ry, (T)rz);
     }
 
     /// <summary>

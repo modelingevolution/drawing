@@ -7,8 +7,9 @@ cd "$(git rev-parse --show-toplevel)"
 ROWS=(
   $'G-17\t\\b(TransformPoint|TransformVector|Inverse|Multiply|Lerp|Distance|FromSurface)\\s*[<(]|operator\\s*[-+*]\tSources/ModelingEvolution.Drawing/Pose3.cs'
   $'G-18\tPose3(<[^>]*>)?\\.(Lerp|Distance|FromSurface)\\b\tSources/'
-  # G-19d (epic-129 Q7; the lead renumbers it in the docs): no Euler rotation algebra on Rotation3 or a Pose3's rotation.
-  $'G-19d\tRotation3(<[^>]*>)?\\.(Combine|Slerp)\\b|\\.Rotation\\.(Rotate|Inverse|Combine)\\(\tSources/'
+  # G-19d (epic-129 Q7; the lead renumbers it in the docs): no Euler rotation algebra on Rotation3 or a Pose3's rotation,
+  # and no direction → Euler shortcut (Vector3.RotationTo is deleted; use Quaternion.FromTo).
+  $'G-19d\tRotation3(<[^>]*>)?\\.(Combine|Slerp)\\b|\\.Rotation\\.(Rotate|Inverse|Combine)\\(|\\bRotationTo\\s*\\(\tSources/'
 )
 
 failed=0

@@ -191,53 +191,6 @@ public readonly struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     }
 
     /// <summary>
-    /// Computes the rotation that transforms this vector to align with the target vector.
-    /// </summary>
-    /// <param name="target">The target direction to rotate towards.</param>
-    /// <returns>A rotation R such that R.ToQuaternion().Rotate(this.Normalize()) ≈ target.Normalize().</returns>
-    /// <remarks>
-    /// When vectors are parallel, returns identity. When anti-parallel, rotation axis is chosen arbitrarily.
-    /// </remarks>
-    public Rotation3<T> RotationTo(Vector3<T> target)
-    {
-        var epsilon = T.CreateTruncating(1e-6);
-
-        var from = Normalize();
-        var to = target.Normalize();
-
-        var dot = Dot(from, to);
-
-        // Parallel vectors (same direction)
-        if (dot > T.One - epsilon)
-            return Rotation3<T>.Identity;
-
-        // Anti-parallel vectors (opposite direction)
-        if (dot < -T.One + epsilon)
-        {
-            // Find a perpendicular axis
-            var axis = T.Abs(from.X) < T.CreateTruncating(0.9)
-                ? Cross(from, EX).Normalize()
-                : Cross(from, EY).Normalize();
-
-            // 180 degree rotation around the perpendicular axis
-            return RotationFromAxisAngle(axis, T.Pi);
-        }
-
-        // General case: rotation around cross product axis
-        var rotationAxis = Cross(from, to).Normalize();
-        var angle = T.Acos(T.Clamp(dot, -T.One, T.One));
-
-        return RotationFromAxisAngle(rotationAxis, angle);
-    }
-
-    /// <summary>
-    /// Creates a Rotation3 from axis-angle representation, through <see cref="Quaternion{T}.FromAxisAngle"/> and the
-    /// one rotation → Euler formula, <see cref="Rotation3{T}.FromQuaternion"/>.
-    /// </summary>
-    private static Rotation3<T> RotationFromAxisAngle(Vector3<T> axis, T angleRadians) =>
-        Rotation3<T>.FromQuaternion(Quaternion<T>.FromAxisAngle(axis, angleRadians));
-
-    /// <summary>
     /// Calculates the projection of this vector onto another vector.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -301,11 +254,6 @@ public readonly struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static T operator *(Vector3<T> a, Vector3<T> b) => Dot(a, b);
     /// <summary>
-    /// Combines a 3D vector (as position) with a rotation to create a pose.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Pose3<T> operator +(Vector3<T> v, Rotation3<T> r) => new((Point3<T>)v, r);
-    /// <summary>
     /// Determines whether two 3D vectors are equal.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -344,42 +292,6 @@ public readonly struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static explicit operator Vector3<T>(System.Numerics.Vector3 v) =>
         new(T.CreateTruncating(v.X), T.CreateTruncating(v.Y), T.CreateTruncating(v.Z));
-
-    /// <summary>
-    /// Converts a direction vector to a rotation that would rotate +Z axis to point in this direction.
-    /// Uses ZYX Euler angle convention where rotation order is Rx first, then Ry, then Rz.
-    /// </summary>
-    public static explicit operator Rotation3<T>(Vector3<T> v)
-    {
-        var len = v.Length;
-        if (len == T.Zero)
-            return Rotation3<T>.Identity;
-
-        // Normalize the vector
-        var x = v._x / len;
-        var y = v._y / len;
-        var z = v._z / len;
-
-        // For ZYX quaternion order, rotation is applied as: Rz(Ry(Rx(v)))
-        // Starting with +Z = (0, 0, 1), after Rx then Ry then Rz (with rz=0):
-        // x = cos(rx)*sin(ry)
-        // y = -sin(rx)
-        // z = cos(rx)*cos(ry)
-        //
-        // Therefore: rx = -asin(y), ry = atan2(x, z)
-
-        // Roll (rotation around X) - determines Y component (result in radians)
-        var rx = T.Asin(T.Clamp(-y, -T.One, T.One));
-
-        // Pitch (rotation around Y) - determines X/Z ratio (result in radians)
-        var ry = T.Atan2(x, z);
-
-        // Yaw (rotation around Z) - not needed for direction, set to 0
-        return new Rotation3<T>(
-            (Degree<T>)Radian<T>.FromRadian(rx),
-            (Degree<T>)Radian<T>.FromRadian(ry),
-            Degree<T>.Zero);
-    }
 
     #endregion
 

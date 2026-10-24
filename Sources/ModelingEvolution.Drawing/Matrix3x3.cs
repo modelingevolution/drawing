@@ -206,12 +206,13 @@ public readonly record struct Matrix3x3<T>(
     /// Specifically, <c>M.Transform(source) ≈ target</c>.
     /// </summary>
     /// <param name="source">Source vector (must be non-zero).</param>
-    /// <param name="target">Target vector (may be any length; zero target yields a degenerate zero matrix).</param>
+    /// <param name="target">Target vector (must be non-zero).</param>
     /// <returns>The 3×3 matrix combining rotation that aligns source's direction with target's, scaled by |target|/|source|.</returns>
-    /// <exception cref="ArgumentException">Source vector has zero length.</exception>
+    /// <exception cref="ArgumentException">Source or target vector has zero length.</exception>
     /// <remarks>
     /// Two-point alignment is geometrically under-constrained in 3D (rotation around the source axis is free);
-    /// this method picks the unique shortest-arc rotation (via <see cref="Vector3{T}.RotationTo"/>).
+    /// this method picks the shortest-arc rotation, <see cref="Quaternion{T}.FromTo"/> (for opposite vectors a
+    /// half-turn about the axis <c>FromTo</c> picks).
     /// Use cases include adapting taught polyline paths whose endpoints have shifted.
     /// </remarks>
     public static Matrix3x3<T> SimilarityFromVectors(Vector3<T> source, Vector3<T> target)
@@ -221,9 +222,7 @@ public readonly record struct Matrix3x3<T>(
             throw new ArgumentException("Source vector must be non-zero.", nameof(source));
 
         var scale = target.Length / sourceLength;
-        var rotation = source.RotationTo(target);                  // Rotation3<T>, Euler ZYX
-        var R = RotationZYX(rotation.Rx, rotation.Ry, rotation.Rz);
-        return scale * R;
+        return scale * Quaternion<T>.FromTo(source, target).ToMatrix3x3();
     }
 
     /// <summary>Creates a matrix from three column vectors.</summary>

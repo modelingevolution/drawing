@@ -142,7 +142,7 @@ Pose3<double> atHalf = trajectory.AtTime(2.5); // interpolated pose
 | Type | Description |
 |---|---|
 | `Point3<T>` | 3D Cartesian point. Distance, lerp, midpoint, random generation, arithmetic with `Vector3<T>`. Conversions to/from `System.Numerics.Vector3` and tuples. Protobuf and JSON serialization. |
-| `Vector3<T>` | 3D vector with length, normalize, dot product, cross product, angle between, projection, lerp, random unit vector, and `RotationTo()` for computing the rotation between two directions. Static basis vectors `EX`, `EY`, `EZ`. |
+| `Vector3<T>` | 3D vector with length, normalize, dot product, cross product, angle between, projection, lerp, random unit vector. The rotation between two directions is `Quaternion<T>.FromTo(from, to)`. Static basis vectors `EX`, `EY`, `EZ`. |
 | `Matrix3x3<T>` | 3x3 matrix for 3D transforms. Determinant, trace, transpose, inverse. Rotation factories: `RotationX`, `RotationY`, `RotationZ`, `RotationZYX`. Scale, column/row construction. Euler angle and quaternion extraction. |
 | `Quaternion<T>` | Quaternion for 3D rotations. Normalize, conjugate, inverse, from axis-angle, rotate vector, slerp, dot product. Conversions to/from `System.Numerics.Quaternion`. |
 | `Segment3<T>` | Bounded line segment in 3D. Length, midpoint, direction, lerp, split, reverse, distance-to-point, project point. |

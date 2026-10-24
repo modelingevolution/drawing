@@ -357,12 +357,12 @@ public class Rotation3Tests
     }
 
     [Fact]
-    public void Rotation3_ToVector3_RoundTrips_WithVector3()
+    public void Rotation3_FromTo_RoundTrips_WithVector3()
     {
-        // Start with a direction, convert to rotation, convert back
+        // Start with a direction, take the rotation that turns +Z onto it, store it as Euler (wire) and turn +Z back
         var originalDir = new Vector3<double>(1, 1, 1).Normalize();
 
-        var rotation = (Rotation3<double>)originalDir;
+        var rotation = Rotation3<double>.FromQuaternion(Quaternion<double>.FromTo(Vector3<double>.EZ, originalDir));
         var backToDir = rotation.ToQuaternion().Rotate(Vector3<double>.EZ);
 
         backToDir.X.Should().BeApproximately(originalDir.X, 1e-6);

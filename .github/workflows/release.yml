@@ -112,6 +112,11 @@ jobs:
               fi
             done
             if [ -z "$PR" ]; then
+              if [ "$C" = "$SHA" ]; then
+                # HEAD is this run's merge: its label decides the bump, so an older PR must never stand in for it.
+                echo "::error::No merged PR found for HEAD $SHA after $ATTEMPTS attempts; releases come from labelled PRs. Re-run via workflow_dispatch if this was intended."
+                exit 1
+              fi
               echo "$C: no merged PR"
               continue
             fi

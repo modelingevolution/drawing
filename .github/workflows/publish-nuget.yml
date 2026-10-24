@@ -11,10 +11,11 @@ on:
         description: 'Version to publish (X.Y.Z.B or X.Y.Z.B-preview.N)'
         required: true
         type: string
+  # Manual re-publish of an EXISTING release tag (e.g. after a failed push): the tag's commit is built.
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to publish (e.g., 1.0.53.35)'
+        description: 'Existing tag version to re-publish (e.g., 1.13.0.71)'
         required: true
         type: string
 
@@ -28,7 +29,10 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v4
-    
+      with:
+        # A dispatch run needs the tags to find and check out the release tag.
+        fetch-depth: ${{ github.event_name == 'workflow_dispatch' && '0' || '1' }}
+
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
@@ -64,6 +68,21 @@ jobs:
         echo "VERSION=$VERSION" >> $GITHUB_ENV
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "numeric=$NUMERIC" >> $GITHUB_OUTPUT
+
+    # Also true when release.yml was itself dispatched and calls this workflow: its tag was just pushed on the
+    # same commit, so the check passes and the checkout is a no-op.
+    - name: Check out the release tag (workflow_dispatch only)
+      if: github.event_name == 'workflow_dispatch'
+      env:
+        VERSION: ${{ steps.version.outputs.version }}
+      run: |
+        TAG="ModelingEvolution.Drawing/$VERSION"
+        if ! git rev-parse -q --verify "refs/tags/$TAG" > /dev/null; then
+          echo "::error::Tag $TAG does not exist; a manual run only re-publishes an existing release tag"
+          exit 1
+        fi
+        git checkout -q "refs/tags/$TAG"
+        echo "Building $TAG at $(git rev-parse HEAD)"
 
     - name: Update version in csproj
       env:

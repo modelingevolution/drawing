@@ -25,7 +25,7 @@ expect_tag() {
     local description=$1 expected="$PACKAGE/$2"
     shift 2
     local actual status
-    actual=$("$SCRIPT" "$@" 2> "$WORK/stderr")
+    actual=$("$SCRIPT" "$@" 2> "$WORK/stderr" < /dev/null)
     status=$?
     if [ "$status" -eq 0 ] && [ "$actual" = "$expected" ]; then
         pass "$description -> $actual"
@@ -61,6 +61,7 @@ git remote add origin "$WORK/origin.git"
 echo "a" > file.txt
 git add file.txt
 git commit -q -m "initial"
+git push -q origin master
 
 # No tag yet: INITIAL_VERSION is the current version.
 initial=$(sed -n 's/^INITIAL_VERSION="\(.*\)"$/\1/p' "$SCRIPT")
@@ -72,7 +73,7 @@ git tag -a "$PACKAGE/1.13.0.71" -m t
 git tag -a "$PACKAGE/1.14.0.72-preview.1" -m t
 git tag -a "$PACKAGE/2.0.0.99-preview.1" -m t
 
-"$SCRIPT" --dry-run --ci > /dev/null 2> "$WORK/stderr"
+"$SCRIPT" --dry-run --ci > /dev/null 2> "$WORK/stderr" < /dev/null
 if grep -q "Current version: 1.13.0.71" "$WORK/stderr"; then
     pass "current version ignores -preview tags and sorts by version (1.13.0.71)"
 else
@@ -90,12 +91,17 @@ expect_tag "--dry-run without --ci needs no prompt" "1.14.0.72" --minor --dry-ru
 
 expect_exit "existing tag is refused" 1 --version 1.13.0.71 --ci --dry-run
 expect_exit "malformed --version is refused" 1 --version 1.2.3 --ci --dry-run
+expect_exit "empty --version is refused" 1 --version '' --ci --dry-run
+expect_exit "--version without a value is refused" 1 --ci --dry-run --version
 expect_exit "unknown option is refused" 1 --bogus
 
 echo "b" >> file.txt
 expect_exit "--ci on a dirty tree" 1 --minor --ci --dry-run
 expect_exit "--preview --ci on a dirty tree" 1 --preview --minor --ci --dry-run
 git checkout -q -- file.txt
+touch untracked.txt
+expect_exit "--ci with an untracked file" 1 --minor --ci --dry-run
+rm untracked.txt
 
 git checkout -q -b feature/x
 expect_exit "release off master (--ci)" 1 --minor --ci --dry-run
@@ -103,10 +109,26 @@ expect_exit "release off master (interactive)" 1 --minor --dry-run
 expect_tag "--preview off master" "1.14.0.72-preview.2" --preview --minor --ci --dry-run
 git checkout -q master
 
+# Tags are fetched from origin: a tag that exists only on origin moves the version.
+git clone -q "$WORK/origin.git" "$WORK/other"
+git -C "$WORK/other" -c user.email=test@example.com -c user.name=other -c tag.gpgsign=false \
+    tag -a "$PACKAGE/1.13.5.75" -m t
+git -C "$WORK/other" push -q origin "refs/tags/$PACKAGE/1.13.5.75"
+expect_tag "tags are fetched from origin first" "1.13.6.76" --patch --ci --dry-run
+git -C "$WORK/other" push -q origin ":refs/tags/$PACKAGE/1.13.5.75"
+git tag -d "$PACKAGE/1.13.5.75" > /dev/null
+
+# An unreachable origin: --dry-run alone warns, --ci (dry or real) exits 1.
+git remote set-url origin "$WORK/missing.git"
+expect_tag "fetch failure is a warning under --dry-run alone" "1.13.1.72" --patch --dry-run
+expect_exit "fetch failure under --ci --dry-run" 1 --patch --ci --dry-run
+expect_exit "fetch failure under --ci" 1 --patch --ci
+git remote set-url origin "$WORK/origin.git"
+
 # A real run: tags, pushes to origin, writes $GITHUB_OUTPUT.
 out="$WORK/github_output"
 : > "$out"
-if GITHUB_OUTPUT="$out" "$SCRIPT" --minor --ci > /dev/null 2> "$WORK/stderr"; then
+if GITHUB_OUTPUT="$out" "$SCRIPT" --minor --ci > /dev/null 2> "$WORK/stderr" < /dev/null; then
     pass "--minor --ci tags and pushes"
 else
     fail "--minor --ci real run"

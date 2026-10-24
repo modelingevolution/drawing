@@ -1,8 +1,14 @@
 name: Release
 
-# Merge to master: bump = the merged PR's label release:major|minor|patch|none (default minor).
-# release.sh is the only version implementation; it tags and pushes. A tag pushed with GITHUB_TOKEN starts
-# no other workflow, so this run calls publish-nuget.yml itself with the version release.sh produced.
+# Merge to master: bump = the merged PR's label release:major|minor|patch|none (minor when the PR has no label;
+# a push with no merged PR fails, releases come from labelled PRs). release.sh is the only version
+# implementation; it tags and pushes. A tag pushed with GITHUB_TOKEN starts no other workflow, so this run calls
+# publish-nuget.yml itself with the version release.sh produced. Order: test -> tag -> publish -> GitHub Release.
+#
+# No `concurrency` group on purpose: GitHub keeps one PENDING run per group and cancels it when a third run
+# queues, so a release:major merge could be dropped without anyone noticing. Without it, two overlapping runs
+# race loudly instead: release.sh refuses an existing tag and the publish push uses --skip-duplicate, so the
+# loser fails and the lead re-runs it.
 
 on:
   push:
@@ -27,10 +33,6 @@ permissions:
   contents: write
   pull-requests: read
 
-concurrency:
-  group: release-master
-  cancel-in-progress: false
-
 jobs:
   tag:
     runs-on: ubuntu-latest
@@ -39,6 +41,7 @@ jobs:
       bump: ${{ steps.bump.outputs.bump }}
       version: ${{ steps.release.outputs.version }}
       tag: ${{ steps.release.outputs.tag }}
+      previous: ${{ steps.release.outputs.previous }}
 
     steps:
     - name: Checkout
@@ -57,19 +60,36 @@ jobs:
         GH_TOKEN: ${{ github.token }}
         EVENT: ${{ github.event_name }}
         DISPATCH_BUMP: ${{ github.event.inputs.version_bump }}
+        CUSTOM_VERSION: ${{ github.event.inputs.custom_version }}
         REPO: ${{ github.repository }}
         SHA: ${{ github.sha }}
       run: |
         set -o pipefail
         if [ "$EVENT" = "workflow_dispatch" ]; then
           BUMP="$DISPATCH_BUMP"
+          if [ "$BUMP" = "custom" ] && [ -z "$CUSTOM_VERSION" ]; then
+            echo "::error::version_bump is custom but custom_version is empty"
+            exit 1
+          fi
         else
-          # A failing API call fails the job (no silent default).
-          PULLS=$(gh api "repos/$REPO/commits/$SHA/pulls")
-          LABELS=$(echo "$PULLS" \
-            | jq -r --arg sha "$SHA" '[.[] | select(.merge_commit_sha == $sha)][0].labels // [] | .[].name' \
+          # The commit -> PR association can lag right after a merge: retry. A failing API call fails the job.
+          PR=""
+          for attempt in 1 2 3 4; do
+            PR=$(gh api "repos/$REPO/commits/$SHA/pulls" \
+              | jq -c --arg sha "$SHA" '[.[] | select(.merge_commit_sha == $sha)][0] // empty')
+            [ -n "$PR" ] && break
+            if [ "$attempt" -lt 4 ]; then
+              echo "No merged PR for $SHA yet (attempt $attempt); retrying in 10 s"
+              sleep 10
+            fi
+          done
+          if [ -z "$PR" ]; then
+            echo "::error::No merged PR found for $SHA; releases come from labelled PRs. Re-run via workflow_dispatch if this was intended."
+            exit 1
+          fi
+          echo "Merged PR: #$(echo "$PR" | jq -r '.number')"
+          LABELS=$(echo "$PR" | jq -r '.labels[].name' \
             | { grep -E '^release:(major|minor|patch|none)$' || true; } | sort -u)
-          echo "Merged PR: $(echo "$PULLS" | jq -r --arg sha "$SHA" '[.[] | select(.merge_commit_sha == $sha)][0].number // "none"')"
           COUNT=$(printf '%s' "$LABELS" | grep -c . || true)
           if [ "$COUNT" -gt 1 ]; then
             echo "::error::The merged PR carries more than one release label: ${LABELS//$'\n'/ }"
@@ -79,7 +99,7 @@ jobs:
             BUMP="${LABELS#release:}"
           else
             BUMP="minor"
-            echo "No release label on the merged PR; default bump: minor"
+            echo "The merged PR has no release label; default bump: minor"
           fi
         fi
         echo "Bump: $BUMP"
@@ -90,6 +110,33 @@ jobs:
         else
           echo "skip=false" >> "$GITHUB_OUTPUT"
         fi
+
+    # Nothing is tagged while the suite is red. The suite runs in a separate worktree of the same commit because
+    # it rewrites tracked files (the *-svg galleries at the repo root), and release.sh refuses a dirty tree.
+    - name: Setup .NET
+      if: steps.bump.outputs.skip != 'true'
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Create the test worktree
+      if: steps.bump.outputs.skip != 'true'
+      run: git worktree add --detach "$RUNNER_TEMP/suite" HEAD
+
+    - name: Restore
+      if: steps.bump.outputs.skip != 'true'
+      working-directory: ${{ runner.temp }}/suite/Sources
+      run: dotnet restore
+
+    - name: Build
+      if: steps.bump.outputs.skip != 'true'
+      working-directory: ${{ runner.temp }}/suite/Sources
+      run: dotnet build --configuration Release --no-restore
+
+    - name: Test
+      if: steps.bump.outputs.skip != 'true'
+      working-directory: ${{ runner.temp }}/suite/Sources
+      run: dotnet test --configuration Release --no-build --verbosity normal
 
     - name: Tag with release.sh
       id: release
@@ -104,46 +151,6 @@ jobs:
           ./release.sh "--$BUMP" --ci
         fi
 
-    - name: Create GitHub Release
-      if: steps.bump.outputs.skip != 'true'
-      uses: ncipollo/release-action@v1
-      with:
-        tag: ${{ steps.release.outputs.tag }}
-        name: "ModelingEvolution.Drawing v${{ steps.release.outputs.version }}"
-        body: |
-          ## ModelingEvolution.Drawing v${{ steps.release.outputs.version }}
-
-          ### Installation
-          ```bash
-          dotnet add package ModelingEvolution.Drawing --version ${{ steps.release.outputs.version }}
-          ```
-
-          ---
-
-          **Full Changelog**: https://github.com/${{ github.repository }}/compare/ModelingEvolution.Drawing/${{ steps.release.outputs.previous }}...${{ steps.release.outputs.tag }}
-        draft: false
-        prerelease: false
-        generateReleaseNotes: true
-
-    - name: Summary
-      if: steps.bump.outputs.skip != 'true'
-      env:
-        BUMP: ${{ steps.bump.outputs.bump }}
-        PREVIOUS: ${{ steps.release.outputs.previous }}
-        VERSION: ${{ steps.release.outputs.version }}
-        TAG: ${{ steps.release.outputs.tag }}
-      run: |
-        {
-          echo "## Release tagged"
-          echo ""
-          echo "- **Bump**: $BUMP"
-          echo "- **Previous Version**: $PREVIOUS"
-          echo "- **New Version**: $VERSION"
-          echo "- **Tag**: $TAG"
-          echo ""
-          echo "The publish job of this run builds, tests and pushes the package."
-        } >> "$GITHUB_STEP_SUMMARY"
-
   publish:
     needs: tag
     if: needs.tag.outputs.skip != 'true'
@@ -151,3 +158,46 @@ jobs:
     with:
       version: ${{ needs.tag.outputs.version }}
     secrets: inherit
+
+  # The public GitHub Release exists only after the package was pushed.
+  github-release:
+    needs: [ tag, publish ]
+    if: needs.tag.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Create GitHub Release
+      uses: ncipollo/release-action@v1
+      with:
+        tag: ${{ needs.tag.outputs.tag }}
+        name: "ModelingEvolution.Drawing v${{ needs.tag.outputs.version }}"
+        body: |
+          ## ModelingEvolution.Drawing v${{ needs.tag.outputs.version }}
+
+          ### Installation
+          ```bash
+          dotnet add package ModelingEvolution.Drawing --version ${{ needs.tag.outputs.version }}
+          ```
+
+          ---
+
+          **Full Changelog**: https://github.com/${{ github.repository }}/compare/ModelingEvolution.Drawing/${{ needs.tag.outputs.previous }}...${{ needs.tag.outputs.tag }}
+        draft: false
+        prerelease: false
+        generateReleaseNotes: true
+
+    - name: Summary
+      env:
+        BUMP: ${{ needs.tag.outputs.bump }}
+        PREVIOUS: ${{ needs.tag.outputs.previous }}
+        VERSION: ${{ needs.tag.outputs.version }}
+        TAG: ${{ needs.tag.outputs.tag }}
+      run: |
+        {
+          echo "## Released"
+          echo ""
+          echo "- **Bump**: $BUMP"
+          echo "- **Previous Version**: $PREVIOUS"
+          echo "- **New Version**: $VERSION"
+          echo "- **Tag**: $TAG"
+        } >> "$GITHUB_STEP_SUMMARY"

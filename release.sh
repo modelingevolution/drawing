@@ -10,10 +10,10 @@
 #   --major            bump major, minor=0, patch=0, build+1 (build is never reset)
 #   --version X.Y.Z.B  use this exact version
 #   --preview          tag {next}-preview.{N}; allowed from any branch
-#   --ci               no prompts; refuses a dirty tree
+#   --ci               no prompts; refuses a dirty tree (untracked files count)
 #   --dry-run          print the computed tag and exit 0 without tagging or pushing
 #
-# A non-preview release runs on master only. Inside GitHub Actions ($GITHUB_OUTPUT set) the script appends
+# Tags are fetched from origin first. A non-preview release runs on master only. Inside GitHub Actions ($GITHUB_OUTPUT set) the script appends
 # version=, tag= and previous= to $GITHUB_OUTPUT.
 #
 # This script is copied unchanged between repositories: only PACKAGE and INITIAL_VERSION differ.
@@ -98,6 +98,7 @@ monitor_url() {
 main() {
     local bump_type="patch"
     local custom_version=""
+    local version_given=false
     local preview=false
     local ci=false
     local dry_run=false
@@ -109,7 +110,7 @@ main() {
             --major) bump_type="major"; shift ;;
             --version)
                 if [[ $# -lt 2 ]]; then print_error "--version needs a value"; exit 1; fi
-                custom_version="$2"; shift 2 ;;
+                custom_version="$2"; version_given=true; shift 2 ;;
             --preview) preview=true; shift ;;
             --ci) ci=true; shift ;;
             --dry-run) dry_run=true; shift ;;
@@ -123,7 +124,7 @@ main() {
         exit 1
     fi
 
-    if [ -n "$custom_version" ] && ! [[ "$custom_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    if [ "$version_given" = true ] && ! [[ "$custom_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         print_error "--version must be X.Y.Z.B, got: $custom_version"
         exit 1
     fi
@@ -135,8 +136,7 @@ main() {
         exit 1
     fi
 
-    git update-index -q --refresh || true
-    if ! git diff-index --quiet HEAD --; then
+    if [ -n "$(git status --porcelain)" ]; then
         if [ "$ci" = true ]; then
             print_error "Uncommitted changes; --ci refuses a dirty tree"
             exit 1
@@ -148,11 +148,23 @@ main() {
         fi
     fi
 
+    # Stale local tags would give a stale version: fetch them first.
+    if git remote get-url origin > /dev/null 2>&1; then
+        if ! git fetch -q --tags origin; then
+            if [ "$dry_run" = true ] && [ "$ci" = false ]; then
+                print_warn "Could not fetch tags from origin (ignored by --dry-run); local tags may be stale"
+            else
+                print_error "Could not fetch tags from origin"
+                exit 1
+            fi
+        fi
+    fi
+
     local current_version next_version version tag_name
     current_version=$(get_current_version)
     print_info "Current version: $current_version"
 
-    if [ -n "$custom_version" ]; then
+    if [ "$version_given" = true ]; then
         next_version="$custom_version"
         print_info "Using custom version: $next_version"
     else
@@ -194,7 +206,12 @@ main() {
     git tag -a "$tag_name" -m "Release $PACKAGE v$version"
 
     print_info "Pushing tag to origin..."
-    git push origin "refs/tags/$tag_name"
+    if ! git push origin "refs/tags/$tag_name"; then
+        # Drop the local tag so a retry is not refused with "Tag already exists".
+        git tag -d "$tag_name" > /dev/null
+        print_error "Push of $tag_name failed; local tag removed"
+        exit 1
+    fi
 
     if [ -n "${GITHUB_OUTPUT:-}" ]; then
         {

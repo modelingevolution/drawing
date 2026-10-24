@@ -134,22 +134,23 @@ public class Triangle3Tests
     #region ToPose
 
     [Fact]
-    public void Triangle3_ToPose_PositionAtCentroid()
+    public void Triangle3_ToFrame_PositionAtCentroid_RotationFromSurface()
     {
-        var triangle = new Triangle3<double>(
-            new Point3<double>(0, 0, 0),
-            new Point3<double>(3, 0, 0),
-            new Point3<double>(0, 3, 0));
+        var a = new Point3<double>(0, 0, 0);
+        var b = new Point3<double>(3, 0, 0);
+        var c = new Point3<double>(0, 3, 0);
+        var triangle = new Triangle3<double>(a, b, c);
 
-        var pose = triangle.ToPose();
+        var frame = triangle.ToFrame();
 
-        pose.X.Should().Be(1);
-        pose.Y.Should().Be(1);
-        pose.Z.Should().Be(0);
+        frame.Position.X.Should().Be(1);
+        frame.Position.Y.Should().Be(1);
+        frame.Position.Z.Should().Be(0);
+        frame.Rotation.Should().Be(Frame3<double>.FromSurface(a, b, c).Rotation);
     }
 
     [Fact]
-    public void Triangle3_ToPose_HorizontalTriangle_ZAxisPointsUp()
+    public void Triangle3_ToFrame_HorizontalTriangle_ZAxisPointsUp()
     {
         // Horizontal triangle in XY plane
         var triangle = new Triangle3<double>(
@@ -157,13 +158,16 @@ public class Triangle3Tests
             new Point3<double>(1, 0, 5),
             new Point3<double>(0, 1, 5));
 
-        var pose = triangle.ToPose();
+        var frame = triangle.ToFrame();
 
-        // Check that Z-axis of pose points along (0,0,1)
-        var rotation = pose.Rotation;
-        // For a horizontal surface, Rx and Ry should be near 0
-        ((double)rotation.Rx).Should().BeApproximately(0, 1);
-        ((double)rotation.Ry).Should().BeApproximately(0, 1);
+        // The frame's Z-axis is the surface normal (0,0,1); its X-axis is along A→B
+        var z = frame.TransformVector(new Vector3<double>(0, 0, 1));
+        z.X.Should().BeApproximately(0, 1e-12);
+        z.Y.Should().BeApproximately(0, 1e-12);
+        z.Z.Should().BeApproximately(1, 1e-12);
+        var x = frame.TransformVector(new Vector3<double>(1, 0, 0));
+        x.X.Should().BeApproximately(1, 1e-12);
+        x.Y.Should().BeApproximately(0, 1e-12);
     }
 
     #endregion

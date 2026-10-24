@@ -205,12 +205,12 @@ public readonly record struct Trajectory3<T> : IPoolable<Trajectory3<T>, Lease<W
     }
 
     /// <summary>
-    /// Returns a new trajectory with all poses transformed by the given pose (rotation + translation).
+    /// Returns a new trajectory with every waypoint pose composed as <c>frame · pose</c>.
+    /// The waypoint poses are stored as wire <see cref="Pose3{T}"/>; each is converted with lengthScale 1.
     /// Timestamps are preserved.
     /// </summary>
-    public Trajectory3<T> Transform(Pose3<T> pose)
+    public Trajectory3<T> Transform(in Frame3<T> frame)
     {
-        var frame = Frame3<T>.FromPose3(pose, T.One);
         var span = AsSpan();
         var mem = Alloc.Memory<Waypoint3<T>>(span.Length);
         var dst = mem.Span;

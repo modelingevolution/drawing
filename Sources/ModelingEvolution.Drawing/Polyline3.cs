@@ -323,11 +323,10 @@ public readonly record struct Polyline3<T> : IPoolable<Polyline3<T>, Lease<Point
     }
 
     /// <summary>
-    /// Returns a new polyline with all points transformed by the given pose (rotation + translation).
+    /// Returns a new polyline with all points transformed by the given frame (rotation + translation).
     /// </summary>
-    public Polyline3<T> Transform(Pose3<T> pose)
+    public Polyline3<T> Transform(in Frame3<T> frame)
     {
-        var frame = Frame3<T>.FromPose3(pose, T.One);
         var span = AsSpan();
         var mem = Alloc.Memory<Point3<T>>(span.Length);
         var points = mem.Span;

@@ -149,4 +149,19 @@ public class PosePath3Tests
         var path = new PosePath3<float>(P(0, 0, 0), P(1, 1, 1));
         path.ToString().Should().Be("PosePath3(2 poses)");
     }
+
+    [Fact]
+    public void Transform_Frame_ComposesFrameTimesEachPose()
+    {
+        var path = new PosePath3<float>(P(1, 0, 0), P(0, 2, 0));
+        var frame = new Frame3<float>(new Point3<float>(10, 0, 0), Quaternion<float>.FromAxisAngle(new Vector3<float>(0, 0, 1), MathF.PI / 2));
+
+        var r = path.Transform(frame);
+
+        r.Count.Should().Be(2);
+        r[0].X.Should().BeApproximately(10, Tol); r[0].Y.Should().BeApproximately(1, Tol); r[0].Z.Should().BeApproximately(0, Tol);
+        ((float)r[0].Rz).Should().BeApproximately(90, Tol);
+        r[1].X.Should().BeApproximately(8, Tol);  r[1].Y.Should().BeApproximately(0, Tol);
+        ((float)r[1].Rz).Should().BeApproximately(90, Tol);
+    }
 }

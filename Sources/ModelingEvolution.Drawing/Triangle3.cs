@@ -80,16 +80,12 @@ public readonly struct Triangle3<T> : IEquatable<Triangle3<T>>
         Point3<T>.Distance(_c, _a);
 
     /// <summary>
-    /// Creates a pose at the triangle's centroid with Z-axis along the normal.
+    /// Creates a frame at the triangle's centroid with Z-axis along the normal.
     /// X-axis is along edge A→B, Y-axis completes the right-handed system.
+    /// The orientation is the one <see cref="Frame3{T}.FromSurface(Point3{T}, Point3{T}, Point3{T})"/> builds.
     /// </summary>
-    /// <returns>A pose representing the triangle's plane orientation at its center.</returns>
-    public Pose3<T> ToPose()
-    {
-        // Rotation from the surface frame, position at the centroid
-        var surface = Frame3<T>.FromSurface(_a, _b, _c);
-        return new Frame3<T>(Centroid, surface.Rotation).ToPose3(T.One);
-    }
+    /// <returns>A frame representing the triangle's plane orientation at its center.</returns>
+    public Frame3<T> ToFrame() => new(Centroid, Frame3<T>.FromSurface(_a, _b, _c).Rotation);
 
     #region Operators
 

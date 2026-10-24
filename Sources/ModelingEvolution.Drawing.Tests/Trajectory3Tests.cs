@@ -221,4 +221,20 @@ public class Trajectory3Tests
         var traj = new Trajectory3<float>(W(0, 0, 0, 0), W(1, 1, 1, 1));
         traj.ToString().Should().Be("Trajectory3(2 waypoints)");
     }
+
+    [Fact]
+    public void Transform_Frame_ComposesFrameTimesEachPose_PreservesTime()
+    {
+        var traj = new Trajectory3<float>(W(1, 0, 0, 0), W(0, 2, 0, 0.5f));
+        var frame = new Frame3<float>(new Point3<float>(10, 0, 0), Quaternion<float>.FromAxisAngle(new Vector3<float>(0, 0, 1), MathF.PI / 2));
+
+        var r = traj.Transform(frame);
+
+        r.Count.Should().Be(2);
+        r[0].Pose.X.Should().BeApproximately(10, Tol); r[0].Pose.Y.Should().BeApproximately(1, Tol);
+        ((float)r[0].Pose.Rz).Should().BeApproximately(90, Tol);
+        r[0].Time.Should().Be(0);
+        r[1].Pose.X.Should().BeApproximately(8, Tol);  r[1].Pose.Y.Should().BeApproximately(0, Tol);
+        r[1].Time.Should().Be(0.5f);
+    }
 }

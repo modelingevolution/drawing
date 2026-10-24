@@ -151,11 +151,11 @@ public readonly record struct PosePath3<T> : IPoolable<PosePath3<T>, Lease<Pose3
     }
 
     /// <summary>
-    /// Returns a new path with all poses transformed by the given pose (rotation + translation).
+    /// Returns a new path with every pose composed as <c>frame · pose</c>.
+    /// The elements are stored as wire <see cref="Pose3{T}"/>; each is converted with lengthScale 1.
     /// </summary>
-    public PosePath3<T> Transform(Pose3<T> pose)
+    public PosePath3<T> Transform(in Frame3<T> frame)
     {
-        var frame = Frame3<T>.FromPose3(pose, T.One);
         var span = AsSpan();
         var mem = Alloc.Memory<Pose3<T>>(span.Length);
         var dst = mem.Span;

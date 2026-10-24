@@ -458,4 +458,17 @@ public class Polyline3Tests
         var deserialized = System.Text.Json.JsonSerializer.Deserialize<Polyline3<float>>(json);
         deserialized.Count.Should().Be(0);
     }
+
+    [Fact]
+    public void Transform_Frame_RotatesThenTranslatesEveryPoint()
+    {
+        var pl = new Polyline3<float>(new Point3<float>(1, 0, 0), new Point3<float>(0, 2, 0));
+        var frame = new Frame3<float>(new Point3<float>(10, 0, 0), Quaternion<float>.FromAxisAngle(new Vector3<float>(0, 0, 1), MathF.PI / 2));
+
+        var r = pl.Transform(frame);
+
+        r.Count.Should().Be(2);
+        r[0].X.Should().BeApproximately(10, Tol); r[0].Y.Should().BeApproximately(1, Tol); r[0].Z.Should().BeApproximately(0, Tol);
+        r[1].X.Should().BeApproximately(8, Tol);  r[1].Y.Should().BeApproximately(0, Tol); r[1].Z.Should().BeApproximately(0, Tol);
+    }
 }

@@ -257,7 +257,7 @@ public class Vector3Tests
     {
         var rotation = Vector3<double>.EZ.RotationTo(Vector3<double>.EX);
 
-        var result = rotation.Rotate(Vector3<double>.EZ);
+        var result = rotation.ToQuaternion().Rotate(Vector3<double>.EZ);
 
         result.X.Should().BeApproximately(1, 1e-6);
         result.Y.Should().BeApproximately(0, 1e-6);
@@ -269,7 +269,7 @@ public class Vector3Tests
     {
         var rotation = Vector3<double>.EZ.RotationTo(Vector3<double>.EY);
 
-        var result = rotation.Rotate(Vector3<double>.EZ);
+        var result = rotation.ToQuaternion().Rotate(Vector3<double>.EZ);
 
         result.X.Should().BeApproximately(0, 1e-6);
         result.Y.Should().BeApproximately(1, 1e-6);
@@ -289,7 +289,7 @@ public class Vector3Tests
     {
         var rotation = Vector3<double>.EZ.RotationTo(-Vector3<double>.EZ);
 
-        var result = rotation.Rotate(Vector3<double>.EZ);
+        var result = rotation.ToQuaternion().Rotate(Vector3<double>.EZ);
 
         result.X.Should().BeApproximately(0, 1e-6);
         result.Y.Should().BeApproximately(0, 1e-6);
@@ -303,7 +303,7 @@ public class Vector3Tests
         var to = new Vector3<double>(-2, 1, 0.5).Normalize();
 
         var rotation = from.RotationTo(to);
-        var result = rotation.Rotate(from);
+        var result = rotation.ToQuaternion().Rotate(from);
 
         result.X.Should().BeApproximately(to.X, 1e-6);
         result.Y.Should().BeApproximately(to.Y, 1e-6);
@@ -317,7 +317,7 @@ public class Vector3Tests
         var to = new Vector3<double>(10, 0, 0);  // length 10
 
         var rotation = from.RotationTo(to);
-        var result = rotation.Rotate(Vector3<double>.EZ);
+        var result = rotation.ToQuaternion().Rotate(Vector3<double>.EZ);
 
         result.X.Should().BeApproximately(1, 1e-6);
         result.Y.Should().BeApproximately(0, 1e-6);
@@ -388,7 +388,7 @@ public class Vector3Tests
 
         // When pointing in +Z, yaw can be any value (atan2(0,0)) but pitch should be 0
         // The result should rotate +Z to +Z (identity-like)
-        var resultDir = (Vector3<double>)rotation;
+        var resultDir = rotation.ToQuaternion().Rotate(Vector3<double>.EZ);
         resultDir.Z.Should().BeApproximately(1, 1e-10);
     }
 
@@ -401,7 +401,7 @@ public class Vector3Tests
         var rotation = (Rotation3<double>)x;
 
         // Converting back should give +X direction
-        var resultDir = (Vector3<double>)rotation;
+        var resultDir = rotation.ToQuaternion().Rotate(Vector3<double>.EZ);
         resultDir.X.Should().BeApproximately(1, 1e-6);
         resultDir.Y.Should().BeApproximately(0, 1e-6);
         resultDir.Z.Should().BeApproximately(0, 1e-6);
@@ -416,7 +416,7 @@ public class Vector3Tests
         var rotation = (Rotation3<double>)y;
 
         // Converting back should give +Y direction
-        var resultDir = (Vector3<double>)rotation;
+        var resultDir = rotation.ToQuaternion().Rotate(Vector3<double>.EZ);
         resultDir.X.Should().BeApproximately(0, 1e-6);
         resultDir.Y.Should().BeApproximately(1, 1e-6);
         resultDir.Z.Should().BeApproximately(0, 1e-6);
@@ -429,7 +429,7 @@ public class Vector3Tests
         var direction = new Vector3<double>(1, 2, 3).Normalize();
 
         var rotation = (Rotation3<double>)direction;
-        var backToVector = (Vector3<double>)rotation;
+        var backToVector = rotation.ToQuaternion().Rotate(Vector3<double>.EZ);
 
         // Should round-trip back to the same direction
         backToVector.X.Should().BeApproximately(direction.X, 1e-6);
@@ -444,7 +444,7 @@ public class Vector3Tests
         var v = new Vector3<double>(3, 4, 0); // length = 5
 
         var rotation = (Rotation3<double>)v;
-        var resultDir = (Vector3<double>)rotation;
+        var resultDir = rotation.ToQuaternion().Rotate(Vector3<double>.EZ);
 
         // Result should be normalized direction
         resultDir.Length.Should().BeApproximately(1, 1e-10);

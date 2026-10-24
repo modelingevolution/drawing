@@ -186,38 +186,58 @@ public readonly struct Quaternion<T> : IEquatable<Quaternion<T>>
     /// <paramref name="z"/>: Rotate(EX) = x, Rotate(EY) = y, Rotate(EZ) = z. The axes must form a right-handed
     /// orthonormal basis (the columns of the rotation matrix).
     /// </summary>
-    public static Quaternion<T> FromAxes(Vector3<T> x, Vector3<T> y, Vector3<T> z)
+    public static Quaternion<T> FromAxes(Vector3<T> x, Vector3<T> y, Vector3<T> z) =>
+        FromMatrix3x3(Matrix3x3<T>.FromColumns(x, y, z));
+
+    /// <summary>
+    /// Creates the unit quaternion of a rotation matrix by Shepperd's method: the branch is picked by the largest of
+    /// the trace and the diagonal elements, so no division by a small number happens for any rotation.
+    /// The result is normalized. This is the only matrix → rotation conversion in the library.
+    /// </summary>
+    /// <param name="m">A proper rotation matrix (orthonormal, determinant +1).</param>
+    public static Quaternion<T> FromMatrix3x3(in Matrix3x3<T> m)
     {
-        // Shepperd's method on the matrix whose columns are x, y, z.
-        T m00 = x.X, m10 = x.Y, m20 = x.Z;
-        T m01 = y.X, m11 = y.Y, m21 = y.Z;
-        T m02 = z.X, m12 = z.Y, m22 = z.Z;
         var quarter = T.One / (Two * Two);
-        var trace = m00 + m11 + m22;
+        var trace = m.M11 + m.M22 + m.M33;
         Quaternion<T> q;
 
         if (trace > T.Zero)
         {
             var s = T.Sqrt(trace + T.One) * Two;
-            q = new Quaternion<T>(quarter * s, (m21 - m12) / s, (m02 - m20) / s, (m10 - m01) / s);
+            q = new Quaternion<T>(quarter * s, (m.M32 - m.M23) / s, (m.M13 - m.M31) / s, (m.M21 - m.M12) / s);
         }
-        else if (m00 > m11 && m00 > m22)
+        else if (m.M11 > m.M22 && m.M11 > m.M33)
         {
-            var s = T.Sqrt(T.One + m00 - m11 - m22) * Two;
-            q = new Quaternion<T>((m21 - m12) / s, quarter * s, (m01 + m10) / s, (m02 + m20) / s);
+            var s = T.Sqrt(T.One + m.M11 - m.M22 - m.M33) * Two;
+            q = new Quaternion<T>((m.M32 - m.M23) / s, quarter * s, (m.M12 + m.M21) / s, (m.M13 + m.M31) / s);
         }
-        else if (m11 > m22)
+        else if (m.M22 > m.M33)
         {
-            var s = T.Sqrt(T.One + m11 - m00 - m22) * Two;
-            q = new Quaternion<T>((m02 - m20) / s, (m01 + m10) / s, quarter * s, (m12 + m21) / s);
+            var s = T.Sqrt(T.One + m.M22 - m.M11 - m.M33) * Two;
+            q = new Quaternion<T>((m.M13 - m.M31) / s, (m.M12 + m.M21) / s, quarter * s, (m.M23 + m.M32) / s);
         }
         else
         {
-            var s = T.Sqrt(T.One + m22 - m00 - m11) * Two;
-            q = new Quaternion<T>((m10 - m01) / s, (m02 + m20) / s, (m12 + m21) / s, quarter * s);
+            var s = T.Sqrt(T.One + m.M33 - m.M11 - m.M22) * Two;
+            q = new Quaternion<T>((m.M21 - m.M12) / s, (m.M13 + m.M31) / s, (m.M23 + m.M32) / s, quarter * s);
         }
 
         return q.Normalize();
+    }
+
+    /// <summary>
+    /// Returns the rotation matrix of this unit quaternion: its columns are Rotate(EX), Rotate(EY), Rotate(EZ).
+    /// This is the only rotation → matrix conversion in the library.
+    /// </summary>
+    public Matrix3x3<T> ToMatrix3x3()
+    {
+        T xx = _x * _x, yy = _y * _y, zz = _z * _z;
+        T xy = _x * _y, xz = _x * _z, yz = _y * _z;
+        T wx = _w * _x, wy = _w * _y, wz = _w * _z;
+        return new Matrix3x3<T>(
+            T.One - Two * (yy + zz), Two * (xy - wz), Two * (xz + wy),
+            Two * (xy + wz), T.One - Two * (xx + zz), Two * (yz - wx),
+            Two * (xz - wy), Two * (yz + wx), T.One - Two * (xx + yy));
     }
 
     /// <summary>

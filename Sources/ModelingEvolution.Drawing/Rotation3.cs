@@ -9,6 +9,8 @@ namespace ModelingEvolution.Drawing;
 /// <summary>
 /// Represents a 3D rotation using Euler angles (Roll, Pitch, Yaw) in degrees.
 /// Convention: Rotation order is Z-Y-X (Yaw, Pitch, Roll) - also known as Tait-Bryan angles.
+/// Since 2.0 this is a wire and edit format only, like <see cref="Pose3{T}"/>: rotation maths uses
+/// <see cref="Quaternion{T}"/> (<see cref="ToQuaternion"/>) or <see cref="Frame3{T}"/> (epic-129 design, rule 2).
 /// </summary>
 /// <typeparam name="T">The numeric type used for angles.</typeparam>
 [ProtoContract]
@@ -189,64 +191,6 @@ public readonly struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotati
     }
 
     /// <summary>
-    /// Rotates a vector by this rotation.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Vector3<T> Rotate(Vector3<T> v)
-    {
-        var q = ToQuaternion();
-        return q.Rotate(v);
-    }
-
-    /// <summary>
-    /// Rotates a point by this rotation around the origin.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Point3<T> Rotate(Point3<T> p)
-    {
-        var v = Rotate((Vector3<T>)p);
-        return (Point3<T>)v;
-    }
-
-    /// <summary>
-    /// Returns a rotation with all angles negated.
-    /// Note: This is NOT the mathematical inverse for ZYX Euler angles.
-    /// Use <see cref="Inverse"/> for the true inverse rotation.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Rotation3<T> Negate() => new(-_rx, -_ry, -_rz);
-
-    /// <summary>
-    /// Returns the inverse rotation (R such that Combine(this, R) ≈ Identity).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Rotation3<T> Inverse() => FromQuaternion(ToQuaternion().Conjugate());
-
-    /// <summary>
-    /// Combines two rotations.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Rotation3<T> Combine(Rotation3<T> a, Rotation3<T> b)
-    {
-        var qa = a.ToQuaternion();
-        var qb = b.ToQuaternion();
-        var combined = qa * qb;
-        return FromQuaternion(combined);
-    }
-
-    /// <summary>
-    /// Linearly interpolates between two rotations (spherical interpolation via quaternions).
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Rotation3<T> Slerp(Rotation3<T> a, Rotation3<T> b, T t)
-    {
-        var qa = a.ToQuaternion();
-        var qb = b.ToQuaternion();
-        var result = Quaternion<T>.Slerp(qa, qb, t);
-        return FromQuaternion(result);
-    }
-
-    /// <summary>
     /// Converts this rotation to a different numeric type.
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -259,10 +203,6 @@ public readonly struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotati
     #region Operators
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Rotation3<T> operator +(Rotation3<T> a, Rotation3<T> b) => Combine(a, b);
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Rotation3<T> operator -(Rotation3<T> r) => r.Inverse();
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator ==(Rotation3<T> a, Rotation3<T> b) => a._rx == b._rx && a._ry == b._ry && a._rz == b._rz;
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool operator !=(Rotation3<T> a, Rotation3<T> b) => !(a == b);
@@ -270,20 +210,11 @@ public readonly struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotati
     #endregion
 
     /// <summary>
-    /// Converts this Euler rotation to a 3x3 rotation matrix (ZYX convention).
+    /// Creates a rotation from a 3x3 rotation matrix: <see cref="Quaternion{T}.FromMatrix3x3"/>, then
+    /// <see cref="FromQuaternion"/> (the one rotation → Euler formula).
     /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public Matrix3x3<T> ToMatrix3x3() => Matrix3x3<T>.RotationZYX(_rx, _ry, _rz);
-
-    /// <summary>
-    /// Creates a rotation from a 3x3 rotation matrix by extracting ZYX Euler angles.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Rotation3<T> FromMatrix3x3(Matrix3x3<T> m)
-    {
-        var (rx, ry, rz) = m.ToEulerZYX();
-        return new Rotation3<T>(rx, ry, rz);
-    }
+    public static Rotation3<T> FromMatrix3x3(Matrix3x3<T> m) => FromQuaternion(Quaternion<T>.FromMatrix3x3(m));
 
     #region Conversions
 
@@ -291,13 +222,6 @@ public readonly struct Rotation3<T> : IEquatable<Rotation3<T>>, IParsable<Rotati
     public static implicit operator Rotation3<T>((T rx, T ry, T rz) tuple) => new(tuple.rx, tuple.ry, tuple.rz);
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static implicit operator (T rx, T ry, T rz)(Rotation3<T> r) => ((T)r._rx, (T)r._ry, (T)r._rz);
-
-    /// <summary>
-    /// Converts a rotation to a unit vector (versor) representing the direction
-    /// that the +Z axis would point after applying this rotation.
-    /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static explicit operator Vector3<T>(Rotation3<T> r) => r.Rotate(Vector3<T>.EZ);
 
     #endregion
 

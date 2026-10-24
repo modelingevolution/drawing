@@ -327,17 +327,17 @@ public class Matrix3x3Tests
     public void ToQuaternion_FromQuaternion_RoundTrip(double rxd, double ryd, double rzd)
     {
         var m = Matrix3x3<double>.RotationZYX(Degree<double>.Create(rxd), Degree<double>.Create(ryd), Degree<double>.Create(rzd));
-        var q = m.ToQuaternion();
+        var q = Quaternion<double>.FromMatrix3x3(m);
         // Convert quaternion back to rotation, then to matrix
         var rot = Rotation3<double>.FromQuaternion(q);
-        var m2 = rot.ToMatrix3x3();
+        var m2 = rot.ToQuaternion().ToMatrix3x3();
         AssertMatricesEqual(m, m2, 1e-9);
     }
 
     [Fact]
     public void ToQuaternion_Identity_IsUnitQuaternion()
     {
-        var q = Matrix3x3<double>.Identity.ToQuaternion();
+        var q = Quaternion<double>.FromMatrix3x3(Matrix3x3<double>.Identity);
         q.W.Should().BeApproximately(1, TolLoose);
         q.X.Should().BeApproximately(0, TolLoose);
         q.Y.Should().BeApproximately(0, TolLoose);
@@ -352,10 +352,10 @@ public class Matrix3x3Tests
     [InlineData(10, 20, 30)]
     [InlineData(-15, 45, -60)]
     [InlineData(0, 0, 0)]
-    public void Rotation3_ToMatrix3x3_RoundTrip(double rxd, double ryd, double rzd)
+    public void Rotation3_QuaternionMatrix_RoundTrip(double rxd, double ryd, double rzd)
     {
         var rot = new Rotation3<double>(rxd, ryd, rzd);
-        var m = rot.ToMatrix3x3();
+        var m = rot.ToQuaternion().ToMatrix3x3();
         var rot2 = Rotation3<double>.FromMatrix3x3(m);
         ((double)rot2.Rx).Should().BeApproximately(rxd, TolLoose);
         ((double)rot2.Ry).Should().BeApproximately(ryd, TolLoose);
@@ -363,13 +363,13 @@ public class Matrix3x3Tests
     }
 
     [Fact]
-    public void Rotation3_Rotate_MatchesMatrix_Transform()
+    public void Rotation3_QuaternionRotate_MatchesMatrix_Transform()
     {
         var rot = new Rotation3<double>(30, 45, 60);
-        var m = rot.ToMatrix3x3();
+        var m = Matrix3x3<double>.RotationZYX(rot.Rx, rot.Ry, rot.Rz);
         var v = new Vector3<double>(1, 2, 3);
 
-        var rotated = rot.Rotate(v);
+        var rotated = rot.ToQuaternion().Rotate(v);
         var transformed = m.Transform(v);
 
         rotated.X.Should().BeApproximately(transformed.X, TolLoose);
@@ -485,6 +485,102 @@ public class Matrix3x3Tests
     #endregion
 
     #region Helpers
+
+    #region Quaternion ⇄ matrix bridge (epic-129 Q7: one Euler formula)
+
+    private static Quaternion<double> RandomRotation(Random rng)
+    {
+        // Uniform random unit quaternion (Shoemake)
+        double u1 = rng.NextDouble(), u2 = rng.NextDouble() * 2 * Math.PI, u3 = rng.NextDouble() * 2 * Math.PI;
+        double a = Math.Sqrt(1 - u1), b = Math.Sqrt(u1);
+        return new Quaternion<double>(b * Math.Cos(u3), a * Math.Sin(u2), a * Math.Cos(u2), b * Math.Sin(u3));
+    }
+
+    [Fact]
+    public void QuaternionMatrix_RoundTrip_MatrixQuaternionMatrix_10000Random()
+    {
+        var rng = new Random(129);
+        for (int i = 0; i < 10_000; i++)
+        {
+            var m = RandomRotation(rng).ToMatrix3x3();
+            var back = Quaternion<double>.FromMatrix3x3(m).ToMatrix3x3();
+            AssertMatricesEqual(back, m, 1e-12);
+        }
+    }
+
+    [Fact]
+    public void QuaternionMatrix_FromMatrix3x3_AllShepperdBranches()
+    {
+        // trace > 0, then each diagonal element largest (rotations by π about X, Y, Z, and near-π mixes)
+        var cases = new[]
+        {
+            Quaternion<double>.FromAxisAngle(new Vector3<double>(1, 2, 3).Normalize(), 0.3),
+            Quaternion<double>.FromAxisAngle(Vector3<double>.EX, Math.PI),
+            Quaternion<double>.FromAxisAngle(Vector3<double>.EY, Math.PI),
+            Quaternion<double>.FromAxisAngle(Vector3<double>.EZ, Math.PI),
+            Quaternion<double>.FromAxisAngle(new Vector3<double>(1, 1, 0).Normalize(), Math.PI - 1e-9),
+        };
+        foreach (var q in cases)
+        {
+            var m = q.ToMatrix3x3();
+            var back = Quaternion<double>.FromMatrix3x3(m);
+            Math.Abs(Quaternion<double>.Dot(back, q)).Should().BeApproximately(1, 1e-12);
+            AssertMatricesEqual(back.ToMatrix3x3(), m, 1e-12);
+        }
+    }
+
+    [Fact]
+    public void QuaternionMatrix_ToMatrix3x3_ColumnsAreRotatedAxes()
+    {
+        var rng = new Random(129);
+        for (int i = 0; i < 1_000; i++)
+        {
+            var q = RandomRotation(rng);
+            var expected = Matrix3x3<double>.FromColumns(q.Rotate(Vector3<double>.EX), q.Rotate(Vector3<double>.EY), q.Rotate(Vector3<double>.EZ));
+            AssertMatricesEqual(q.ToMatrix3x3(), expected, 1e-12);
+        }
+    }
+
+    // Master's (1.13) closed-form RotationZYX, kept here as the reference the bridge must not move from.
+    private static Matrix3x3<double> MasterRotationZYX(double rxDeg, double ryDeg, double rzDeg)
+    {
+        double rx = rxDeg * Math.PI / 180, ry = ryDeg * Math.PI / 180, rz = rzDeg * Math.PI / 180;
+        double cRx = Math.Cos(rx), sRx = Math.Sin(rx), cRy = Math.Cos(ry), sRy = Math.Sin(ry), cRz = Math.Cos(rz), sRz = Math.Sin(rz);
+        return new(
+            cRy * cRz, sRx * sRy * cRz - cRx * sRz, cRx * sRy * cRz + sRx * sRz,
+            cRy * sRz, sRx * sRy * sRz + cRx * cRz, cRx * sRy * sRz - sRx * cRz,
+            -sRy,      sRx * cRy,                    cRx * cRy);
+    }
+
+    [Fact]
+    public void RotationZYX_EqualsMasterClosedForm_10000Random()
+    {
+        var rng = new Random(129);
+        for (int i = 0; i < 10_000; i++)
+        {
+            double rx = rng.NextDouble() * 360 - 180, ry = rng.NextDouble() * 180 - 90, rz = rng.NextDouble() * 360 - 180;
+            var m = Matrix3x3<double>.RotationZYX(Degree<double>.Create(rx), Degree<double>.Create(ry), Degree<double>.Create(rz));
+            AssertMatricesEqual(m, MasterRotationZYX(rx, ry, rz), 1e-12);
+        }
+    }
+
+    [Fact]
+    public void ToEulerZYX_EqualsMasterAngles_OutsideGimbalBand_10000Random()
+    {
+        // Master extracted rx = atan2(M32, M33), ry = asin(-M31), rz = atan2(M21, M11) when |cos ry| > 1e-6.
+        var rng = new Random(129);
+        for (int i = 0; i < 10_000; i++)
+        {
+            double rx = rng.NextDouble() * 358 - 179, ry = rng.NextDouble() * 178 - 89, rz = rng.NextDouble() * 358 - 179;
+            var m = MasterRotationZYX(rx, ry, rz);
+            var (erx, ery, erz) = m.ToEulerZYX();
+            ((double)erx).Should().BeApproximately(Math.Atan2(m.M32, m.M33) * 180 / Math.PI, 1e-9);
+            ((double)ery).Should().BeApproximately(Math.Asin(-m.M31) * 180 / Math.PI, 1e-9);
+            ((double)erz).Should().BeApproximately(Math.Atan2(m.M21, m.M11) * 180 / Math.PI, 1e-9);
+        }
+    }
+
+    #endregion
 
     private static void AssertIsIdentity(Matrix3x3<double> m, double tol = Tol)
     {

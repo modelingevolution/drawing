@@ -93,8 +93,8 @@ Point<double> mid = a.Lerp(b, 0.5);         // {X=2.5, Y=4}
 
 // 3D points and rotations
 var p = new Point3<double>(1.0, 2.0, 3.0);
-var rotation = new Rotation3<double>(45.0, 0.0, 0.0); // 45 deg roll
-Point3<double> rotated = rotation.Rotate(p);
+var rotation = new Rotation3<double>(45.0, 0.0, 0.0); // 45 deg roll (wire/edit format)
+var rotated = new Frame3<double>(Point3<double>.Zero, rotation.ToQuaternion()).TransformPoint(p);
 
 // Spherical coordinates
 var orbit = SphericalPoint<double>.OnEquator(5.0, Degree<double>.Create(30));
@@ -202,9 +202,9 @@ All 2D shapes implement `IShape<T, TSelf>`, providing `Area()`, `Perimeter()`, `
 
 | Type | Description |
 |---|---|
-| `Rotation3<T>` | Euler angle rotation (Roll/Pitch/Yaw in degrees, ZYX convention). Create from degrees, radians, quaternion, or `Matrix3x3<T>`. `Rotate(Vector3<T>)`, `Rotate(Point3<T>)`. `Combine`, `Inverse`, `Negate`, `Slerp` (via quaternion). Convert to matrix, quaternion, or direction vector. Protobuf and JSON serialization. |
-| `Quaternion<T>` | Unit quaternion for 3D rotations. From axis-angle, `FromRpy(roll, pitch, yaw)` (Rz·Ry·Rx, radians; the URDF rpy rule), `FromTo(from, to)` (shortest arc), `FromAxes(x, y, z)` (orthonormal basis), rotate vector, slerp, dot, normalize, conjugate, inverse. Hamilton product operator (`*`). Conversions to/from `System.Numerics.Quaternion`. Protobuf serialization. |
-| `Matrix3x3<T>` | Also used as rotation representation. `RotationZYX(rx, ry, rz)` creates ZYX Euler rotation matrix. `ToEulerZYX()` extracts angles (with gimbal-lock handling). `ToQuaternion()` via Shepperd's method. |
+| `Rotation3<T>` | Euler angle rotation (Roll/Pitch/Yaw in degrees, ZYX convention). Wire and edit format only (since 2.0): create from degrees, radians, quaternion (`FromQuaternion`) or `Matrix3x3<T>` (`FromMatrix3x3`); `ToQuaternion()` for maths. No rotation algebra: compose, invert, slerp and rotate with `Quaternion<T>` or `Frame3<T>`. Protobuf and JSON serialization. |
+| `Quaternion<T>` | Unit quaternion for 3D rotations. From axis-angle, `FromRpy(roll, pitch, yaw)` (Rz·Ry·Rx, radians; the URDF rpy rule), `FromTo(from, to)` (shortest arc), `FromAxes(x, y, z)` (orthonormal basis), `FromMatrix3x3(m)` (Shepperd's method) and `ToMatrix3x3()`, rotate vector, slerp, dot, normalize, conjugate, inverse. Hamilton product operator (`*`). Conversions to/from `System.Numerics.Quaternion`. Protobuf serialization. |
+| `Matrix3x3<T>` | Also used as rotation representation. `RotationZYX(rx, ry, rz)` creates ZYX Euler rotation matrix. `ToEulerZYX()` extracts angles (gimbal lock: rz = 0). Both go through `Quaternion<T>` (`FromRpy`/`ToMatrix3x3`, `FromMatrix3x3`/`Rotation3.FromQuaternion`), so there is one Euler formula each way. |
 
 ### Poses and Trajectories
 
@@ -483,17 +483,17 @@ var cross = Vector3<double>.Cross(v, w);           // (0, 0, 1)
 double dot = Vector3<double>.Dot(v, w);            // 0.0
 
 // Compute rotation between two directions
-Rotation3<double> rot = v.RotationTo(w);
+var rot = Quaternion<double>.FromTo(v, w);
 Vector3<double> result = rot.Rotate(v);            // approximately (0, 1, 0)
 
-// Euler angle rotation (ZYX convention)
-var rotation = Rotation3<double>.FromDegrees(45, 0, 0);
-Point3<double> rotated = rotation.Rotate(p1);
+// Euler angles (ZYX convention) are a wire format: convert once, then use the quaternion
+var rotation = Rotation3<double>.FromDegrees(45, 0, 0).ToQuaternion();
+Vector3<double> rotated = rotation.Rotate((Vector3<double>)p1);
 
 // Quaternion slerp
-var r1 = Rotation3<double>.FromDegrees(0, 0, 0);
-var r2 = Rotation3<double>.FromDegrees(0, 0, 90);
-var halfway = Rotation3<double>.Slerp(r1, r2, 0.5);
+var r1 = Quaternion<double>.Identity;
+var r2 = Quaternion<double>.FromAxisAngle(Vector3<double>.EZ, Math.PI / 2);
+var halfway = Quaternion<double>.Slerp(r1, r2, 0.5);
 
 // Matrix3x3 rotation
 var m = Matrix3x3<double>.RotationZ(Degree<double>.Create(45));
@@ -749,8 +749,9 @@ Point3<double> rotated3 = rotation * p; // or rotation.Transform(p)
 // Extract Euler angles
 var (eRx, eRy, eRz) = rotation.ToEulerZYX();
 
-// Convert to quaternion
-Quaternion<double> q = rotation.ToQuaternion();
+// Convert to quaternion and back
+Quaternion<double> q = Quaternion<double>.FromMatrix3x3(rotation);
+Matrix3x3<double> back = q.ToMatrix3x3();
 ```
 
 ### Unit-Aware Speed

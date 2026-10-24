@@ -54,7 +54,8 @@ public class Frame3Tests
             var a = RandomFrame(rng);
             var p = new Point3<double>(Uniform(rng, 2), Uniform(rng, 2), Uniform(rng, 2));
 
-            var expected = (Point3<double>)a.Rotation.Rotate(p) + (Vector3<double>)a.Position;
+            var q = a.Rotation; // reference: the quaternion directly, not a Frame3 member
+            var expected = (Point3<double>)q.Rotate(p) + (Vector3<double>)a.Position;
 
             Point3<double>.Distance(a.TransformPoint(p), expected).Should().BeLessThan(PositionTolerance);
         }

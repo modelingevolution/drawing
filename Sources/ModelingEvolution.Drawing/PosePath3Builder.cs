@@ -5,14 +5,12 @@ namespace ModelingEvolution.Drawing;
 
 /// <summary>
 /// Mutable builder for constructing <see cref="PosePath3{T}"/> by anchoring at a start pose
-/// and appending poses by relative cartesian + Euler-angle deltas.
+/// and appending poses by relative steps.
 /// </summary>
 /// <remarks>
-/// Translation deltas are applied in the world frame (additive).
-/// Rotation deltas are applied component-wise in Euler degrees (additive). This is approximate
-/// for non-trivial sequences of rotations — for straight-seam path generation with small per-segment
-/// angle changes the approximation is adequate. For exact composition use quaternion multiplication
-/// directly.
+/// A step is a <see cref="Frame3{T}"/> expressed in the previous pose: the next pose is <c>previous · step</c>,
+/// composed exactly (epic-129 design, rule 2). The stored poses are wire <see cref="Pose3{T}"/> converted with
+/// lengthScale 1, so a step's lengths are in the path's unit.
 /// </remarks>
 public sealed class PosePath3Builder<T>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>,
@@ -31,7 +29,7 @@ public sealed class PosePath3Builder<T>
     /// <summary>Number of poses added so far.</summary>
     public int Count => _count;
 
-    /// <summary>Anchors the path at the given absolute pose. Must be called exactly once before any <see cref="Delta"/>.</summary>
+    /// <summary>Anchors the path at the given absolute pose. Must be called exactly once before any <see cref="Step"/>.</summary>
     /// <exception cref="InvalidOperationException">When the path is already anchored.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public PosePath3Builder<T> StartAt(Pose3<T> pose)
@@ -44,24 +42,16 @@ public sealed class PosePath3Builder<T>
     }
 
     /// <summary>
-    /// Appends a pose by relative cartesian translation and Euler-angle rotation delta from the previous pose.
+    /// Appends the pose <c>previous · step</c>: <paramref name="step"/> is expressed in the previous pose's frame.
     /// </summary>
-    /// <param name="translation">World-frame cartesian offset from the previous pose's position.</param>
-    /// <param name="rotation">Euler-angle delta (degrees) added component-wise to the previous pose's rotation.</param>
     /// <exception cref="InvalidOperationException">When <see cref="StartAt"/> has not been called.</exception>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public PosePath3Builder<T> Delta(Vector3<T> translation, Rotation3<T> rotation)
+    public PosePath3Builder<T> Step(in Frame3<T> step)
     {
         if (_count == 0)
-            throw new InvalidOperationException("StartAt must be called before Delta.");
+            throw new InvalidOperationException("StartAt must be called before Step.");
         EnsureCapacity(1);
-        var last = _buffer[_count - 1];
-        var newPos = last.Position + translation;
-        var newRot = new Rotation3<T>(
-            last.Rotation.Rx + rotation.Rx,
-            last.Rotation.Ry + rotation.Ry,
-            last.Rotation.Rz + rotation.Rz);
-        _buffer[_count++] = new Pose3<T>(newPos, newRot);
+        var last = Frame3<T>.FromPose3(_buffer[_count - 1], T.One);
+        _buffer[_count++] = (last * step).ToPose3(T.One);
         return this;
     }
 

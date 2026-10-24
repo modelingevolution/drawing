@@ -171,7 +171,7 @@ public sealed class KinematicChain<T>
         {
             int k = _jointOf[c];
             ref readonly var joint = ref Joints.ItemRef(k);
-            var a = links[c].Rotation.Rotate(joint.Axis);
+            var a = links[c].TransformVector(joint.Axis);
             var col = j.Slice(6 * k, 6);
             if (joint.Type == JointType.Revolute)
             {

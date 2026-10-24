@@ -386,8 +386,12 @@ public sealed class Trajectory3Builder<T>
         // Rotation interpolation: compute rotations at blend start/end
         var rotFracIn = (distIn - r) / distIn;  // how far P1 is along prev→curr (0..1)
         var rotFracOut = r / distOut;            // how far P2 is along curr→next (0..1)
-        var rotP1 = Rotation3<T>.Slerp(prev.Rotation, curr.Rotation, rotFracIn);
-        var rotP2 = Rotation3<T>.Slerp(curr.Rotation, next.Rotation, rotFracOut);
+        // Quaternion slerp on the stored wire poses (lengthScale 1: only the rotations are used)
+        var qPrev = Frame3<T>.FromPose3(prev.Pose, T.One).Rotation;
+        var qCurr = Frame3<T>.FromPose3(curr.Pose, T.One).Rotation;
+        var qNext = Frame3<T>.FromPose3(next.Pose, T.One).Rotation;
+        var rotP1 = Quaternion<T>.Slerp(qPrev, qCurr, rotFracIn);
+        var rotP2 = Quaternion<T>.Slerp(qCurr, qNext, rotFracOut);
 
         // Number of arc points (proportional to turn angle)
         int arcPointCount = Math.Max(3,
@@ -407,9 +411,9 @@ public sealed class Trajectory3Builder<T>
 
             var arcPos = arcCenter + vRot;
             var arcTime = t_P1 + arcDuration * t;
-            var arcRot = Rotation3<T>.Slerp(rotP1, rotP2, t);
+            var arcRot = Quaternion<T>.Slerp(rotP1, rotP2, t);
 
-            output.Add(new Waypoint3<T>(new Pose3<T>(arcPos, arcRot), arcTime));
+            output.Add(new Waypoint3<T>(new Frame3<T>(arcPos, arcRot).ToPose3(T.One), arcTime));
         }
     }
 

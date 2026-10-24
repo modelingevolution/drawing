@@ -194,7 +194,7 @@ public readonly struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     /// Computes the rotation that transforms this vector to align with the target vector.
     /// </summary>
     /// <param name="target">The target direction to rotate towards.</param>
-    /// <returns>A rotation R such that R.Rotate(this.Normalize()) ≈ target.Normalize().</returns>
+    /// <returns>A rotation R such that R.ToQuaternion().Rotate(this.Normalize()) ≈ target.Normalize().</returns>
     /// <remarks>
     /// When vectors are parallel, returns identity. When anti-parallel, rotation axis is chosen arbitrarily.
     /// </remarks>
@@ -231,42 +231,11 @@ public readonly struct Vector3<T> : IFormattable, IEquatable<Vector3<T>>
     }
 
     /// <summary>
-    /// Creates a Rotation3 from axis-angle representation.
+    /// Creates a Rotation3 from axis-angle representation, through <see cref="Quaternion{T}.FromAxisAngle"/> and the
+    /// one rotation → Euler formula, <see cref="Rotation3{T}.FromQuaternion"/>.
     /// </summary>
-    private static Rotation3<T> RotationFromAxisAngle(Vector3<T> axis, T angleRadians)
-    {
-        var halfAngle = angleRadians / T.CreateTruncating(2);
-        var s = T.Sin(halfAngle);
-        var c = T.Cos(halfAngle);
-
-        // Quaternion components
-        var qw = c;
-        var qx = axis.X * s;
-        var qy = axis.Y * s;
-        var qz = axis.Z * s;
-
-        // Convert quaternion to Euler angles (ZYX convention)
-        // Roll (X)
-        var sinRoll = T.CreateTruncating(2) * (qw * qx + qy * qz);
-        var cosRoll = T.One - T.CreateTruncating(2) * (qx * qx + qy * qy);
-        var rx = T.Atan2(sinRoll, cosRoll);
-
-        // Pitch (Y)
-        var sinPitch = T.CreateTruncating(2) * (qw * qy - qz * qx);
-        sinPitch = T.Clamp(sinPitch, -T.One, T.One);
-        var ry = T.Asin(sinPitch);
-
-        // Yaw (Z)
-        var sinYaw = T.CreateTruncating(2) * (qw * qz + qx * qy);
-        var cosYaw = T.One - T.CreateTruncating(2) * (qy * qy + qz * qz);
-        var rz = T.Atan2(sinYaw, cosYaw);
-
-        // rx, ry, rz are in radians — convert via Radian<T> → Degree<T>
-        return new Rotation3<T>(
-            (Degree<T>)Radian<T>.FromRadian(rx),
-            (Degree<T>)Radian<T>.FromRadian(ry),
-            (Degree<T>)Radian<T>.FromRadian(rz));
-    }
+    private static Rotation3<T> RotationFromAxisAngle(Vector3<T> axis, T angleRadians) =>
+        Rotation3<T>.FromQuaternion(Quaternion<T>.FromAxisAngle(axis, angleRadians));
 
     /// <summary>
     /// Calculates the projection of this vector onto another vector.

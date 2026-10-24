@@ -29,7 +29,7 @@ public class Frame3SurfaceTests
         pose.Position.Z.Should().BeApproximately(0, Tolerance);
 
         // Z-axis should point up (toward h)
-        var zDir = pose.Rotation.Rotate(Vector3<double>.EZ);
+        var zDir = pose.TransformVector(Vector3<double>.EZ);
         zDir.X.Should().BeApproximately(0, Tolerance);
         zDir.Y.Should().BeApproximately(0, Tolerance);
         zDir.Z.Should().BeApproximately(1, Tolerance);
@@ -53,7 +53,7 @@ public class Frame3SurfaceTests
         pose.Position.Z.Should().BeApproximately(0, Tolerance);
 
         // Z-axis should point down (toward h)
-        var zDir = pose.Rotation.Rotate(Vector3<double>.EZ);
+        var zDir = pose.TransformVector(Vector3<double>.EZ);
         zDir.X.Should().BeApproximately(0, Tolerance);
         zDir.Y.Should().BeApproximately(0, Tolerance);
         zDir.Z.Should().BeApproximately(-1, Tolerance);
@@ -77,7 +77,7 @@ public class Frame3SurfaceTests
         pose.Position.Z.Should().BeApproximately(0.5, Tolerance);
 
         // Z-axis should point toward positive Y
-        var zDir = pose.Rotation.Rotate(Vector3<double>.EZ);
+        var zDir = pose.TransformVector(Vector3<double>.EZ);
         zDir.X.Should().BeApproximately(0, Tolerance);
         zDir.Y.Should().BeApproximately(1, Tolerance);
         zDir.Z.Should().BeApproximately(0, Tolerance);
@@ -95,7 +95,7 @@ public class Frame3SurfaceTests
         var pose = Frame3<double>.FromSurface(a, b, c, h);
 
         // X-axis should be along a→b direction (positive X)
-        var xDir = pose.Rotation.Rotate(Vector3<double>.EX);
+        var xDir = pose.TransformVector(Vector3<double>.EX);
         xDir.X.Should().BeApproximately(1, Tolerance);
         xDir.Y.Should().BeApproximately(0, Tolerance);
         xDir.Z.Should().BeApproximately(0, Tolerance);
@@ -116,7 +116,7 @@ public class Frame3SurfaceTests
 
         // Z should point toward h - normal is (0, -1/√2, 1/√2)
         // Since h has z > y, h is on the +normal side, so Z = +normal
-        var zDir = pose.Rotation.Rotate(Vector3<double>.EZ);
+        var zDir = pose.TransformVector(Vector3<double>.EZ);
         zDir.X.Should().BeApproximately(0, Tolerance);
         // Y and Z components should have same magnitude (45° angle from Y-Z plane)
         Math.Abs(zDir.Y).Should().BeApproximately(Math.Abs(zDir.Z), 0.01);
@@ -219,7 +219,7 @@ public class Frame3SurfaceTests
 
         var pose = Frame3<double>.FromSurface(a, b, c);
 
-        var xDir = pose.Rotation.Rotate(Vector3<double>.EX);
+        var xDir = pose.TransformVector(Vector3<double>.EX);
         xDir.X.Should().BeApproximately(1, Tolerance);
         xDir.Y.Should().BeApproximately(0, Tolerance);
         xDir.Z.Should().BeApproximately(0, Tolerance);
@@ -236,7 +236,7 @@ public class Frame3SurfaceTests
 
         var pose = Frame3<double>.FromSurface(a, b, c);
 
-        var zDir = pose.Rotation.Rotate(Vector3<double>.EZ);
+        var zDir = pose.TransformVector(Vector3<double>.EZ);
         zDir.X.Should().BeApproximately(0, Tolerance);
         zDir.Y.Should().BeApproximately(0, Tolerance);
         zDir.Z.Should().BeApproximately(1, Tolerance);
@@ -253,7 +253,7 @@ public class Frame3SurfaceTests
 
         var pose = Frame3<double>.FromSurface(a, b, c);
 
-        var zDir = pose.Rotation.Rotate(Vector3<double>.EZ);
+        var zDir = pose.TransformVector(Vector3<double>.EZ);
         zDir.Z.Should().BeLessThan(0);
     }
 
@@ -268,7 +268,7 @@ public class Frame3SurfaceTests
 
         var pose = Frame3<double>.FromSurface(a, b, c);
 
-        var zDir = pose.Rotation.Rotate(Vector3<double>.EZ);
+        var zDir = pose.TransformVector(Vector3<double>.EZ);
         zDir.X.Should().BeApproximately(0, Tolerance);
         zDir.Y.Should().BeApproximately(-1, Tolerance);
         zDir.Z.Should().BeApproximately(0, Tolerance);
@@ -332,7 +332,7 @@ public class Frame3SurfaceTests
         };
 
         var pose = Frame3<double>.FromSurface(points);
-        var zDir = pose.Rotation.Rotate(Vector3<double>.EZ);
+        var zDir = pose.TransformVector(Vector3<double>.EZ);
 
         zDir.X.Should().BeApproximately(0, Tolerance);
         zDir.Y.Should().BeApproximately(0, Tolerance);
@@ -348,7 +348,7 @@ public class Frame3SurfaceTests
         };
 
         var pose = Frame3<double>.FromSurface(points);
-        var xDir = pose.Rotation.Rotate(Vector3<double>.EX);
+        var xDir = pose.TransformVector(Vector3<double>.EX);
 
         // X-axis should be along points[0]→points[1] projected onto plane = +X
         xDir.X.Should().BeApproximately(1, Tolerance);
@@ -387,7 +387,7 @@ public class Frame3SurfaceTests
         };
 
         var pose = Frame3<double>.FromSurface(points);
-        var zDir = pose.Rotation.Rotate(Vector3<double>.EZ);
+        var zDir = pose.TransformVector(Vector3<double>.EZ);
 
         // Normal should be approximately +Z
         Math.Abs(zDir.Z).Should().BeGreaterThan(0.999);
@@ -426,15 +426,15 @@ public class Frame3SurfaceTests
         var poseN = Frame3<double>.FromSurface([a, b, c, d]);
 
         // Normal directions should match
-        var z3 = pose3.Rotation.Rotate(Vector3<double>.EZ);
-        var zN = poseN.Rotation.Rotate(Vector3<double>.EZ);
+        var z3 = pose3.TransformVector(Vector3<double>.EZ);
+        var zN = poseN.TransformVector(Vector3<double>.EZ);
         z3.X.Should().BeApproximately(zN.X, 0.001);
         z3.Y.Should().BeApproximately(zN.Y, 0.001);
         z3.Z.Should().BeApproximately(zN.Z, 0.001);
 
         // X-axis directions should match
-        var x3 = pose3.Rotation.Rotate(Vector3<double>.EX);
-        var xN = poseN.Rotation.Rotate(Vector3<double>.EX);
+        var x3 = pose3.TransformVector(Vector3<double>.EX);
+        var xN = poseN.TransformVector(Vector3<double>.EX);
         x3.X.Should().BeApproximately(xN.X, 0.001);
         x3.Y.Should().BeApproximately(xN.Y, 0.001);
         x3.Z.Should().BeApproximately(xN.Z, 0.001);

@@ -190,6 +190,9 @@ jobs:
   publish:
     needs: tag
     if: needs.tag.outputs.skip != 'true'
+    permissions:
+      contents: read
+      id-token: write   # the reusable workflow needs the OIDC token for nuget.org Trusted Publishing
     uses: ./.github/workflows/publish-nuget.yml
     with:
       version: ${{ needs.tag.outputs.version }}

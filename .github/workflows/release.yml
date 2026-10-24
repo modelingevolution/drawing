@@ -1,14 +1,17 @@
 name: Release
 
-# Merge to master: bump = the merged PR's label release:major|minor|patch|none (minor when the PR has no label;
-# a push with no merged PR fails, releases come from labelled PRs). release.sh is the only version
-# implementation; it tags and pushes. A tag pushed with GITHUB_TOKEN starts no other workflow, so this run calls
+# Merge to master: bump = the HIGHEST release:major|minor|patch|none label (major > minor > patch > none) over every
+# PR merged since the last release tag (first-parent commits lastReleaseTag..HEAD). A PR without a release label
+# counts as minor; all PRs release:none = skip; no merged PR for any of those commits = the job fails (releases
+# come from labelled PRs). Because the bump covers the whole range, a run cancelled while pending loses nothing:
+# the next run carries its bump.
+#
+# release.sh is the only version implementation; it tags and pushes, and refuses to tag a commit whose history
+# lacks the newest release tag. A tag pushed with GITHUB_TOKEN starts no other workflow, so this run calls
 # publish-nuget.yml itself with the version release.sh produced. Order: test -> tag -> publish -> GitHub Release.
 #
-# No `concurrency` group on purpose: GitHub keeps one PENDING run per group and cancels it when a third run
-# queues, so a release:major merge could be dropped without anyone noticing. Without it, two overlapping runs
-# race loudly instead: release.sh refuses an existing tag and the publish push uses --skip-duplicate, so the
-# loser fails and the lead re-runs it.
+# Recovery: re-run a failed run only while its commit is still master's tip; otherwise do nothing, the next merge
+# carries the bump.
 
 on:
   push:
@@ -32,6 +35,11 @@ on:
 permissions:
   contents: write
   pull-requests: read
+
+# One run at a time, in order; a pending run replaced by a newer one loses nothing (see above).
+concurrency:
+  group: release-master
+  cancel-in-progress: false
 
 jobs:
   tag:
@@ -72,34 +80,62 @@ jobs:
             exit 1
           fi
         else
-          # The commit -> PR association can lag right after a merge: retry. A failing API call fails the job.
-          PR=""
-          for attempt in 1 2 3 4; do
-            PR=$(gh api "repos/$REPO/commits/$SHA/pulls" \
-              | jq -c --arg sha "$SHA" '[.[] | select(.merge_commit_sha == $sha)][0] // empty')
-            [ -n "$PR" ] && break
-            if [ "$attempt" -lt 4 ]; then
-              echo "No merged PR for $SHA yet (attempt $attempt); retrying in 10 s"
-              sleep 10
+          LAST=$(git tag -l "ModelingEvolution.Drawing/*" | sed 's#^ModelingEvolution.Drawing/##' \
+            | { grep -v -- '-' || true; } | sort -V | tail -1)
+          if [ -n "$LAST" ]; then
+            RANGE="refs/tags/ModelingEvolution.Drawing/$LAST..HEAD"
+          else
+            RANGE="HEAD"
+          fi
+          COMMITS=$(git rev-list --first-parent "$RANGE")
+          echo "Last release: ${LAST:-none}; first-parent commits since: $(printf '%s' "$COMMITS" | grep -c . || true)"
+          if [ -z "$COMMITS" ]; then
+            echo "::error::No commits since the last release tag ($LAST)"
+            exit 1
+          fi
+          rank() { case "$1" in none) echo 0 ;; patch) echo 1 ;; minor) echo 2 ;; major) echo 3 ;; esac; }
+          FOUND=0
+          BEST=-1
+          for C in $COMMITS; do
+            # The commit -> PR association can lag right after a merge: HEAD (this run's merge) is retried.
+            # A failing API call fails the job.
+            ATTEMPTS=1
+            [ "$C" = "$SHA" ] && ATTEMPTS=4
+            PR=""
+            for attempt in $(seq 1 "$ATTEMPTS"); do
+              PR=$(gh api "repos/$REPO/commits/$C/pulls" \
+                | jq -c --arg sha "$C" '[.[] | select(.merge_commit_sha == $sha)][0] // empty')
+              [ -n "$PR" ] && break
+              if [ "$attempt" -lt "$ATTEMPTS" ]; then
+                echo "No merged PR for $C yet (attempt $attempt); retrying in 10 s"
+                sleep 10
+              fi
+            done
+            if [ -z "$PR" ]; then
+              echo "$C: no merged PR"
+              continue
             fi
+            FOUND=$((FOUND + 1))
+            LABELS=$(echo "$PR" | jq -r '.labels[].name' \
+              | { grep -E '^release:(major|minor|patch|none)$' || true; } | sort -u)
+            COUNT=$(printf '%s' "$LABELS" | grep -c . || true)
+            NUMBER=$(echo "$PR" | jq -r '.number')
+            if [ "$COUNT" -gt 1 ]; then
+              echo "::error::PR #$NUMBER carries more than one release label: ${LABELS//$'\n'/ }"
+              exit 1
+            fi
+            if [ "$COUNT" -eq 1 ]; then
+              PR_BUMP="${LABELS#release:}"
+            else
+              PR_BUMP="minor"
+            fi
+            echo "$C: PR #$NUMBER -> $PR_BUMP"
+            R=$(rank "$PR_BUMP")
+            if [ "$R" -gt "$BEST" ]; then BEST=$R; BUMP=$PR_BUMP; fi
           done
-          if [ -z "$PR" ]; then
+          if [ "$FOUND" -eq 0 ]; then
             echo "::error::No merged PR found for $SHA; releases come from labelled PRs. Re-run via workflow_dispatch if this was intended."
             exit 1
-          fi
-          echo "Merged PR: #$(echo "$PR" | jq -r '.number')"
-          LABELS=$(echo "$PR" | jq -r '.labels[].name' \
-            | { grep -E '^release:(major|minor|patch|none)$' || true; } | sort -u)
-          COUNT=$(printf '%s' "$LABELS" | grep -c . || true)
-          if [ "$COUNT" -gt 1 ]; then
-            echo "::error::The merged PR carries more than one release label: ${LABELS//$'\n'/ }"
-            exit 1
-          fi
-          if [ "$COUNT" -eq 1 ]; then
-            BUMP="${LABELS#release:}"
-          else
-            BUMP="minor"
-            echo "The merged PR has no release label; default bump: minor"
           fi
         fi
         echo "Bump: $BUMP"

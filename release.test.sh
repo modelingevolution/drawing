@@ -109,6 +109,21 @@ expect_exit "release off master (interactive)" 1 --minor --dry-run
 expect_tag "--preview off master" "1.14.0.72-preview.2" --preview --minor --ci --dry-run
 git checkout -q master
 
+# The newest release tag must be an ancestor of HEAD (previews included).
+git checkout -q -b side
+echo "side" > side.txt
+git add side.txt
+git commit -q -m "side"
+git tag -a "$PACKAGE/1.13.9.79" -m t
+git checkout -q master
+expect_exit "newest release tag not an ancestor of HEAD" 1 --patch --ci --dry-run
+expect_exit "newest release tag not an ancestor of HEAD (--preview)" 1 --preview --patch --ci --dry-run
+git merge -q --no-ff -m "merge side" side
+expect_tag "newest release tag on an ancestor is accepted" "1.13.10.80" --patch --ci --dry-run
+git tag -d "$PACKAGE/1.13.9.79" > /dev/null
+git reset -q --hard HEAD~1
+git branch -q -D side
+
 # Tags are fetched from origin: a tag that exists only on origin moves the version.
 git clone -q "$WORK/origin.git" "$WORK/other"
 git -C "$WORK/other" -c user.email=test@example.com -c user.name=other -c tag.gpgsign=false \

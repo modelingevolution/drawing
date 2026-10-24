@@ -13,7 +13,8 @@
 #   --ci               no prompts; refuses a dirty tree (untracked files count)
 #   --dry-run          print the computed tag and exit 0 without tagging or pushing
 #
-# Tags are fetched from origin first. A non-preview release runs on master only. Inside GitHub Actions ($GITHUB_OUTPUT set) the script appends
+# Tags are fetched from origin first. A non-preview release runs on master only. Nothing is tagged (previews
+# included) unless the newest release tag is an ancestor of HEAD. Inside GitHub Actions ($GITHUB_OUTPUT set) the script appends
 # version=, tag= and previous= to $GITHUB_OUTPUT.
 #
 # This script is copied unchanged between repositories: only PACKAGE and INITIAL_VERSION differ.
@@ -38,10 +39,14 @@ usage() {
     sed -n '6,14p' "$0" | sed 's/^# \{0,1\}//'
 }
 
-# Highest release tag; -preview (and any other pre-release suffix) tags are ignored.
+# Version of the newest release tag, empty when there is none; -preview (any pre-release suffix) tags are ignored.
+get_latest_release() {
+    git tag -l "$PACKAGE/*" | sed "s#^$PACKAGE/##" | grep -v -- '-' | sort -V | tail -1 || true
+}
+
 get_current_version() {
     local latest
-    latest=$(git tag -l "$PACKAGE/*" | sed "s#^$PACKAGE/##" | grep -v -- '-' | sort -V | tail -1 || true)
+    latest=$(get_latest_release)
     if [ -n "$latest" ]; then
         echo "$latest"
     else
@@ -152,12 +157,20 @@ main() {
     if git remote get-url origin > /dev/null 2>&1; then
         if ! git fetch -q --tags origin; then
             if [ "$dry_run" = true ] && [ "$ci" = false ]; then
-                print_warn "Could not fetch tags from origin (ignored by --dry-run); local tags may be stale"
+                print_warn "Could not fetch tags (local tag differs from origin or origin unreachable); ignored by --dry-run"
             else
-                print_error "Could not fetch tags from origin"
+                print_error "Could not fetch tags (local tag differs from origin or origin unreachable)"
                 exit 1
             fi
         fi
+    fi
+
+    # The newest release must be in HEAD's history, or an older commit would get a higher version.
+    local latest_release
+    latest_release=$(get_latest_release)
+    if [ -n "$latest_release" ] && ! git merge-base --is-ancestor "refs/tags/$PACKAGE/$latest_release" HEAD; then
+        print_error "The newest release $PACKAGE/$latest_release is not an ancestor of HEAD; refusing to tag an older commit. Merge $RELEASE_BRANCH first."
+        exit 1
     fi
 
     local current_version next_version version tag_name

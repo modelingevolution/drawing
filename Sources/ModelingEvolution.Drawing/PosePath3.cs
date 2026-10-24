@@ -133,7 +133,7 @@ public readonly record struct PosePath3<T> : IPoolable<PosePath3<T>, Lease<Pose3
 
         T length = T.Zero;
         for (int i = 0; i < n - 1; i++)
-            length += Pose3<T>.Distance(span[i], span[i + 1]);
+            length += Point3<T>.Distance(span[i].Position, span[i + 1].Position);
         return length;
     }
 
@@ -151,15 +151,16 @@ public readonly record struct PosePath3<T> : IPoolable<PosePath3<T>, Lease<Pose3
     }
 
     /// <summary>
-    /// Returns a new path with all poses transformed by the given pose (rotation + translation).
+    /// Returns a new path with every pose composed as <c>frame · pose</c>.
+    /// The elements are stored as wire <see cref="Pose3{T}"/>; each is converted with lengthScale 1.
     /// </summary>
-    public PosePath3<T> Transform(Pose3<T> pose)
+    public PosePath3<T> Transform(in Frame3<T> frame)
     {
         var span = AsSpan();
         var mem = Alloc.Memory<Pose3<T>>(span.Length);
         var dst = mem.Span;
         for (int i = 0; i < span.Length; i++)
-            dst[i] = pose.Multiply(span[i]);
+            dst[i] = (frame * Frame3<T>.FromPose3(span[i], T.One)).ToPose3(T.One);
         return new PosePath3<T>(mem);
     }
 
@@ -209,7 +210,7 @@ public readonly record struct PosePath3<T> : IPoolable<PosePath3<T>, Lease<Pose3
         var mem = Alloc.Memory<Pose3<T>>(span.Length);
         var dst = mem.Span;
         for (int i = 0; i < span.Length; i++)
-            dst[i] = span[i] + f;
+            dst[i] = span[i] with { Position = span[i].Position + f };
         return new PosePath3<T>(mem);
     }
 
@@ -222,7 +223,7 @@ public readonly record struct PosePath3<T> : IPoolable<PosePath3<T>, Lease<Pose3
         var mem = Alloc.Memory<Pose3<T>>(span.Length);
         var dst = mem.Span;
         for (int i = 0; i < span.Length; i++)
-            dst[i] = span[i] - f;
+            dst[i] = span[i] with { Position = span[i].Position - f };
         return new PosePath3<T>(mem);
     }
 

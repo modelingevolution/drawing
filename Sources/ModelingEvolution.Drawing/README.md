@@ -63,7 +63,7 @@ A high-performance .NET generic math library for 2D and 3D geometry, coordinate 
 - **Polygon booleans** -- union, intersection, difference, and clustering via Clipper2.
 - **Exact Bezier clipping** -- `Path<T>.Intersect(Rectangle<T>)` computes analytically exact sub-curves, not polygon approximations.
 - **Trajectory planning** -- `Trajectory3<T>` with time-parameterized waypoints, interpolation, resampling, and a real-time `TrajectoryController<T>`.
-- **Robotics-ready** -- `Joints6<T>` for 6-DOF joint representations, `Pose3<T>.FromSurface()` for plane-based frame construction.
+- **Robotics-ready** -- `Joints6<T>` for 6-DOF joint representations, `Frame3<T>` (position + unit quaternion) for all pose maths, `Frame3<T>.FromSurface()` for plane-based frame construction, and `KinematicChain<T>` for forward kinematics and geometric Jacobians of serial and tree chains.
 - **Pooled allocations** -- `AllocationScope` provides arena-style pooled memory for zero-GC geometry pipelines.
 - **Serialization built in** -- Protobuf (protobuf-net) attributes on all core types, plus custom JSON converters and SVG exporters.
 
@@ -93,8 +93,8 @@ Point<double> mid = a.Lerp(b, 0.5);         // {X=2.5, Y=4}
 
 // 3D points and rotations
 var p = new Point3<double>(1.0, 2.0, 3.0);
-var rotation = new Rotation3<double>(45.0, 0.0, 0.0); // 45 deg roll
-Point3<double> rotated = rotation.Rotate(p);
+var rotation = new Rotation3<double>(45.0, 0.0, 0.0); // 45 deg roll (wire/edit format)
+var rotated = new Frame3<double>(Point3<double>.Zero, rotation.ToQuaternion()).TransformPoint(p);
 
 // Spherical coordinates
 var orbit = SphericalPoint<double>.OnEquator(5.0, Degree<double>.Create(30));
@@ -142,7 +142,7 @@ Pose3<double> atHalf = trajectory.AtTime(2.5); // interpolated pose
 | Type | Description |
 |---|---|
 | `Point3<T>` | 3D Cartesian point. Distance, lerp, midpoint, random generation, arithmetic with `Vector3<T>`. Conversions to/from `System.Numerics.Vector3` and tuples. Protobuf and JSON serialization. |
-| `Vector3<T>` | 3D vector with length, normalize, dot product, cross product, angle between, projection, lerp, random unit vector, and `RotationTo()` for computing the rotation between two directions. Static basis vectors `EX`, `EY`, `EZ`. |
+| `Vector3<T>` | 3D vector with length, normalize, dot product, cross product, angle between, projection, lerp, random unit vector. The rotation between two directions is `Quaternion<T>.FromTo(from, to)`. Static basis vectors `EX`, `EY`, `EZ`. |
 | `Matrix3x3<T>` | 3x3 matrix for 3D transforms. Determinant, trace, transpose, inverse. Rotation factories: `RotationX`, `RotationY`, `RotationZ`, `RotationZYX`. Scale, column/row construction. Euler angle and quaternion extraction. |
 | `Quaternion<T>` | Quaternion for 3D rotations. Normalize, conjugate, inverse, from axis-angle, rotate vector, slerp, dot product. Conversions to/from `System.Numerics.Quaternion`. |
 | `Segment3<T>` | Bounded line segment in 3D. Length, midpoint, direction, lerp, split, reverse, distance-to-point, project point. |
@@ -202,15 +202,16 @@ All 2D shapes implement `IShape<T, TSelf>`, providing `Area()`, `Perimeter()`, `
 
 | Type | Description |
 |---|---|
-| `Rotation3<T>` | Euler angle rotation (Roll/Pitch/Yaw in degrees, ZYX convention). Create from degrees, radians, quaternion, or `Matrix3x3<T>`. `Rotate(Vector3<T>)`, `Rotate(Point3<T>)`. `Combine`, `Inverse`, `Negate`, `Slerp` (via quaternion). Convert to matrix, quaternion, or direction vector. Protobuf and JSON serialization. |
-| `Quaternion<T>` | Unit quaternion for 3D rotations. From axis-angle, rotate vector, slerp, dot, normalize, conjugate, inverse. Hamilton product operator (`*`). Conversions to/from `System.Numerics.Quaternion`. Protobuf serialization. |
-| `Matrix3x3<T>` | Also used as rotation representation. `RotationZYX(rx, ry, rz)` creates ZYX Euler rotation matrix. `ToEulerZYX()` extracts angles (with gimbal-lock handling). `ToQuaternion()` via Shepperd's method. |
+| `Rotation3<T>` | Euler angle rotation (Roll/Pitch/Yaw in degrees, ZYX convention). Wire and edit format only (since 2.0): create from degrees, radians, quaternion (`FromQuaternion`) or `Matrix3x3<T>` (`FromMatrix3x3`); `ToQuaternion()` for maths. No rotation algebra: compose, invert, slerp and rotate with `Quaternion<T>` or `Frame3<T>`. Protobuf and JSON serialization. |
+| `Quaternion<T>` | Unit quaternion for 3D rotations. From axis-angle, `FromRpy(roll, pitch, yaw)` (Rz·Ry·Rx, radians; the URDF rpy rule), `FromTo(from, to)` (shortest arc), `FromAxes(x, y, z)` (orthonormal basis), `FromMatrix3x3(m)` (Shepperd's method) and `ToMatrix3x3()`, rotate vector, slerp, dot, normalize, conjugate, inverse. Hamilton product operator (`*`). Conversions to/from `System.Numerics.Quaternion`. Protobuf serialization. |
+| `Matrix3x3<T>` | Also used as rotation representation. `RotationZYX(rx, ry, rz)` creates ZYX Euler rotation matrix. `ToEulerZYX()` extracts angles (gimbal lock: rz = 0). Both go through `Quaternion<T>` (`FromRpy`/`ToMatrix3x3`, `FromMatrix3x3`/`Rotation3.FromQuaternion`), so there is one Euler formula each way. |
 
 ### Poses and Trajectories
 
 | Type | Description |
 |---|---|
-| `Pose3<T>` | 3D pose = position (`Point3<T>`) + orientation (`Rotation3<T>`). `TransformPoint`, `TransformVector`, `Inverse`, `Multiply` (compose). `Lerp` (position lerp + rotation slerp). `FromSurface(a, b, c)` creates a frame from three coplanar points (right-hand rule). Overload `FromSurface(a, b, c, h)` uses a hint point to determine Z direction. Operators: `*` (compose), `+`/`-` with `Vector3<T>` or `Rotation3<T>`. Tuple conversions, parsing. Protobuf and JSON serialization. |
+| `Frame3<T>` | Rigid frame = position (`Point3<T>`) + unit `Quaternion<T>`. All pose maths: `Multiply` / `*` (compose), `Inverse`, `TransformPoint`, `TransformVector`, `Interpolate` (position lerp + slerp), `Distance` (position error and angle error in radians). `FromSurface(a, b, c)` creates a frame from three coplanar points (right-hand rule); `FromSurface(a, b, c, h)` uses a hint point for Z; `FromSurface(points)` fits a plane. `FromPose3(pose, lengthScale)` / `ToPose3(lengthScale)` convert to and from the wire format (ZYX degrees). |
+| `Pose3<T>` | Wire and edit format only (since 2.0): position (`Point3<T>`) + ZYX Euler orientation (`Rotation3<T>`, degrees). Constructors, `Identity`, tuple conversions, deconstruction, parsing, equality, `Truncating<U>()`. Protobuf and JSON serialization. Convert to `Frame3<T>` for any maths. |
 | `Waypoint3<T>` | Timestamped `Pose3<T>` -- an element of a trajectory. |
 | `PosePath3<T>` | Immutable sequence of `Pose3<T>` (no time). Length, reverse, transform, extract `Polyline3<T>`, convert to `Trajectory3<T>` with uniform timing. |
 | `Trajectory3<T>` | Immutable time-parameterized path of `Waypoint3<T>`. `Duration`, `Length`, `AtTime(t)` (binary-search interpolation with position lerp + rotation slerp). `Resample(interval)`, `Reverse`, `Transform`. Convert to `PosePath3<T>` or `Polyline3<T>`. Create a real-time `TrajectoryController<T>` via `Control()`. |
@@ -221,6 +222,7 @@ All 2D shapes implement `IShape<T, TSelf>`, providing `Area()`, `Perimeter()`, `
 
 | Type | Description |
 |---|---|
+| `KinematicChain<T>` | Namespace `ModelingEvolution.Drawing.Kinematics`. A tree of `Link`s moved by revolute/prismatic `Joint<T>`s (origin at q = 0, unit axis, limits) with named `ChainFrame<T>`s; metres and radians. `Forward(q, links)` writes every link pose, `FramePose(links, frame)`, `Jacobian(links, frame, j)` writes the 6 × Dof geometric Jacobian (column-major, v then ω). Spans in, spans out, no allocation; the constructor validates topological order, unit axes, limits and unique names. |
 | `Joints6<T>` | 6-DOF joint angles stored as six `Degree<T>` fields (no array allocation). Indexer `[0..5]`, arithmetic operators, `Lerp`, `MaxAbsDelta`, `IsWithin(tolerance)`, `IsBetween(min, max)`. `ToArray()`, `FromSpan()`, `FromArray()`, `CopyTo(Span)`. Protobuf and JSON serialization. |
 | `Speed<T>` | Scalar speed in units/second (unitless magnitude). Arithmetic, `TimeFor(distance)`, `DistanceIn(time)`. Parsing. |
 | `Velocity3<T>` | 3D velocity vector (direction + magnitude). Create from direction + speed. `Speed`, `Direction`, `DisplacementIn(time)`. Arithmetic operators. |
@@ -481,17 +483,17 @@ var cross = Vector3<double>.Cross(v, w);           // (0, 0, 1)
 double dot = Vector3<double>.Dot(v, w);            // 0.0
 
 // Compute rotation between two directions
-Rotation3<double> rot = v.RotationTo(w);
+var rot = Quaternion<double>.FromTo(v, w);
 Vector3<double> result = rot.Rotate(v);            // approximately (0, 1, 0)
 
-// Euler angle rotation (ZYX convention)
-var rotation = Rotation3<double>.FromDegrees(45, 0, 0);
-Point3<double> rotated = rotation.Rotate(p1);
+// Euler angles (ZYX convention) are a wire format: convert once, then use the quaternion
+var rotation = Rotation3<double>.FromDegrees(45, 0, 0).ToQuaternion();
+Vector3<double> rotated = rotation.Rotate((Vector3<double>)p1);
 
 // Quaternion slerp
-var r1 = Rotation3<double>.FromDegrees(0, 0, 0);
-var r2 = Rotation3<double>.FromDegrees(0, 0, 90);
-var halfway = Rotation3<double>.Slerp(r1, r2, 0.5);
+var r1 = Quaternion<double>.Identity;
+var r2 = Quaternion<double>.FromAxisAngle(Vector3<double>.EZ, Math.PI / 2);
+var halfway = Quaternion<double>.Slerp(r1, r2, 0.5);
 
 // Matrix3x3 rotation
 var m = Matrix3x3<double>.RotationZ(Degree<double>.Create(45));
@@ -540,16 +542,17 @@ SphericalPoint<double> back = cyl;                         // implicit conversio
 // Pose = position + orientation
 var pose = new Pose3<double>(100, 200, 300, 45, 0, 0); // x,y,z, rx,ry,rz (degrees)
 
-// Compose poses
-var world = new Pose3<double>(new Point3<double>(10, 0, 0), Rotation3<double>.Identity);
-var local = new Pose3<double>(new Point3<double>(5, 0, 0), Rotation3<double>.FromDegrees(0, 0, 90));
+// Maths composes Frame3 (position + quaternion); Pose3 converts once, here mm -> m
+var world = Frame3<double>.FromPose3(new Pose3<double>(10, 0, 0, 0, 0, 0), 0.001);
+var local = Frame3<double>.FromPose3(new Pose3<double>(5, 0, 0, 0, 0, 90), 0.001);
 var combined = world * local;
+Pose3<double> back = combined.ToPose3(1000); // m -> mm, ZYX degrees
 
 // Create frame from a surface (3 points define a plane)
 var a = new Point3<double>(0, 0, 0);
 var b = new Point3<double>(1, 0, 0);
 var c = new Point3<double>(0, 1, 0);
-var surfacePose = Pose3<double>.FromSurface(a, b, c); // Z-axis via right-hand rule
+var surface = Frame3<double>.FromSurface(a, b, c); // Z-axis via right-hand rule
 
 // Trajectory with timed waypoints
 var trajectory = new Trajectory3<double>(
@@ -746,8 +749,9 @@ Point3<double> rotated3 = rotation * p; // or rotation.Transform(p)
 // Extract Euler angles
 var (eRx, eRy, eRz) = rotation.ToEulerZYX();
 
-// Convert to quaternion
-Quaternion<double> q = rotation.ToQuaternion();
+// Convert to quaternion and back
+Quaternion<double> q = Quaternion<double>.FromMatrix3x3(rotation);
+Matrix3x3<double> back = q.ToMatrix3x3();
 ```
 
 ### Unit-Aware Speed

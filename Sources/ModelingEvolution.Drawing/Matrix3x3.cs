@@ -5,7 +5,9 @@ namespace ModelingEvolution.Drawing;
 
 /// <summary>
 /// A 3×3 matrix stored as nine fields (row-major). Supports linear algebra
-/// operations, 3D rotation matrix construction, and Euler/quaternion conversions.
+/// operations and 3D rotation matrix construction. Rotation ⇄ matrix goes through <see cref="Quaternion{T}"/>
+/// (<see cref="Quaternion{T}.ToMatrix3x3"/>, <see cref="Quaternion{T}.FromMatrix3x3"/>); the Euler edge is
+/// <see cref="RotationZYX"/> / <see cref="ToEulerZYX"/>.
 /// </summary>
 [Matrix3x3JsonConverter]
 public readonly record struct Matrix3x3<T>(
@@ -15,8 +17,6 @@ public readonly record struct Matrix3x3<T>(
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>,
               ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {
-    private static readonly T Two = T.CreateTruncating(2);
-
     /// <summary>The 3×3 identity matrix.</summary>
     public static Matrix3x3<T> Identity => new(
         T.One, T.Zero, T.Zero,
@@ -182,21 +182,12 @@ public readonly record struct Matrix3x3<T>(
     }
 
     /// <summary>
-    /// Creates a ZYX Euler rotation matrix: R = Rz(rz) * Ry(ry) * Rx(rx).
-    /// This matches the convention used by <see cref="Rotation3{T}"/>.
+    /// Creates a ZYX Euler rotation matrix: R = Rz(rz) * Ry(ry) * Rx(rx), the convention of <see cref="Rotation3{T}"/>.
+    /// The Euler → rotation formula is <see cref="Quaternion{T}.FromRpy"/>; this is its matrix (an edge for
+    /// matrix-based callers such as solvers and OpenCV).
     /// </summary>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static Matrix3x3<T> RotationZYX(Degree<T> rx, Degree<T> ry, Degree<T> rz)
-    {
-        var cRx = T.Cos((T)(Radian<T>)rx); var sRx = T.Sin((T)(Radian<T>)rx);
-        var cRy = T.Cos((T)(Radian<T>)ry); var sRy = T.Sin((T)(Radian<T>)ry);
-        var cRz = T.Cos((T)(Radian<T>)rz); var sRz = T.Sin((T)(Radian<T>)rz);
-
-        return new(
-            cRy * cRz, sRx * sRy * cRz - cRx * sRz, cRx * sRy * cRz + sRx * sRz,
-            cRy * sRz, sRx * sRy * sRz + cRx * cRz, cRx * sRy * sRz - sRx * cRz,
-            -sRy,      sRx * cRy,                    cRx * cRy);
-    }
+    public static Matrix3x3<T> RotationZYX(Degree<T> rx, Degree<T> ry, Degree<T> rz) =>
+        Quaternion<T>.FromRpy((T)(Radian<T>)rx, (T)(Radian<T>)ry, (T)(Radian<T>)rz).ToMatrix3x3();
 
     #endregion
 
@@ -215,12 +206,13 @@ public readonly record struct Matrix3x3<T>(
     /// Specifically, <c>M.Transform(source) ≈ target</c>.
     /// </summary>
     /// <param name="source">Source vector (must be non-zero).</param>
-    /// <param name="target">Target vector (may be any length; zero target yields a degenerate zero matrix).</param>
+    /// <param name="target">Target vector (must be non-zero).</param>
     /// <returns>The 3×3 matrix combining rotation that aligns source's direction with target's, scaled by |target|/|source|.</returns>
-    /// <exception cref="ArgumentException">Source vector has zero length.</exception>
+    /// <exception cref="ArgumentException">Source or target vector has zero length.</exception>
     /// <remarks>
     /// Two-point alignment is geometrically under-constrained in 3D (rotation around the source axis is free);
-    /// this method picks the unique shortest-arc rotation (via <see cref="Vector3{T}.RotationTo"/>).
+    /// this method picks the shortest-arc rotation, <see cref="Quaternion{T}.FromTo"/> (for opposite vectors a
+    /// half-turn about the axis <c>FromTo</c> picks).
     /// Use cases include adapting taught polyline paths whose endpoints have shifted.
     /// </remarks>
     public static Matrix3x3<T> SimilarityFromVectors(Vector3<T> source, Vector3<T> target)
@@ -230,9 +222,7 @@ public readonly record struct Matrix3x3<T>(
             throw new ArgumentException("Source vector must be non-zero.", nameof(source));
 
         var scale = target.Length / sourceLength;
-        var rotation = source.RotationTo(target);                  // Rotation3<T>, Euler ZYX
-        var R = RotationZYX(rotation.Rx, rotation.Ry, rotation.Rz);
-        return scale * R;
+        return scale * Quaternion<T>.FromTo(source, target).ToMatrix3x3();
     }
 
     /// <summary>Creates a matrix from three column vectors.</summary>
@@ -251,86 +241,17 @@ public readonly record struct Matrix3x3<T>(
 
     #endregion
 
-    #region Euler & Quaternion Conversions
+    #region Euler Conversion
 
     /// <summary>
-    /// Extracts ZYX Euler angles (in degrees) from this rotation matrix.
-    /// Assumes R = Rz(rz) * Ry(ry) * Rx(rx). Handles gimbal lock at ry = ±90°.
+    /// Extracts ZYX Euler angles (in degrees) from this rotation matrix, assuming R = Rz(rz) * Ry(ry) * Rx(rx).
+    /// The matrix goes through <see cref="Quaternion{T}.FromMatrix3x3"/> and the one rotation → Euler formula,
+    /// <see cref="Rotation3{T}.FromQuaternion"/> (gimbal lock: rz = 0).
     /// </summary>
     public (Degree<T> Rx, Degree<T> Ry, Degree<T> Rz) ToEulerZYX()
     {
-        var epsilon = T.CreateTruncating(1e-6);
-        var sy = -M31;
-
-        if (sy > T.One) sy = T.One;
-        if (sy < -T.One) sy = -T.One;
-
-        var ry = T.Asin(sy);
-        var cy = T.Cos(ry);
-
-        T rx, rz;
-        if (T.Abs(cy) > epsilon)
-        {
-            rx = T.Atan2(M32, M33);
-            rz = T.Atan2(M21, M11);
-        }
-        else
-        {
-            // Gimbal lock
-            rx = T.Atan2(-M23, M22);
-            rz = T.Zero;
-        }
-
-        return (
-            (Degree<T>)Radian<T>.FromRadian(rx),
-            (Degree<T>)Radian<T>.FromRadian(ry),
-            (Degree<T>)Radian<T>.FromRadian(rz));
-    }
-
-    /// <summary>
-    /// Converts this rotation matrix to a unit quaternion using Shepperd's method
-    /// (numerically stable for all orientations).
-    /// </summary>
-    public Quaternion<T> ToQuaternion()
-    {
-        // Shepperd's method: pick the largest diagonal element to avoid division by small numbers
-        var tr = Trace;
-        T w, x, y, z;
-
-        if (tr > T.Zero)
-        {
-            var s = T.Sqrt(tr + T.One) * Two;
-            w = s / (T.CreateTruncating(4));
-            x = (M32 - M23) / s;
-            y = (M13 - M31) / s;
-            z = (M21 - M12) / s;
-        }
-        else if (M11 > M22 && M11 > M33)
-        {
-            var s = T.Sqrt(T.One + M11 - M22 - M33) * Two;
-            w = (M32 - M23) / s;
-            x = s / (T.CreateTruncating(4));
-            y = (M12 + M21) / s;
-            z = (M13 + M31) / s;
-        }
-        else if (M22 > M33)
-        {
-            var s = T.Sqrt(T.One + M22 - M11 - M33) * Two;
-            w = (M13 - M31) / s;
-            x = (M12 + M21) / s;
-            y = s / (T.CreateTruncating(4));
-            z = (M23 + M32) / s;
-        }
-        else
-        {
-            var s = T.Sqrt(T.One + M33 - M11 - M22) * Two;
-            w = (M21 - M12) / s;
-            x = (M13 + M31) / s;
-            y = (M23 + M32) / s;
-            z = s / (T.CreateTruncating(4));
-        }
-
-        return new Quaternion<T>(w, x, y, z);
+        var r = Rotation3<T>.FromQuaternion(Quaternion<T>.FromMatrix3x3(this));
+        return (r.Rx, r.Ry, r.Rz);
     }
 
     #endregion

@@ -131,12 +131,12 @@ public class Rotation3Tests
     #region Rotation Operations
 
     [Fact]
-    public void Rotation3_Rotate_XAxis90_RotatesYToZ()
+    public void Rotation3_ToQuaternion_Rotate_XAxis90_RotatesYToZ()
     {
         var rotation = new Rotation3<double>(90, 0, 0); // 90 degrees around X
         var v = new Vector3<double>(0, 1, 0); // Y unit vector
 
-        var rotated = rotation.Rotate(v);
+        var rotated = rotation.ToQuaternion().Rotate(v);
 
         rotated.X.Should().BeApproximately(0, Tolerance);
         rotated.Y.Should().BeApproximately(0, Tolerance);
@@ -144,12 +144,12 @@ public class Rotation3Tests
     }
 
     [Fact]
-    public void Rotation3_Rotate_YAxis90_RotatesZToX()
+    public void Rotation3_ToQuaternion_Rotate_YAxis90_RotatesZToX()
     {
         var rotation = new Rotation3<double>(0, 90, 0); // 90 degrees around Y
         var v = new Vector3<double>(0, 0, 1); // Z unit vector
 
-        var rotated = rotation.Rotate(v);
+        var rotated = rotation.ToQuaternion().Rotate(v);
 
         rotated.X.Should().BeApproximately(1, Tolerance);
         rotated.Y.Should().BeApproximately(0, Tolerance);
@@ -157,12 +157,12 @@ public class Rotation3Tests
     }
 
     [Fact]
-    public void Rotation3_Rotate_ZAxis90_RotatesXToY()
+    public void Rotation3_ToQuaternion_Rotate_ZAxis90_RotatesXToY()
     {
         var rotation = new Rotation3<double>(0, 0, 90); // 90 degrees around Z
         var v = new Vector3<double>(1, 0, 0); // X unit vector
 
-        var rotated = rotation.Rotate(v);
+        var rotated = rotation.ToQuaternion().Rotate(v);
 
         rotated.X.Should().BeApproximately(0, Tolerance);
         rotated.Y.Should().BeApproximately(1, Tolerance);
@@ -170,12 +170,12 @@ public class Rotation3Tests
     }
 
     [Fact]
-    public void Rotation3_RotatePoint_Works()
+    public void Rotation3_ToQuaternion_FrameRotatesPoint()
     {
         var rotation = new Rotation3<double>(0, 0, 90);
         var point = new Point3<double>(1, 0, 0);
 
-        var rotated = rotation.Rotate(point);
+        var rotated = new Frame3<double>(Point3<double>.Zero, rotation.ToQuaternion()).TransformPoint(point);
 
         rotated.X.Should().BeApproximately(0, Tolerance);
         rotated.Y.Should().BeApproximately(1, Tolerance);
@@ -187,12 +187,12 @@ public class Rotation3Tests
     #region Inverse
 
     [Fact]
-    public void Rotation3_Inverse_ReversesRotation()
+    public void Rotation3_ToQuaternion_InverseReversesRotation()
     {
         var rotation = new Rotation3<double>(30, 45, 60);
         var v = new Vector3<double>(1, 2, 3);
 
-        var rotated = rotation.Rotate(v);
+        var rotated = rotation.ToQuaternion().Rotate(v);
         var q = rotation.ToQuaternion();
         var qInverse = q.Inverse();
         var backToOriginal = qInverse.Rotate(rotated);
@@ -207,14 +207,14 @@ public class Rotation3Tests
     #region Combine
 
     [Fact]
-    public void Rotation3_Combine_TwoRotations()
+    public void Rotation3_ToQuaternion_ProductOfTwoRotations()
     {
         var r1 = new Rotation3<double>(90, 0, 0);
         var r2 = new Rotation3<double>(0, 90, 0);
         var v = new Vector3<double>(0, 0, 1);
 
-        // Combine applies r2 first, then r1 (quaternion convention)
-        var combined = Rotation3<double>.Combine(r1, r2);
+        // r1 · r2 applies r2 first, then r1 (quaternion convention)
+        var combined = r1.ToQuaternion() * r2.ToQuaternion();
         var rotated = combined.Rotate(v);
 
         // Verify combined rotation produces valid result
@@ -226,34 +226,34 @@ public class Rotation3Tests
     #region Slerp
 
     [Fact]
-    public void Rotation3_Slerp_AtZero_ReturnsFirst()
+    public void Rotation3_QuaternionSlerp_AtZero_ReturnsFirst()
     {
         var a = new Rotation3<double>(0, 0, 0);
         var b = new Rotation3<double>(90, 0, 0);
 
-        var result = Rotation3<double>.Slerp(a, b, 0);
+        var result = Rotation3<double>.FromQuaternion(Quaternion<double>.Slerp(a.ToQuaternion(), b.ToQuaternion(), 0));
 
         ((double)result.Rx).Should().BeApproximately(0, 1e-6);
     }
 
     [Fact]
-    public void Rotation3_Slerp_AtOne_ReturnsSecond()
+    public void Rotation3_QuaternionSlerp_AtOne_ReturnsSecond()
     {
         var a = new Rotation3<double>(0, 0, 0);
         var b = new Rotation3<double>(90, 0, 0);
 
-        var result = Rotation3<double>.Slerp(a, b, 1);
+        var result = Rotation3<double>.FromQuaternion(Quaternion<double>.Slerp(a.ToQuaternion(), b.ToQuaternion(), 1));
 
         ((double)result.Rx).Should().BeApproximately(90, 1e-6);
     }
 
     [Fact]
-    public void Rotation3_Slerp_AtHalf_ReturnsMidpoint()
+    public void Rotation3_QuaternionSlerp_AtHalf_ReturnsMidpoint()
     {
         var a = new Rotation3<double>(0, 0, 0);
         var b = new Rotation3<double>(90, 0, 0);
 
-        var result = Rotation3<double>.Slerp(a, b, 0.5);
+        var result = Rotation3<double>.FromQuaternion(Quaternion<double>.Slerp(a.ToQuaternion(), b.ToQuaternion(), 0.5));
 
         ((double)result.Rx).Should().BeApproximately(45, 1e-6);
     }
@@ -274,31 +274,22 @@ public class Rotation3Tests
     }
 
     [Fact]
-    public void Rotation3_UnaryMinus_ReturnsInverse()
+    public void Rotation3_QuaternionConjugate_IsInverse()
     {
         var rotation = new Rotation3<double>(10, 20, 30);
-        var result = Rotation3<double>.Combine(rotation, -rotation);
+        var q = rotation.ToQuaternion();
+        var result = Rotation3<double>.FromQuaternion(q * q.Conjugate());
         ((double)result.Rx).Should().BeApproximately(0, 1e-9);
         ((double)result.Ry).Should().BeApproximately(0, 1e-9);
         ((double)result.Rz).Should().BeApproximately(0, 1e-9);
     }
 
     [Fact]
-    public void Rotation3_Negate_NegatesAngles()
-    {
-        var rotation = new Rotation3<double>(10, 20, 30);
-        var negated = rotation.Negate();
-        negated.Rx.Should().Be(-10);
-        negated.Ry.Should().Be(-20);
-        negated.Rz.Should().Be(-30);
-    }
-
-    [Fact]
-    public void Rotation3_Inverse_CombinesWithOriginalToIdentity()
+    public void Rotation3_QuaternionInverse_ComposesToIdentity()
     {
         var rotation = new Rotation3<double>(30, 45, 60);
-        var inverse = rotation.Inverse();
-        var result = Rotation3<double>.Combine(rotation, inverse);
+        var q = rotation.ToQuaternion();
+        var result = Rotation3<double>.FromQuaternion(q * q.Inverse());
         ((double)result.Rx).Should().BeApproximately(0, 1e-9);
         ((double)result.Ry).Should().BeApproximately(0, 1e-9);
         ((double)result.Rz).Should().BeApproximately(0, 1e-9);
@@ -332,7 +323,7 @@ public class Rotation3Tests
     {
         var identity = Rotation3<double>.Identity;
 
-        var direction = (Vector3<double>)identity;
+        var direction = identity.ToQuaternion().Rotate(Vector3<double>.EZ);
 
         // Identity rotation applied to +Z should give +Z
         direction.X.Should().BeApproximately(0, 1e-10);
@@ -347,7 +338,7 @@ public class Rotation3Tests
         // Let's use a pitch rotation instead
         var rotation = new Rotation3<double>(0, 90, 0); // 90 deg pitch around Y
 
-        var direction = (Vector3<double>)rotation;
+        var direction = rotation.ToQuaternion().Rotate(Vector3<double>.EZ);
 
         // +Z rotated 90 deg around Y axis goes to +X
         direction.X.Should().BeApproximately(1, 1e-6);
@@ -360,19 +351,19 @@ public class Rotation3Tests
     {
         var rotation = new Rotation3<double>(30, 45, 60);
 
-        var direction = (Vector3<double>)rotation;
+        var direction = rotation.ToQuaternion().Rotate(Vector3<double>.EZ);
 
         direction.Length.Should().BeApproximately(1, 1e-10);
     }
 
     [Fact]
-    public void Rotation3_ToVector3_RoundTrips_WithVector3()
+    public void Rotation3_FromTo_RoundTrips_WithVector3()
     {
-        // Start with a direction, convert to rotation, convert back
+        // Start with a direction, take the rotation that turns +Z onto it, store it as Euler (wire) and turn +Z back
         var originalDir = new Vector3<double>(1, 1, 1).Normalize();
 
-        var rotation = (Rotation3<double>)originalDir;
-        var backToDir = (Vector3<double>)rotation;
+        var rotation = Rotation3<double>.FromQuaternion(Quaternion<double>.FromTo(Vector3<double>.EZ, originalDir));
+        var backToDir = rotation.ToQuaternion().Rotate(Vector3<double>.EZ);
 
         backToDir.X.Should().BeApproximately(originalDir.X, 1e-6);
         backToDir.Y.Should().BeApproximately(originalDir.Y, 1e-6);

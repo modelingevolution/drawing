@@ -20,6 +20,7 @@ public readonly struct Quaternion<T> : IEquatable<Quaternion<T>>
 
     private static readonly T Two = T.CreateTruncating(2);
     private static readonly T SlerpThreshold = T.One - T.CreateTruncating(1e-6);
+    private static readonly T OppositeThreshold = T.CreateTruncating(1e-12);
 
     /// <summary>
     /// Represents the identity quaternion (no rotation).
@@ -131,6 +132,114 @@ public readonly struct Quaternion<T> : IEquatable<Quaternion<T>>
             axis.X * s,
             axis.Y * s,
             axis.Z * s);
+    }
+
+    /// <summary>
+    /// Creates the rotation Rz(yaw)·Ry(pitch)·Rx(roll) from angles in radians: the URDF <c>rpy</c> convention and
+    /// the ZYX convention of <see cref="Rotation3{T}"/> and of the asset files.
+    /// </summary>
+    /// <param name="roll">Rotation about X, applied first, in radians.</param>
+    /// <param name="pitch">Rotation about Y, in radians.</param>
+    /// <param name="yaw">Rotation about Z, applied last, in radians.</param>
+    public static Quaternion<T> FromRpy(T roll, T pitch, T yaw)
+    {
+        var cx = T.Cos(roll / Two);
+        var sx = T.Sin(roll / Two);
+        var cy = T.Cos(pitch / Two);
+        var sy = T.Sin(pitch / Two);
+        var cz = T.Cos(yaw / Two);
+        var sz = T.Sin(yaw / Two);
+
+        return new Quaternion<T>(
+            cx * cy * cz + sx * sy * sz,
+            sx * cy * cz - cx * sy * sz,
+            cx * sy * cz + sx * cy * sz,
+            cx * cy * sz - sx * sy * cz);
+    }
+
+    /// <summary>
+    /// Creates the shortest-arc rotation that turns the direction of <paramref name="from"/> into the direction of
+    /// <paramref name="to"/>. For opposite directions (1 + from̂·tô &lt; 1e-12) it is the half-turn about
+    /// <c>normalize(EX × from)</c>, or about <c>normalize(EY × from)</c> when <paramref name="from"/> is along X
+    /// (|EX × from̂|² &lt; 1e-12); so +X → −X turns about −Z and +Z → −Z about −Y.
+    /// </summary>
+    /// <exception cref="ArgumentException">Thrown when either vector is zero.</exception>
+    public static Quaternion<T> FromTo(Vector3<T> from, Vector3<T> to)
+    {
+        var f = from.Normalize();
+        var t = to.Normalize();
+        var d = Vector3<T>.Dot(f, t);
+
+        if (T.One + d < OppositeThreshold)
+        {
+            var axis = Vector3<T>.Cross(Vector3<T>.EX, f);
+            if (axis.LengthSquared < OppositeThreshold)
+                axis = Vector3<T>.Cross(Vector3<T>.EY, f);
+            axis = axis.Normalize();
+            return new Quaternion<T>(T.Zero, axis.X, axis.Y, axis.Z);
+        }
+
+        var c = Vector3<T>.Cross(f, t);
+        return new Quaternion<T>(T.One + d, c.X, c.Y, c.Z).Normalize();
+    }
+
+    /// <summary>
+    /// Creates the rotation whose rotated unit axes are <paramref name="x"/>, <paramref name="y"/> and
+    /// <paramref name="z"/>: Rotate(EX) = x, Rotate(EY) = y, Rotate(EZ) = z. The axes must form a right-handed
+    /// orthonormal basis (the columns of the rotation matrix).
+    /// </summary>
+    public static Quaternion<T> FromAxes(Vector3<T> x, Vector3<T> y, Vector3<T> z) =>
+        FromMatrix3x3(Matrix3x3<T>.FromColumns(x, y, z));
+
+    /// <summary>
+    /// Creates the unit quaternion of a rotation matrix by Shepperd's method: the branch is picked by the largest of
+    /// the trace and the diagonal elements, so no division by a small number happens for any rotation.
+    /// The result is normalized. This is the only matrix → rotation conversion in the library.
+    /// </summary>
+    /// <param name="m">A proper rotation matrix (orthonormal, determinant +1).</param>
+    public static Quaternion<T> FromMatrix3x3(in Matrix3x3<T> m)
+    {
+        var quarter = T.One / (Two * Two);
+        var trace = m.M11 + m.M22 + m.M33;
+        Quaternion<T> q;
+
+        if (trace > T.Zero)
+        {
+            var s = T.Sqrt(trace + T.One) * Two;
+            q = new Quaternion<T>(quarter * s, (m.M32 - m.M23) / s, (m.M13 - m.M31) / s, (m.M21 - m.M12) / s);
+        }
+        else if (m.M11 > m.M22 && m.M11 > m.M33)
+        {
+            var s = T.Sqrt(T.One + m.M11 - m.M22 - m.M33) * Two;
+            q = new Quaternion<T>((m.M32 - m.M23) / s, quarter * s, (m.M12 + m.M21) / s, (m.M13 + m.M31) / s);
+        }
+        else if (m.M22 > m.M33)
+        {
+            var s = T.Sqrt(T.One + m.M22 - m.M11 - m.M33) * Two;
+            q = new Quaternion<T>((m.M13 - m.M31) / s, (m.M12 + m.M21) / s, quarter * s, (m.M23 + m.M32) / s);
+        }
+        else
+        {
+            var s = T.Sqrt(T.One + m.M33 - m.M11 - m.M22) * Two;
+            q = new Quaternion<T>((m.M21 - m.M12) / s, (m.M13 + m.M31) / s, (m.M23 + m.M32) / s, quarter * s);
+        }
+
+        return q.Normalize();
+    }
+
+    /// <summary>
+    /// Returns the rotation matrix of this unit quaternion: its columns are Rotate(EX), Rotate(EY), Rotate(EZ).
+    /// This is the only rotation → matrix conversion in the library.
+    /// </summary>
+    public Matrix3x3<T> ToMatrix3x3()
+    {
+        T xx = _x * _x, yy = _y * _y, zz = _z * _z;
+        T xy = _x * _y, xz = _x * _z, yz = _y * _z;
+        T wx = _w * _x, wy = _w * _y, wz = _w * _z;
+        return new Matrix3x3<T>(
+            T.One - Two * (yy + zz), Two * (xy - wz), Two * (xz + wy),
+            Two * (xy + wz), T.One - Two * (xx + zz), Two * (yz - wx),
+            Two * (xz - wy), Two * (yz + wx), T.One - Two * (xx + yy));
     }
 
     /// <summary>

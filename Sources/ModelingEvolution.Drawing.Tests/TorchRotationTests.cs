@@ -7,6 +7,10 @@ public class TorchRotationTests
 {
     private const float Tol = 1e-3f;
 
+    // Rotation3 is a wire format (2.0): the slerp is a quaternion slerp, converted back for the log.
+    private static Rotation3<float> Slerp(Rotation3<float> a, Rotation3<float> b, float t) =>
+        Rotation3<float>.FromQuaternion(Quaternion<float>.Slerp(a.ToQuaternion(), b.ToQuaternion(), t));
+
     /// <summary>
     /// Print what Rotate(EZ) actually produces for various Euler angles.
     /// This tells us the real convention.
@@ -32,7 +36,7 @@ public class TorchRotationTests
         foreach (var (name, rx, ry, rz) in cases)
         {
             var rot = new Rotation3<float>(rx, ry, rz);
-            var fwd = rot.Rotate(Vector3<float>.EZ);
+            var fwd = rot.ToQuaternion().Rotate(Vector3<float>.EZ);
             Console.WriteLine($"  {name,-20} Rotate(EZ) = ({fwd.X:F4}, {fwd.Y:F4}, {fwd.Z:F4})");
         }
 
@@ -44,7 +48,7 @@ public class TorchRotationTests
         for (int ry = -90; ry <= 90; ry += 15)
         {
             var rot = new Rotation3<float>(rx, ry, 0);
-            var fwd = rot.Rotate(Vector3<float>.EZ);
+            var fwd = rot.ToQuaternion().Rotate(Vector3<float>.EZ);
             if (MathF.Abs(fwd.X - 0.707f) < 0.1f && MathF.Abs(fwd.Y + 0.707f) < 0.1f && MathF.Abs(fwd.Z) < 0.1f)
                 Console.WriteLine($"    Rx={rx}, Ry={ry} → ({fwd.X:F3}, {fwd.Y:F3}, {fwd.Z:F3})");
         }
@@ -55,7 +59,7 @@ public class TorchRotationTests
         for (int ry = -90; ry <= 90; ry += 15)
         {
             var rot = new Rotation3<float>(rx, ry, 0);
-            var fwd = rot.Rotate(Vector3<float>.EZ);
+            var fwd = rot.ToQuaternion().Rotate(Vector3<float>.EZ);
             if (MathF.Abs(fwd.X + 0.707f) < 0.1f && MathF.Abs(fwd.Y + 0.707f) < 0.1f && MathF.Abs(fwd.Z) < 0.1f)
                 Console.WriteLine($"    Rx={rx}, Ry={ry} → ({fwd.X:F3}, {fwd.Y:F3}, {fwd.Z:F3})");
         }
@@ -66,7 +70,7 @@ public class TorchRotationTests
         for (int ry = -90; ry <= 90; ry += 15)
         {
             var rot = new Rotation3<float>(rx, ry, 0);
-            var fwd = rot.Rotate(Vector3<float>.EZ);
+            var fwd = rot.ToQuaternion().Rotate(Vector3<float>.EZ);
             if (MathF.Abs(fwd.X) < 0.1f && MathF.Abs(fwd.Y + 0.707f) < 0.1f && MathF.Abs(fwd.Z + 0.707f) < 0.1f)
                 Console.WriteLine($"    Rx={rx}, Ry={ry} → ({fwd.X:F3}, {fwd.Y:F3}, {fwd.Z:F3})");
         }
@@ -76,7 +80,7 @@ public class TorchRotationTests
     public void DownRot_ForwardIsNegativeY()
     {
         var rot = new Rotation3<float>(90f, 0f, 0f);
-        var fwd = rot.Rotate(Vector3<float>.EZ);
+        var fwd = rot.ToQuaternion().Rotate(Vector3<float>.EZ);
         fwd.X.Should().BeApproximately(0f, Tol);
         fwd.Y.Should().BeApproximately(-1f, Tol);
         fwd.Z.Should().BeApproximately(0f, Tol);
@@ -86,7 +90,7 @@ public class TorchRotationTests
     public void Edge2_PlusZ_ForwardIs_ZDown()
     {
         var rot = new Rotation3<float>(45f, 0f, 0f);
-        var fwd = rot.Rotate(Vector3<float>.EZ);
+        var fwd = rot.ToQuaternion().Rotate(Vector3<float>.EZ);
         fwd.X.Should().BeApproximately(0f, Tol);
         fwd.Y.Should().BeApproximately(-0.707f, Tol);
         fwd.Z.Should().BeApproximately(0.707f, Tol);
@@ -125,9 +129,9 @@ public class TorchRotationTests
         var downRot  = new Rotation3<float>(90f, 0f, 0f);     // straight down
 
         // Verify the raw rotations first
-        var e1fwd = edge1Rot.Rotate(Vector3<float>.EZ);
-        var e2fwd = edge2Rot.Rotate(Vector3<float>.EZ);
-        var dfwd  = downRot.Rotate(Vector3<float>.EZ);
+        var e1fwd = edge1Rot.ToQuaternion().Rotate(Vector3<float>.EZ);
+        var e2fwd = edge2Rot.ToQuaternion().Rotate(Vector3<float>.EZ);
+        var dfwd  = downRot.ToQuaternion().Rotate(Vector3<float>.EZ);
         log.WriteLine($"edge1Rot(45,0,0) fwd=({e1fwd.X:F3}, {e1fwd.Y:F3}, {e1fwd.Z:F3})  // should be (0, -0.707, +0.707)");
         log.WriteLine($"edge2Rot(45,-90,0) fwd=({e2fwd.X:F3}, {e2fwd.Y:F3}, {e2fwd.Z:F3})  // should be (-0.707, -0.707, 0)");
         log.WriteLine($"downRot(90,0,0)   fwd=({dfwd.X:F3}, {dfwd.Y:F3}, {dfwd.Z:F3})");
@@ -153,7 +157,7 @@ public class TorchRotationTests
         for (int i = 0; i < span.Length; i++)
         {
             var wp = span[i];
-            var fwd = wp.Pose.Rotation.Rotate(Vector3<float>.EZ);
+            var fwd = wp.Pose.Rotation.ToQuaternion().Rotate(Vector3<float>.EZ);
             log.WriteLine($"  WP[{i,2}] t={wp.Time:F3}s  pos=({wp.Position.X:F1}, {wp.Position.Y:F1}, {wp.Position.Z:F1})  " +
                           $"rot=({wp.Pose.Rotation.Rx:F1}, {wp.Pose.Rotation.Ry:F1}, {wp.Pose.Rotation.Rz:F1})  " +
                           $"fwd=({fwd.X:F3}, {fwd.Y:F3}, {fwd.Z:F3})");
@@ -166,7 +170,7 @@ public class TorchRotationTests
         for (float t = 0f; t <= duration + 0.01f; t += 0.25f)
         {
             var pose = trajectory.AtTime(t0 + t);
-            var fwd = pose.Rotation.Rotate(Vector3<float>.EZ);
+            var fwd = pose.Rotation.ToQuaternion().Rotate(Vector3<float>.EZ);
             float angleFromVert = MathF.Acos(MathF.Min(1f, MathF.Abs(fwd.Y))) * 180f / MathF.PI;
             log.WriteLine($"  t={t:F2}s  pos=({pose.X:F1}, {pose.Y:F1}, {pose.Z:F1})  " +
                           $"fwd=({fwd.X:F3}, {fwd.Y:F3}, {fwd.Z:F3})  " +
@@ -179,7 +183,7 @@ public class TorchRotationTests
         var wp2 = span[2];
         float midEdge1 = (wp1.Time + wp2.Time) / 2f;
         var midPose = trajectory.AtTime(midEdge1);
-        var midFwd = midPose.Rotation.Rotate(Vector3<float>.EZ);
+        var midFwd = midPose.Rotation.ToQuaternion().Rotate(Vector3<float>.EZ);
         log.WriteLine($"  WP[1].Time={wp1.Time:F3}  WP[2].Time={wp2.Time:F3}  mid={midEdge1:F3}");
         log.WriteLine($"  Mid-edge1 pos=({midPose.X:F1}, {midPose.Y:F1}, {midPose.Z:F1})  " +
                       $"fwd=({midFwd.X:F3}, {midFwd.Y:F3}, {midFwd.Z:F3})");
@@ -194,15 +198,15 @@ public class TorchRotationTests
         // Assert no NaN in any waypoint
         for (int i = 0; i < span.Length; i++)
         {
-            var wpFwd = span[i].Pose.Rotation.Rotate(Vector3<float>.EZ);
+            var wpFwd = span[i].Pose.Rotation.ToQuaternion().Rotate(Vector3<float>.EZ);
             float.IsNaN(wpFwd.X).Should().BeFalse($"WP[{i}] should not have NaN rotation");
         }
 
         // Check: is the Slerp between two identical rotations still the same rotation?
         log.WriteLine();
         log.WriteLine("=== Slerp test: edge1Rot to edge1Rot at t=0.5 ===");
-        var slerped = Rotation3<float>.Slerp(edge1Rot, edge1Rot, 0.5f);
-        var slerpFwd = slerped.Rotate(Vector3<float>.EZ);
+        var slerped = Slerp(edge1Rot, edge1Rot, 0.5f);
+        var slerpFwd = slerped.ToQuaternion().Rotate(Vector3<float>.EZ);
         log.WriteLine($"  Slerp result: rot=({slerped.Rx:F1}, {slerped.Ry:F1}, {slerped.Rz:F1})  fwd=({slerpFwd.X:F3}, {slerpFwd.Y:F3}, {slerpFwd.Z:F3})");
 
         // Check: Slerp between downRot and edge1Rot at various t
@@ -210,8 +214,8 @@ public class TorchRotationTests
         log.WriteLine("=== Slerp test: downRot(90,0,0) → edge1Rot(45,90,0) ===");
         for (float t = 0f; t <= 1.01f; t += 0.1f)
         {
-            var s = Rotation3<float>.Slerp(downRot, edge1Rot, t);
-            var sf = s.Rotate(Vector3<float>.EZ);
+            var s = Slerp(downRot, edge1Rot, t);
+            var sf = s.ToQuaternion().Rotate(Vector3<float>.EZ);
             log.WriteLine($"  t={t:F1}  rot=({s.Rx:F1}, {s.Ry:F1}, {s.Rz:F1})  fwd=({sf.X:F3}, {sf.Y:F3}, {sf.Z:F3})");
         }
 
@@ -227,10 +231,10 @@ public class TorchRotationTests
 
         log.WriteLine($"  rotFracIn={rotFracIn:F4}, rotFracOut={rotFracOut:F4}");
 
-        var rotP1 = Rotation3<float>.Slerp(edge1Rot, edge2Rot, rotFracIn);
-        var rotP2 = Rotation3<float>.Slerp(edge2Rot, edge2Rot, rotFracOut);
-        var p1fwd = rotP1.Rotate(Vector3<float>.EZ);
-        var p2fwd = rotP2.Rotate(Vector3<float>.EZ);
+        var rotP1 = Slerp(edge1Rot, edge2Rot, rotFracIn);
+        var rotP2 = Slerp(edge2Rot, edge2Rot, rotFracOut);
+        var p1fwd = rotP1.ToQuaternion().Rotate(Vector3<float>.EZ);
+        var p2fwd = rotP2.ToQuaternion().Rotate(Vector3<float>.EZ);
         log.WriteLine($"  rotP1 = ({rotP1.Rx:F1}, {rotP1.Ry:F1}, {rotP1.Rz:F1})  fwd=({p1fwd.X:F3}, {p1fwd.Y:F3}, {p1fwd.Z:F3})");
         log.WriteLine($"  rotP2 = ({rotP2.Rx:F1}, {rotP2.Ry:F1}, {rotP2.Rz:F1})  fwd=({p2fwd.X:F3}, {p2fwd.Y:F3}, {p2fwd.Z:F3})");
 
@@ -239,8 +243,8 @@ public class TorchRotationTests
         for (int j = 0; j < arcPointCount; j++)
         {
             float at = (float)j / (arcPointCount - 1);
-            var arcRot = Rotation3<float>.Slerp(rotP1, rotP2, at);
-            var af = arcRot.Rotate(Vector3<float>.EZ);
+            var arcRot = Slerp(rotP1, rotP2, at);
+            var af = arcRot.ToQuaternion().Rotate(Vector3<float>.EZ);
             log.WriteLine($"  arc[{j}] t={at:F3}  rot=({arcRot.Rx:F1}, {arcRot.Ry:F1}, {arcRot.Rz:F1})  fwd=({af.X:F3}, {af.Y:F3}, {af.Z:F3})");
         }
 

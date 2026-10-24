@@ -939,11 +939,8 @@ public class CorrectionTests
         ComplexCurve<float>? perturbedTemplate = null,
         ComplexCurve<float>? sourceTemplate = null)
     {
-        var outputDir = Path.Combine(
-            Path.GetDirectoryName(typeof(CorrectionTests).Assembly.Location)!,
-            "..", "..", "..", "..", "..",
-            "correction-svg");
-        outputDir = Path.GetFullPath(outputDir);
+        // A test never writes into the repository; the committed gallery is a one-time snapshot.
+        var outputDir = Path.Combine(Path.GetTempPath(), "ModelingEvolution.Drawing.Tests", "correction-svg");
         Directory.CreateDirectory(outputDir);
 
         var svg = RenderCorrectionCase(template, measured, result.CorrectedCurve, perturbedTemplate);

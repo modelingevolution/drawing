@@ -227,11 +227,8 @@ public class DensifyTests
     [Fact]
     public void RenderDensify_ToSvg()
     {
-        var outputDir = Path.Combine(
-            Path.GetDirectoryName(typeof(DensifyTests).Assembly.Location)!,
-            "..", "..", "..", "..", "..",
-            "densify-svg");
-        outputDir = Path.GetFullPath(outputDir);
+        // A test never writes into the repository; the committed gallery is a one-time snapshot.
+        var outputDir = Path.Combine(Path.GetTempPath(), "ModelingEvolution.Drawing.Tests", "densify-svg");
         Directory.CreateDirectory(outputDir);
 
         var shapes = new (string name, object original, Polygon<float>? densePoly, Polyline<float>? denseLine)[]

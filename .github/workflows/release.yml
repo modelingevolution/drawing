@@ -111,31 +111,26 @@ jobs:
           echo "skip=false" >> "$GITHUB_OUTPUT"
         fi
 
-    # Nothing is tagged while the suite is red. The suite runs in a separate worktree of the same commit because
-    # it rewrites tracked files (the *-svg galleries at the repo root), and release.sh refuses a dirty tree.
+    # Nothing is tagged while the suite is red. Tests write outside the repo; a dirty tree here is a defect.
     - name: Setup .NET
       if: steps.bump.outputs.skip != 'true'
       uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '10.0.x'
 
-    - name: Create the test worktree
-      if: steps.bump.outputs.skip != 'true'
-      run: git worktree add --detach "$RUNNER_TEMP/suite" HEAD
-
     - name: Restore
       if: steps.bump.outputs.skip != 'true'
-      working-directory: ${{ runner.temp }}/suite/Sources
+      working-directory: ./Sources
       run: dotnet restore
 
     - name: Build
       if: steps.bump.outputs.skip != 'true'
-      working-directory: ${{ runner.temp }}/suite/Sources
+      working-directory: ./Sources
       run: dotnet build --configuration Release --no-restore
 
     - name: Test
       if: steps.bump.outputs.skip != 'true'
-      working-directory: ${{ runner.temp }}/suite/Sources
+      working-directory: ./Sources
       run: dotnet test --configuration Release --no-build --verbosity normal
 
     - name: Tag with release.sh

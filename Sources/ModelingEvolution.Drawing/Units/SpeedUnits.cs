@@ -48,3 +48,18 @@ public readonly struct MetrePerMinute<T> : ISpeedUnit<T> where T : INumber<T>
     /// <inheritdoc/>
     public static string Symbol => "m/min";
 }
+
+/// <summary>
+/// Millimetres per minute. 1 mm/min = 1e-3 m / 60 s. This is the unit of the legacy unit-less
+/// <see cref="ModelingEvolution.Drawing.Speed{T}"/>, so it is the bridge target for interop
+/// (see <see cref="SpeedInterop.ToLegacyMmPerMin{T, TUnit}"/>).
+/// </summary>
+public readonly struct MillimetrePerMinute<T> : ISpeedUnit<T> where T : INumber<T>
+{
+    /// <inheritdoc/>
+    public static T ToSi(T value) => value / T.CreateChecked(60000.0);
+    /// <inheritdoc/>
+    public static T FromSi(T si) => si * T.CreateChecked(60000.0);
+    /// <inheritdoc/>
+    public static string Symbol => "mm/min";
+}

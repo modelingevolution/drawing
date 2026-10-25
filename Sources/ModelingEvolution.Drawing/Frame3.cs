@@ -80,6 +80,39 @@ public readonly record struct Frame3<T>(Point3<T> Position, Quaternion<T> Rotati
     public Pose3<T> ToPose3(T lengthScale) =>
         new(Position * lengthScale, Rotation3<T>.FromQuaternion(Rotation));
 
+    /// <summary>
+    /// Creates a frame from an origin and two direction hints: the forward (local +X) and approach (local +Z)
+    /// axes. Local Z is the normalized <paramref name="approach"/>, local X is <paramref name="forward"/>
+    /// re-orthogonalized against Z, and local Y = Z × X. The hints need not be unit or exactly orthogonal — they
+    /// are cleaned up here — but must not be (near-)parallel or degenerate. This is the basis-from-directions
+    /// factory for tool placement (a torch approach axis + travel tangent), complementing the point-based
+    /// <see cref="FromSurface(Point3{T}, Point3{T}, Point3{T})"/>.
+    /// </summary>
+    /// <param name="origin">The frame origin.</param>
+    /// <param name="forward">Desired local +X (e.g. a travel tangent); its approach-component is projected out.</param>
+    /// <param name="approach">Desired local +Z (e.g. a tool approach axis).</param>
+    /// <exception cref="ArgumentException">Thrown when the axes are (near-)parallel or degenerate.</exception>
+    public static Frame3<T> FromAxes(Point3<T> origin, Vector3<T> forward, Vector3<T> approach)
+    {
+        var epsilon = T.CreateTruncating(1e-9);
+
+        var zLen = approach.Length;
+        if (zLen < epsilon)
+            throw new ArgumentException("Approach axis is degenerate (near-zero length).", nameof(approach));
+        var z = approach.Normalize();
+
+        // X = forward with its approach-component removed, then normalized.
+        var dot = Vector3<T>.Dot(forward, z);
+        var xRaw = forward - z * dot;
+        var xLen = xRaw.Length;
+        if (xLen < epsilon)
+            throw new ArgumentException("Forward axis is parallel to the approach axis; cannot build a frame.", nameof(forward));
+        var x = xRaw.Normalize();
+
+        var y = Vector3<T>.Cross(z, x);
+        return new Frame3<T>(origin, Quaternion<T>.FromAxes(x, y, z));
+    }
+
     #region FromSurface
 
     /// <summary>

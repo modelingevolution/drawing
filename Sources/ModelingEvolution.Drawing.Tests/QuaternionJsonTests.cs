@@ -50,8 +50,10 @@ public class QuaternionJsonTests
     {
         var q = new Quaternion<float>(0.70710677f, 0f, 0.70710677f, 1f / 3f);
 
-        var back = JsonSerializer.Deserialize<Quaternion<float>>(JsonSerializer.Serialize(q));
+        var json = JsonSerializer.Serialize(q);
+        var back = JsonSerializer.Deserialize<Quaternion<float>>(json);
 
+        json.Should().Be("[0.70710677,0,0.70710677,0.33333334]");
         back.Should().Be(q);
     }
 

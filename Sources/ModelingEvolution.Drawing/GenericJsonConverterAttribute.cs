@@ -227,17 +227,18 @@ public class QuaternionJsonConverterAttribute : JsonConverterAttribute
 {
     private readonly ConcurrentDictionary<Type, Func<JsonConverter>> typeFactory = new();
 
+    /// <inheritdoc/>
     public override JsonConverter CreateConverter(Type typeToConvert)
     {
         return typeFactory.GetOrAdd(typeToConvert, x =>
         {
-            Func<JsonConverter> f = null;
+            Func<JsonConverter>? f = null;
             var genericArg = typeToConvert.GetGenericArguments()[0];
             if (genericArg == typeof(float))
                 f = () => new QuaternionConverterF();
             else if (genericArg == typeof(double))
                 f = () => new QuaternionConverterD();
-            else throw new NotSupportedException();
+            else throw new NotSupportedException($"{typeToConvert.Name}: JSON supports Quaternion<float> and Quaternion<double>, not T = {genericArg.Name}.");
 
             return f;
         })();

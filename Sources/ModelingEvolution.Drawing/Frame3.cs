@@ -1,5 +1,6 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
 
 namespace ModelingEvolution.Drawing;
 
@@ -12,6 +13,9 @@ namespace ModelingEvolution.Drawing;
 /// <param name="Position">The origin of the frame in its parent frame.</param>
 /// <param name="Rotation">The orientation of the frame in its parent frame; a unit quaternion.</param>
 /// <typeparam name="T">The numeric type used for coordinates.</typeparam>
+// System.Text.Json uses a STRUCT's parameterized constructor only when it is marked [JsonConstructor]; without it the
+// frame is built by the default constructor and a missing member silently becomes zero (Matrix PR #29, 2026-11-03).
+[method: JsonConstructor]
 public readonly record struct Frame3<T>(Point3<T> Position, Quaternion<T> Rotation)
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {

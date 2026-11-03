@@ -219,3 +219,28 @@ public class Joints6JsonConverterAttribute : JsonConverterAttribute
         })();
     }
 }
+/// <summary>
+/// JSON converter attribute for Quaternion{T} types that serializes as [w, x, y, z] array.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct | AttributeTargets.Property | AttributeTargets.Field)]
+public class QuaternionJsonConverterAttribute : JsonConverterAttribute
+{
+    private readonly ConcurrentDictionary<Type, Func<JsonConverter>> typeFactory = new();
+
+    /// <inheritdoc/>
+    public override JsonConverter CreateConverter(Type typeToConvert)
+    {
+        return typeFactory.GetOrAdd(typeToConvert, x =>
+        {
+            Func<JsonConverter>? f = null;
+            var genericArg = typeToConvert.GetGenericArguments()[0];
+            if (genericArg == typeof(float))
+                f = () => new QuaternionConverterF();
+            else if (genericArg == typeof(double))
+                f = () => new QuaternionConverterD();
+            else throw new NotSupportedException($"{typeToConvert.Name}: JSON supports Quaternion<float> and Quaternion<double>, not T = {genericArg.Name}.");
+
+            return f;
+        })();
+    }
+}

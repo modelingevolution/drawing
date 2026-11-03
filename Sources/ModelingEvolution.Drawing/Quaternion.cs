@@ -10,6 +10,7 @@ namespace ModelingEvolution.Drawing;
 /// </summary>
 /// <typeparam name="T">The numeric type used for components.</typeparam>
 [ProtoContract]
+[QuaternionJsonConverter]
 public readonly struct Quaternion<T> : IEquatable<Quaternion<T>>
     where T : INumber<T>, ITrigonometricFunctions<T>, IRootFunctions<T>, IFloatingPoint<T>, ISignedNumber<T>, IFloatingPointIeee754<T>, IMinMaxValue<T>
 {

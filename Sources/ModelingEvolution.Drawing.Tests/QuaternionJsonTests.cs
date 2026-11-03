@@ -79,6 +79,28 @@ public class QuaternionJsonTests
     }
 
     [Fact]
+    public void Frame3_WithoutItsRotation_IsRefused_WhenTheReaderRequiresConstructorParameters()
+    {
+        // A struct is built through its parameterized constructor only when it is [JsonConstructor]; without the
+        // attribute a missing Rotation silently became the zero quaternion.
+        var strict = new JsonSerializerOptions { RespectRequiredConstructorParameters = true };
+
+        var act = () => JsonSerializer.Deserialize<Frame3<double>>("{\"Position\":[1,2,3]}", strict);
+
+        act.Should().Throw<JsonException>().WithMessage("*Rotation*");
+    }
+
+    [Fact]
+    public void Frame3_WithoutItsRotation_ReadsAsTheDefaultRotation_UnderDefaultOptions()
+    {
+        // System.Text.Json's rule, pinned: only a reader that requires constructor parameters refuses the missing member.
+        var frame = JsonSerializer.Deserialize<Frame3<double>>("{\"Position\":[1,2,3]}");
+
+        frame.Position.Should().Be(new Point3<double>(1, 2, 3));
+        frame.Rotation.Should().Be(default(Quaternion<double>));
+    }
+
+    [Fact]
     public void Frame3_RecordsPositionAndRotationArraysOnly()
     {
         var frame = new Frame3<double>(new Point3<double>(1, 2, 3), Quaternion<double>.Identity);

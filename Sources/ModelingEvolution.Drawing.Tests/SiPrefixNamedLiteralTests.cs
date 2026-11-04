@@ -82,6 +82,9 @@ public class SiPrefixNamedLiteralTests
     [InlineData("Infinityk")]  // known prefix on a named literal: no unit type writes it
     [InlineData("NaNm")]
     [InlineData("-Infinitym")]
+    [InlineData("nanm")]       // lowercase literals carry the same rule
+    [InlineData("infinitym")]
+    [InlineData("-infinitym")]
     public void TryParse_NamedLiteralWithTrailingLetter_IsRefused(string input)
     {
         SiPrefix.TryParse<double>(input, "", null, out _).Should().BeFalse();
@@ -95,13 +98,23 @@ public class SiPrefixNamedLiteralTests
         value.Should().Be(double.PositiveInfinity);
     }
 
-    [Fact]
+    [Theory]
+    [InlineData("nanrad", double.NaN)]
+    [InlineData("infinityrad", double.PositiveInfinity)]
+    [InlineData("-INFINITYrad", double.NegativeInfinity)]
+    public void TryParse_NamedLiteral_AnyCase_Accepted(string input, double expected)
+    {
+        Radian<double>.TryParse(input, null, out var parsed).Should().BeTrue();
+        ShouldBeSame((double)parsed, expected);
+    }
+
+    [Fact] // guard: passes on master too
     public void TryParse_IntegerType_RefusesNamedLiteral()
     {
         SiPrefix.TryParse<int>("NaNrad", "rad", null, out _).Should().BeFalse();
     }
 
-    [Fact]
+    [Fact] // guard: passes on master too
     public void Parse_KiloPrefix_StillScales()
     {
         ((double)Radian<double>.Parse("1.5krad", null)).Should().Be(1500);

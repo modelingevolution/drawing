@@ -53,7 +53,7 @@ public static class SiPrefix
     /// <remarks>A named floating-point literal of the number format in use (its
     /// <see cref="NumberFormatInfo.NaNSymbol"/>, <see cref="NumberFormatInfo.PositiveInfinitySymbol"/> or
     /// <see cref="NumberFormatInfo.NegativeInfinitySymbol"/>, the positive one optionally after
-    /// <see cref="NumberFormatInfo.PositiveSign"/>) is parsed as is, without an SI-prefix step, so a
+    /// <see cref="NumberFormatInfo.PositiveSign"/>; compared ignoring case, as the numeric parsers do) is parsed as is, without an SI-prefix step, so a
     /// unit type round-trips NaN and the infinities through its own ToString/Parse. A named literal
     /// carrying an SI prefix (e.g. "Infinityk") is refused: no unit type writes it.</remarks>
     /// <returns><c>false</c> for null/whitespace input, an unknown trailing prefix letter, a named
@@ -105,12 +105,12 @@ public static class SiPrefix
 
     private static bool IsNamedLiteral(ReadOnlySpan<char> s, NumberFormatInfo format)
     {
-        if (s.Equals(format.NaNSymbol, StringComparison.Ordinal)
-            || s.Equals(format.PositiveInfinitySymbol, StringComparison.Ordinal)
-            || s.Equals(format.NegativeInfinitySymbol, StringComparison.Ordinal))
+        if (s.Equals(format.NaNSymbol, StringComparison.OrdinalIgnoreCase)
+            || s.Equals(format.PositiveInfinitySymbol, StringComparison.OrdinalIgnoreCase)
+            || s.Equals(format.NegativeInfinitySymbol, StringComparison.OrdinalIgnoreCase))
             return true;
         return s.StartsWith(format.PositiveSign, StringComparison.Ordinal)
-            && s[format.PositiveSign.Length..].Equals(format.PositiveInfinitySymbol, StringComparison.Ordinal);
+            && s[format.PositiveSign.Length..].Equals(format.PositiveInfinitySymbol, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

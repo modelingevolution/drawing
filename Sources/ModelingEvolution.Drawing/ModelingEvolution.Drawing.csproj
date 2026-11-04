@@ -33,4 +33,8 @@
     <Folder Include="Clipper\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Reconstruction3D" />
+  </ItemGroup>
+
 </Project>

@@ -107,5 +107,5 @@ public readonly record struct Volts<T> : IComparisonOperators<Volts<T>, Volts<T>
     #endregion
 
     /// <summary>Returns the canonical "<c>{value} V</c>" string representation.</summary>
-    public override string ToString() => $"{_val} V";
+    public override string ToString() => string.Create(CultureInfo.InvariantCulture, $"{_val} V");
 }

@@ -104,5 +104,5 @@ public readonly record struct Speed<T> : IComparisonOperators<Speed<T>, Speed<T>
 
     #endregion
 
-    public override string ToString() => $"{_val} mm/min";
+    public override string ToString() => string.Create(CultureInfo.InvariantCulture, $"{_val} mm/min");
 }

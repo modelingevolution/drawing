@@ -126,5 +126,5 @@ public readonly record struct Frequency<T> : IComparisonOperators<Frequency<T>, 
     #endregion
 
     /// <summary>Returns the canonical "<c>{value} Hz</c>" string representation.</summary>
-    public override string ToString() => $"{_val} Hz";
+    public override string ToString() => string.Create(CultureInfo.InvariantCulture, $"{_val} Hz");
 }

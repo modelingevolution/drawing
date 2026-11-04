@@ -107,5 +107,5 @@ public readonly record struct Amps<T> : IComparisonOperators<Amps<T>, Amps<T>, b
     #endregion
 
     /// <summary>Returns the canonical "<c>{value} A</c>" string representation.</summary>
-    public override string ToString() => $"{_val} A";
+    public override string ToString() => string.Create(CultureInfo.InvariantCulture, $"{_val} A");
 }

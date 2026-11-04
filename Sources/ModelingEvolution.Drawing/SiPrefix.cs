@@ -50,7 +50,14 @@ public static class SiPrefix
     /// single-character SI prefix, then the bare number is parsed with <see cref="NumberStyles.Float"/>
     /// using the invariant culture by default.
     /// </summary>
-    /// <returns><c>false</c> for null/whitespace input, an unknown trailing prefix letter, or an
+    /// <remarks>A named floating-point literal of the number format in use (its
+    /// <see cref="NumberFormatInfo.NaNSymbol"/>, <see cref="NumberFormatInfo.PositiveInfinitySymbol"/> or
+    /// <see cref="NumberFormatInfo.NegativeInfinitySymbol"/>, the positive one optionally after
+    /// <see cref="NumberFormatInfo.PositiveSign"/>; compared ignoring case, as the numeric parsers do) is parsed as is, without an SI-prefix step, so a
+    /// unit type round-trips NaN and the infinities through its own ToString/Parse. A named literal
+    /// carrying an SI prefix (e.g. "Infinityk") is refused: no unit type writes it.</remarks>
+    /// <returns><c>false</c> for null/whitespace input, an unknown trailing prefix letter, a named
+    /// literal with an SI prefix, a named literal the numeric type does not support (integers), or an
     /// unparseable number.</returns>
     public static bool TryParse<T>(string? s, string unit, IFormatProvider? provider, out T value)
         where T : INumberBase<T>
@@ -66,6 +73,14 @@ public static class SiPrefix
 
         if (span.Length == 0) return false;
 
+        var culture = provider ?? CultureInfo.InvariantCulture;
+        var format = NumberFormatInfo.GetInstance(culture);
+
+        // NaN / Infinity / -Infinity end in a letter that is no SI prefix; T decides whether it
+        // supports them (floating point does, integers refuse).
+        if (IsNamedLiteral(span, format))
+            return T.TryParse(span, NumberStyles.Float, culture, out value);
+
         // An optional SI prefix is the last char IF it is not part of the number itself
         // (digit / decimal point / sign). A known prefix is stripped; an unknown trailing
         // letter is rejected.
@@ -77,14 +92,25 @@ public static class SiPrefix
                 return false;  // trailing letter that is not a known SI prefix
             span = span[..^1].TrimEnd();
             if (span.Length == 0) return false;
+            if (IsNamedLiteral(span, format)) return false;  // a prefix on NaN/Infinity has no meaning
         }
 
-        if (!T.TryParse(span, NumberStyles.Float, provider ?? CultureInfo.InvariantCulture, out var num))
+        if (!T.TryParse(span, NumberStyles.Float, culture, out var num))
             return false;
 
         var scale = exponent == 0 ? T.One : T.CreateChecked(Math.Pow(10, exponent));
         value = num * scale;
         return true;
+    }
+
+    private static bool IsNamedLiteral(ReadOnlySpan<char> s, NumberFormatInfo format)
+    {
+        if (s.Equals(format.NaNSymbol, StringComparison.OrdinalIgnoreCase)
+            || s.Equals(format.PositiveInfinitySymbol, StringComparison.OrdinalIgnoreCase)
+            || s.Equals(format.NegativeInfinitySymbol, StringComparison.OrdinalIgnoreCase))
+            return true;
+        return s.StartsWith(format.PositiveSign, StringComparison.Ordinal)
+            && s[format.PositiveSign.Length..].Equals(format.PositiveInfinitySymbol, StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Globalization;
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
@@ -242,7 +243,7 @@ public readonly record struct Degree<T> : IComparisonOperators<Degree<T>, Degree
     /// <returns>A string representation of the degree value.</returns>
     public override string ToString()
     {
-        return $"{_val}\u00b0";
+        return string.Create(CultureInfo.InvariantCulture, $"{_val}\u00b0");
     }
 
     /// <summary>

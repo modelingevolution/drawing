@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Globalization;
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
@@ -249,6 +250,6 @@ public readonly record struct Radian<T>: IComparisonOperators<Radian<T>, Radian<
     /// <returns>A string representation of the radian value.</returns>
     public override string ToString()
     {
-        return $"{_val}rad";
+        return string.Create(CultureInfo.InvariantCulture, $"{_val}rad");
     }
 }

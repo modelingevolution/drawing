@@ -15,6 +15,12 @@ public abstract class Point3Converter<T> : JsonConverter<Point3<T>>
 
     public override Point3<T> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
+        if (reader.TokenType == JsonTokenType.StartObject)
+        {
+            Span<double> v = stackalloc double[3];
+            JsonObjectForm.Read(ref reader, JsonObjectForm.Xyz, v, "Point3");
+            return new Point3<T>(T.CreateChecked(v[0]), T.CreateChecked(v[1]), T.CreateChecked(v[2]));
+        }
         if (reader.TokenType != JsonTokenType.StartArray)
             throw new JsonException("Expected start of array for Point3.");
 
@@ -70,6 +76,12 @@ public abstract class Vector3Converter<T> : JsonConverter<Vector3<T>>
 
     public override Vector3<T> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
+        if (reader.TokenType == JsonTokenType.StartObject)
+        {
+            Span<double> v = stackalloc double[3];
+            JsonObjectForm.Read(ref reader, JsonObjectForm.Xyz, v, "Vector3");
+            return new Vector3<T>(T.CreateChecked(v[0]), T.CreateChecked(v[1]), T.CreateChecked(v[2]));
+        }
         if (reader.TokenType != JsonTokenType.StartArray)
             throw new JsonException("Expected start of array for Vector3.");
 
@@ -180,6 +192,12 @@ public abstract class Pose3Converter<T> : JsonConverter<Pose3<T>>
 
     public override Pose3<T> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
+        if (reader.TokenType == JsonTokenType.StartObject)
+        {
+            Span<double> v = stackalloc double[6];
+            JsonObjectForm.Read(ref reader, JsonObjectForm.Pose, v, "Pose3");
+            return new Pose3<T>(T.CreateChecked(v[0]), T.CreateChecked(v[1]), T.CreateChecked(v[2]), T.CreateChecked(v[3]), T.CreateChecked(v[4]), T.CreateChecked(v[5]));
+        }
         if (reader.TokenType != JsonTokenType.StartArray)
             throw new JsonException("Expected start of array for Pose3.");
 

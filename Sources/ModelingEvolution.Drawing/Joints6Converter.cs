@@ -20,6 +20,12 @@ public abstract class Joints6Converter<T> : JsonConverter<Joints6<T>>
     /// <inheritdoc />
     public override Joints6<T> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
+        if (reader.TokenType == JsonTokenType.StartObject)
+        {
+            Span<double> v = stackalloc double[6];
+            JsonObjectForm.Read(ref reader, JsonObjectForm.Joints, v, "Joints6");
+            return new Joints6<T>(T.CreateChecked(v[0]), T.CreateChecked(v[1]), T.CreateChecked(v[2]), T.CreateChecked(v[3]), T.CreateChecked(v[4]), T.CreateChecked(v[5]));
+        }
         if (reader.TokenType != JsonTokenType.StartArray)
             throw new JsonException("Expected start of array for Joints6.");
 
